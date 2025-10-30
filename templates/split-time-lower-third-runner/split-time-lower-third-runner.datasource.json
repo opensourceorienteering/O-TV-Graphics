@@ -1,0 +1,103 @@
+{
+  "version": "1.0",
+  "mode": "api",
+  "api": {
+    "provider": "liveresults",
+    "fieldMappings": [
+      {
+        "templateField": "className",
+        "apiPath": "className",
+        "required": true,
+        "autoPopulated": true,
+        "allowOverride": true,
+        "showInUI": true,
+        "uiLabel": "Class Name",
+        "uiHelpText": "Override the class name from API if needed"
+      },
+      {
+        "templateField": "controlCode",
+        "apiPath": "controlCode",
+        "required": true,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      },
+      {
+        "templateField": "controlName",
+        "apiPath": "controlName",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": true,
+        "showInUI": true,
+        "uiLabel": "Control Name",
+        "uiHelpText": "Override the control/split name if needed"
+      },
+      {
+        "templateField": "results",
+        "apiPath": "results",
+        "required": true,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      },
+      {
+        "templateField": "runnerName",
+        "apiPath": "runner.name",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      },
+      {
+        "templateField": "runnerBib",
+        "apiPath": "runner.bib",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      },
+      {
+        "templateField": "runnerClub",
+        "apiPath": "runner.club",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      }
+    ],
+    "uiControls": [
+      {
+        "type": "class-selector",
+        "label": "Class",
+        "helpText": "Select the class to monitor",
+        "required": true,
+        "storeAs": "className",
+        "compact": true
+      },
+      {
+        "type": "control-point-selector",
+        "label": "Control Point",
+        "helpText": "Select which control point to track (including Start and Finish)",
+        "required": true,
+        "storeAs": "controlCode",
+        "multiple": false,
+        "includeFinish": true
+      },
+      {
+        "type": "runner-search",
+        "label": "Runner",
+        "helpText": "Search for a runner by name or bib number",
+        "required": true,
+        "storeAs": "runnerId",
+        "searchBy": "both",
+        "placeholder": "Search by name or bib number...",
+        "populateFields": {
+          "runnerName": "name",
+          "runnerClub": "club",
+          "runnerBib": "bib"
+        }
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Developer Guide - OL-Grafik</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0a0a0a;
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 1000;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #fff;
+      margin-right: 20px;
+    }
+
+    .search-container {
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .container {
+      display: flex;
+      margin-top: 60px;
+      height: calc(100vh - 60px);
+    }
+
+    .sidebar {
+      width: 280px;
+      background: #1a1a1a;
+      border-right: 1px solid #333;
+      overflow-y: auto;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+    }
+
+    .sidebar nav {
+      padding: 20px;
+    }
+
+    .sidebar a {
+      display: block;
+      padding: 8px 12px;
+      color: #aaa;
+      text-decoration: none;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar a:hover {
+      background: #2a2a2a;
+      color: #fff;
+    }
+
+    .sidebar a.active {
+      background: #667eea;
+      color: #fff;
+    }
+
+    .sidebar .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 20px 0 10px 0;
+    }
+
+    .sidebar .section-title:first-child {
+      margin-top: 0;
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .content h1 {
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: #fff;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+
+    .content h2 {
+      font-size: 28px;
+      font-weight: 600;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      color: #fff;
+      scroll-margin-top: 80px;
+    }
+
+    .content h3 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 32px;
+      margin-bottom: 12px;
+      color: #e0e0e0;
+      scroll-margin-top: 80px;
+    }
+
+    .content h4 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 10px;
+      color: #d0d0d0;
+      scroll-margin-top: 80px;
+    }
+
+    .content p {
+      margin-bottom: 16px;
+      color: #c0c0c0;
+    }
+
+    .content ul, .content ol {
+      margin-bottom: 16px;
+      padding-left: 24px;
+      color: #c0c0c0;
+    }
+
+    .content li {
+      margin-bottom: 8px;
+    }
+
+    .content code {
+      background: #2a2a2a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 0.9em;
+      color: #f8f8f2;
+    }
+
+    .content pre {
+      background: #1e1e1e;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      border: 1px solid #333;
+    }
+
+    .content pre code {
+      background: none;
+      padding: 0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .content th {
+      background: #2a2a2a;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #fff;
+      border-bottom: 1px solid #444;
+    }
+
+    .content td {
+      padding: 12px;
+      border-bottom: 1px solid #2a2a2a;
+      color: #c0c0c0;
+    }
+
+    .content tr:last-child td {
+      border-bottom: none;
+    }
+
+    .content blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: #aaa;
+      font-style: italic;
+    }
+
+    .content a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .content a:hover {
+      text-decoration: underline;
+    }
+
+    .content hr {
+      border: none;
+      border-top: 1px solid #333;
+      margin: 32px 0;
+    }
+
+    .search-results {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-top: none;
+      border-radius: 0 0 4px 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .search-results.visible {
+      display: block;
+    }
+
+    .search-result-item {
+      padding: 12px;
+      border-bottom: 1px solid #333;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .search-result-item:hover {
+      background: #333;
+    }
+
+    .search-result-item:last-child {
+      border-bottom: none;
+    }
+
+    .search-result-title {
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .search-result-context {
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    .search-result-highlight {
+      background: #667eea;
+      color: #fff;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: #ff6b6b;
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1a1a1a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📖 Template Developer Guide</h1>
+    <div class="search-container">
+      <input 
+        type="text" 
+        class="search-input" 
+        placeholder="Search documentation..." 
+        id="searchInput"
+      >
+      <div class="search-results" id="searchResults"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <nav id="tableOfContents">
+        <!-- Generated dynamically -->
+      </nav>
+    </aside>
+
+    <main class="content" id="content">
+      <div class="loading">Loading documentation...</div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+  <script type="module">
+    // Fetch and render documentation
+    async function loadDocumentation() {
+      try {
+        const response = await fetch('/docs/content');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const html = await response.text();
+        const contentEl = document.getElementById('content');
+        contentEl.innerHTML = html;
+        
+        // Apply syntax highlighting
+        contentEl.querySelectorAll('pre code').forEach((block) => {
+          hljs.highlightElement(block);
+        });
+        
+        // Generate table of contents
+        generateTableOfContents();
+        
+        // Setup search
+        setupSearch();
+        
+        // Handle anchor links
+        handleAnchorLinks();
+        
+      } catch (error) {
+        document.getElementById('content').innerHTML = `
+          <div class="error">
+            <h2>Failed to load documentation</h2>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function generateTableOfContents() {
+      const content = document.getElementById('content');
+      const headings = content.querySelectorAll('h2, h3');
+      const toc = document.getElementById('tableOfContents');
+      
+      let currentSection = null;
+      let html = '';
+      
+      headings.forEach((heading) => {
+        const id = heading.id || heading.textContent.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        heading.id = id;
+        
+        if (heading.tagName === 'H2') {
+          if (currentSection) {
+            html += '</div>';
+          }
+          html += `<div class="section-title">${heading.textContent}</div>`;
+          currentSection = heading.textContent;
+        } else if (heading.tagName === 'H3') {
+          html += `<a href="#${id}">${heading.textContent}</a>`;
+        }
+      });
+      
+      if (currentSection) {
+        html += '</div>';
+      }
+      
+      toc.innerHTML = html;
+      
+      // Highlight active section on scroll
+      const links = toc.querySelectorAll('a');
+      window.addEventListener('scroll', () => {
+        let current = '';
+        headings.forEach((heading) => {
+          const rect = heading.getBoundingClientRect();
+          if (rect.top <= 100) {
+            current = heading.id;
+          }
+        });
+        
+        links.forEach((link) => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+      });
+    }
+
+    function setupSearch() {
+      const searchInput = document.getElementById('searchInput');
+      const searchResults = document.getElementById('searchResults');
+      const content = document.getElementById('content');
+      
+      let searchIndex = [];
+      
+      // Build search index
+      const sections = content.querySelectorAll('h2, h3, p, li');
+      sections.forEach((section) => {
+        const text = section.textContent.trim();
+        if (text.length > 10) {
+          searchIndex.push({
+            text,
+            element: section,
+            id: section.id || section.closest('[id]')?.id || ''
+          });
+        }
+      });
+      
+      // Search handler
+      let searchTimeout;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          const query = e.target.value.trim().toLowerCase();
+          
+          if (query.length < 2) {
+            searchResults.classList.remove('visible');
+            return;
+          }
+          
+          const results = searchIndex
+            .filter(item => item.text.toLowerCase().includes(query))
+            .slice(0, 10);
+          
+          if (results.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+          } else {
+            searchResults.innerHTML = results.map(result => {
+              const text = result.text;
+              const index = text.toLowerCase().indexOf(query);
+              const start = Math.max(0, index - 40);
+              const end = Math.min(text.length, index + query.length + 40);
+              let context = text.substring(start, end);
+              
+              if (start > 0) context = '...' + context;
+              if (end < text.length) context = context + '...';
+              
+              context = context.replace(
+                new RegExp(query, 'gi'),
+                match => `<span class="search-result-highlight">${match}</span>`
+              );
+              
+              return `
+                <div class="search-result-item" data-id="${result.id}">
+                  <div class="search-result-context">${context}</div>
+                </div>
+              `;
+            }).join('');
+            
+            // Add click handlers
+            searchResults.querySelectorAll('.search-result-item').forEach(item => {
+              item.addEventListener('click', () => {
+                const id = item.getAttribute('data-id');
+                if (id) {
+                  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  searchResults.classList.remove('visible');
+                  searchInput.value = '';
+                }
+              });
+            });
+          }
+          
+          searchResults.classList.add('visible');
+        }, 300);
+      });
+      
+      // Close search results when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+          searchResults.classList.remove('visible');
+        }
+      });
+    }
+
+    function handleAnchorLinks() {
+      // Smooth scroll for anchor links
+      document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+          e.preventDefault();
+          const id = this.getAttribute('href').substring(1);
+          document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    // Load documentation on page load
+    loadDocumentation();
+  </script>
+</body>
+</html>
+

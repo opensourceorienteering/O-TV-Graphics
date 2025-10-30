@@ -1,0 +1,75 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "results-list-paginated",
+  "version": "1.0.0",
+  "name": "Full screen runners list",
+  "description": "Full-screen results list with multi-step pagination (10 runners per page). Shows finish results, split times at any control point, or start times.",
+  "author": {
+    "name": "OL-Grafik",
+    "email": "info@ol-grafik.com"
+  },
+  "main": "graphic.js",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string",
+        "title": "Class Name",
+        "description": "The orienteering class name"
+      },
+      "controlCode": {
+        "type": "string",
+        "title": "Control Code",
+        "description": "Control point code (empty or 'finish' for finish results)"
+      },
+      "controlName": {
+        "type": "string",
+        "title": "Control Name",
+        "description": "Display name for the control point (e.g., 'Finish', 'Control 99')"
+      },
+      "results": {
+        "type": "array",
+        "title": "Results",
+        "description": "Array of runner results (OGRAF format)",
+        "items": {
+          "type": "object",
+          "properties": {
+            "position": {
+              "type": ["string", "number"],
+              "title": "Position"
+            },
+            "name": {
+              "type": "string",
+              "title": "Runner Name"
+            },
+            "club": {
+              "type": "string",
+              "title": "Club"
+            },
+            "time": {
+              "type": "string",
+              "title": "Time"
+            },
+            "diff": {
+              "type": "string",
+              "title": "Time Behind Leader"
+            },
+            "status": {
+              "type": "string",
+              "title": "Status"
+            },
+            "statusCode": {
+              "type": "number",
+              "title": "Status Code"
+            }
+          }
+        }
+      }
+    },
+    "required": ["className", "results"]
+  },
+  "supportsRealTime": true,
+  "supportsNonRealTime": true,
+  "stepCount": 0
+}
+

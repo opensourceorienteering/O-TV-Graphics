@@ -1,0 +1,1 @@
+function update(n){const t=JSON.parse(n);for(var e in t)if(document.getElementById(e)){let n=t[e];"null"!=n&&"undefined"!=n||(n=""),document.getElementById(e).innerHTML=n}}function play(){runAnimationIN()}function stop(){runAnimationOUT()}

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Template Tester - OL-Grafik</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e1e;
+      color: #fff;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      margin-bottom: 30px;
+    }
+    
+    .controls {
+      background: #2d2d2d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .control-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    
+    select, button, textarea {
+      width: 100%;
+      padding: 10px;
+      font-size: 14px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #1e1e1e;
+      color: #fff;
+    }
+    
+    textarea {
+      font-family: 'Courier New', monospace;
+      min-height: 200px;
+      resize: vertical;
+    }
+    
+    button {
+      background: #0066cc;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+    
+    button:hover {
+      background: #0052a3;
+    }
+    
+    button:disabled {
+      background: #444;
+      cursor: not-allowed;
+    }
+    
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .preview {
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      transform: scale(0.7);
+      transform-origin: top left;
+    }
+    
+    .status {
+      background: #2d2d2d;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+    }
+    
+    .status.success {
+      background: #1a472a;
+    }
+    
+    .status.error {
+      background: #4a1a1a;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Template Tester - OL-Grafik</h1>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label for="template-select">Select Template:</label>
+        <select id="template-select">
+          <option value="">-- Select a template --</option>
+          <optgroup label="General">
+            <option value="general-lower-third">Allmän Lower Third</option>
+          </optgroup>
+          <optgroup label="Individual">
+            <option value="individual-start-list">Startlista Individuell</option>
+            <option value="individual-runner-lower-third">Löpare Lower Third (Individuell)</option>
+            <option value="individual-split-times">Mellantider (Individuell)</option>
+            <option value="individual-split-times-focused">Mellantid Fokuserad (Individuell)</option>
+            <option value="individual-results-finish">Resultatlista Mål (Individuell)</option>
+            <option value="individual-results-control">Resultatlista Kontroll (Individuell)</option>
+          </optgroup>
+          <optgroup label="Relay">
+            <option value="relay-start-list">Startlista Stafett</option>
+            <option value="relay-team-lower-third">Lag Lower Third (Stafett)</option>
+            <option value="relay-runner-lower-third">Löpare Lower Third (Stafett)</option>
+            <option value="relay-split-times">Mellantider (Stafett)</option>
+            <option value="relay-split-times-focused">Mellantid Fokuserad (Stafett)</option>
+            <option value="relay-results-finish">Resultatlista Mål (Stafett)</option>
+            <option value="relay-results-leg">Resultatlista Sträcka (Stafett)</option>
+            <option value="relay-results-leg-control">Resultatlista Kontroll Sträcka (Stafett)</option>
+          </optgroup>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="data-input">Test Data (JSON):</label>
+        <textarea id="data-input" placeholder='{"namn": "Erik Andersson", "titel": "Svensk Mästare 2024"}'></textarea>
+      </div>
+      
+      <div class="button-group">
+        <button id="load-btn" onclick="loadTemplate()">Load Template</button>
+        <button id="play-btn" onclick="playTemplate()" disabled>Play (Animate In)</button>
+        <button id="stop-btn" onclick="stopTemplate()" disabled>Stop (Animate Out)</button>
+        <button id="clear-btn" onclick="clearTemplate()" disabled>Clear</button>
+      </div>
+      
+      <div class="button-group">
+        <button id="next-page-btn" onclick="nextPage()" disabled>Next Page</button>
+        <button id="prev-page-btn" onclick="previousPage()" disabled>Previous Page</button>
+      </div>
+    </div>
+    
+    <div class="preview" id="preview"></div>
+    
+    <div class="status" id="status">Ready to test templates...</div>
+  </div>
+  
+  <script type="module">
+    let currentElement = null;
+    let currentTemplateId = null;
+    
+    // Sample data for each template
+    const sampleData = {
+      'general-lower-third': {
+        "namn": "Erik Andersson",
+        "titel": "Svensk Mästare 2024"
+      },
+      'individual-start-list': {
+        "className": "H21",
+        "competitionName": "SM-veckan 2024",
+        "runners": [
+          {"name": "Erik Andersson", "bib": "101", "startTime": "10:00:00", "club": "OK Linné"},
+          {"name": "Anna Svensson", "bib": "102", "startTime": "10:02:00", "club": "IFK Göteborg"},
+          {"name": "Johan Karlsson", "bib": "103", "startTime": "10:04:00", "club": "Halden SK"}
+        ],
+        "maxRows": 10
+      },
+      'individual-runner-lower-third': {
+        "runnerName": "Erik Andersson",
+        "club": "OK Linné",
+        "bibNumber": "101",
+        "className": "H21"
+      },
+      'individual-split-times': {
+        "className": "H21",
+        "runnerName": "Erik Andersson",
+        "competitionName": "SM-veckan 2024",
+        "splits": [
+          {"controlCode": "31", "time": "3:45", "diff": "-", "position": 1},
+          {"controlCode": "32", "time": "8:12", "diff": "+0:05", "position": 2},
+          {"controlCode": "33", "time": "12:34", "diff": "+0:12", "position": 3}
+        ],
+        "maxRows": 10
+      },
+      'individual-split-times-focused': {
+        "className": "H21",
+        "runnerName": "Erik Andersson",
+        "controlCode": "35",
+        "time": "24:23",
+        "leaderName": "Johan Karlsson",
+        "leaderTime": "24:08",
+        "diff": "+0:15",
+        "position": 3
+      },
+      'individual-results-finish': {
+        "className": "H21",
+        "competitionName": "SM-veckan 2024",
+        "results": [
+          {"place": 1, "name": "Johan Karlsson", "bib": "103", "club": "Halden SK", "time": "68:45", "status": "OK"},
+          {"place": 2, "name": "Erik Andersson", "bib": "101", "club": "OK Linné", "time": "69:12", "status": "OK"},
+          {"place": 3, "name": "Lars Pettersson", "bib": "105", "club": "IFK Lidingö SOK", "time": "70:34", "status": "OK"}
+        ],
+        "maxRows": 10
+      },
+      'individual-results-control': {
+        "className": "H21",
+        "controlCode": "35",
+        "competitionName": "SM-veckan 2024",
+        "results": [
+          {"place": 1, "name": "Johan Karlsson", "bib": "103", "club": "Halden SK", "time": "24:08", "diff": "-"},
+          {"place": 2, "name": "Lars Pettersson", "bib": "105", "club": "IFK Lidingö SOK", "time": "24:12", "diff": "+0:04"},
+          {"place": 3, "name": "Erik Andersson", "bib": "101", "club": "OK Linné", "time": "24:23", "diff": "+0:15"}
+        ],
+        "maxRows": 10
+      },
+      'relay-start-list': {
+        "className": "H21",
+        "competitionName": "SM-stafett 2024",
+        "teams": [
+          {"teamName": "Halden SK 1", "club": "Halden SK", "startTime": "14:00:00", "bib": "1"},
+          {"teamName": "IFK Göteborg 1", "club": "IFK Göteborg", "startTime": "14:02:00", "bib": "2"},
+          {"teamName": "OK Linné 1", "club": "OK Linné", "startTime": "14:04:00", "bib": "3"}
+        ]
+      },
+      'relay-team-lower-third': {
+        "teamName": "Halden SK 1",
+        "club": "Halden SK",
+        "className": "H21"
+      },
+      'relay-runner-lower-third': {
+        "runnerName": "Erik Andersson",
+        "teamName": "Halden SK 1",
+        "legNumber": "2",
+        "club": "Halden SK",
+        "className": "H21"
+      },
+      'relay-split-times': {
+        "className": "H21",
+        "teamName": "Halden SK 1",
+        "competitionName": "SM-stafett 2024",
+        "splits": [
+          {"controlCode": "101", "legNumber": "1", "time": "12:34", "diff": "+0:00", "position": 1},
+          {"controlCode": "102", "legNumber": "1", "time": "18:45", "diff": "+0:05", "position": 2},
+          {"controlCode": "Växling 1", "legNumber": "1", "time": "38:24", "diff": "+0:00", "position": 1}
+        ]
+      },
+      'relay-split-times-focused': {
+        "className": "H21",
+        "teamName": "Halden SK 1",
+        "controlCode": "102",
+        "legNumber": "1",
+        "time": "18:45",
+        "leaderTeam": "IFK Göteborg 1",
+        "leaderTime": "18:40",
+        "diff": "+0:05",
+        "position": 2
+      },
+      'relay-results-finish': {
+        "className": "H21",
+        "competitionName": "SM-stafett 2024",
+        "results": [
+          {"place": 1, "teamName": "Halden SK 1", "club": "Halden SK", "time": "1:45:23", "status": "OK"},
+          {"place": 2, "teamName": "IFK Göteborg 1", "club": "IFK Göteborg", "time": "1:46:12", "status": "OK"},
+          {"place": 3, "teamName": "OK Linné 1", "club": "OK Linné", "time": "1:47:45", "status": "OK"}
+        ]
+      },
+      'relay-results-leg': {
+        "className": "H21",
+        "legNumber": "2",
+        "competitionName": "SM-stafett 2024",
+        "results": [
+          {"place": 1, "runnerName": "Erik Andersson", "teamName": "Halden SK 1", "club": "Halden SK", "time": "35:12", "diff": "+0:00"},
+          {"place": 2, "runnerName": "Johan Svensson", "teamName": "IFK Göteborg 1", "club": "IFK Göteborg", "time": "35:45", "diff": "+0:33"},
+          {"place": 3, "runnerName": "Anders Karlsson", "teamName": "OK Linné 1", "club": "OK Linné", "time": "36:23", "diff": "+1:11"}
+        ]
+      },
+      'relay-results-leg-control': {
+        "className": "H21",
+        "legNumber": "2",
+        "controlCode": "203",
+        "competitionName": "SM-stafett 2024",
+        "results": [
+          {"place": 1, "runnerName": "Erik Andersson", "teamName": "Halden SK 1", "club": "Halden SK", "time": "58:34", "diff": "+0:00"},
+          {"place": 2, "runnerName": "Johan Svensson", "teamName": "IFK Göteborg 1", "club": "IFK Göteborg", "time": "59:12", "diff": "+0:38"},
+          {"place": 3, "runnerName": "Anders Karlsson", "teamName": "OK Linné 1", "club": "OK Linné", "time": "1:00:05", "diff": "+1:31"}
+        ]
+      }
+    };
+    
+    // Update sample data when template changes
+    document.getElementById('template-select').addEventListener('change', (e) => {
+      const templateId = e.target.value;
+      if (templateId && sampleData[templateId]) {
+        document.getElementById('data-input').value = JSON.stringify(sampleData[templateId], null, 2);
+      }
+    });
+    
+    window.loadTemplate = async function() {
+      const templateId = document.getElementById('template-select').value;
+      const dataInput = document.getElementById('data-input').value;
+      
+      if (!templateId) {
+        setStatus('Please select a template', 'error');
+        return;
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(dataInput);
+      } catch (e) {
+        setStatus(`Invalid JSON: ${e.message}`, 'error');
+        return;
+      }
+      
+      try {
+        setStatus('Loading template...', '');
+        
+        // Clear previous template
+        if (currentElement) {
+          document.getElementById('preview').innerHTML = '';
+          currentElement = null;
+        }
+        
+        // Load the module
+        const moduleUrl = `http://localhost:5657/templates/${templateId}/graphic.js`;
+        await import(moduleUrl);
+        
+        // Wait for custom element registration
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Create element
+        currentElement = document.createElement(templateId);
+        document.getElementById('preview').appendChild(currentElement);
+        
+        // Load data
+        const result = await currentElement.load({ data });
+        
+        currentTemplateId = templateId;
+        setStatus(`Template loaded successfully: ${result.message}`, 'success');
+        
+        // Enable buttons
+        document.getElementById('play-btn').disabled = false;
+        document.getElementById('clear-btn').disabled = false;
+        
+      } catch (error) {
+        setStatus(`Failed to load template: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+    
+    window.playTemplate = async function() {
+      if (!currentElement) return;
+      
+      try {
+        setStatus('Playing template...', '');
+        const result = await currentElement.animateIn();
+        setStatus(`Template playing: ${result.message}`, 'success');
+        
+        document.getElementById('stop-btn').disabled = false;
+        document.getElementById('next-page-btn').disabled = false;
+        document.getElementById('prev-page-btn').disabled = false;
+      } catch (error) {
+        setStatus(`Failed to play template: ${error.message}`, 'error');
+      }
+    };
+    
+    window.stopTemplate = async function() {
+      if (!currentElement) return;
+      
+      try {
+        setStatus('Stopping template...', '');
+        const result = await currentElement.animateOut();
+        setStatus(`Template stopped: ${result.message}`, 'success');
+        
+        document.getElementById('stop-btn').disabled = true;
+      } catch (error) {
+        setStatus(`Failed to stop template: ${error.message}`, 'error');
+      }
+    };
+    
+    window.clearTemplate = async function() {
+      if (!currentElement) return;
+      
+      try {
+        setStatus('Clearing template...', '');
+        const result = await currentElement.dispose();
+        setStatus(`Template cleared: ${result.message}`, 'success');
+        
+        document.getElementById('preview').innerHTML = '';
+        currentElement = null;
+        currentTemplateId = null;
+        
+        // Disable buttons
+        document.getElementById('play-btn').disabled = true;
+        document.getElementById('stop-btn').disabled = true;
+        document.getElementById('clear-btn').disabled = true;
+        document.getElementById('next-page-btn').disabled = true;
+        document.getElementById('prev-page-btn').disabled = true;
+      } catch (error) {
+        setStatus(`Failed to clear template: ${error.message}`, 'error');
+      }
+    };
+    
+    window.nextPage = async function() {
+      if (!currentElement || !currentElement.customAction) return;
+      
+      try {
+        const result = await currentElement.customAction({ command: 'nextPage' });
+        setStatus(`Next page: ${result.message}`, result.statusCode === 200 ? 'success' : 'error');
+      } catch (error) {
+        setStatus(`Failed to go to next page: ${error.message}`, 'error');
+      }
+    };
+    
+    window.previousPage = async function() {
+      if (!currentElement || !currentElement.customAction) return;
+      
+      try {
+        const result = await currentElement.customAction({ command: 'previousPage' });
+        setStatus(`Previous page: ${result.message}`, result.statusCode === 200 ? 'success' : 'error');
+      } catch (error) {
+        setStatus(`Failed to go to previous page: ${error.message}`, 'error');
+      }
+    };
+    
+    function setStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status' + (type ? ` ${type}` : '');
+    }
+  </script>
+</body>
+</html>
+

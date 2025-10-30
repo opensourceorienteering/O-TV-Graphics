@@ -1,0 +1,267 @@
+{
+  "relay-start-list": {
+    "className": "H21",
+    "competitionName": "SM-stafett 2024",
+    "teams": [
+      {
+        "teamName": "Halden SK 1",
+        "club": "Halden SK",
+        "startTime": "14:00:00",
+        "bib": "1"
+      },
+      {
+        "teamName": "IFK Göteborg 1",
+        "club": "IFK Göteborg",
+        "startTime": "14:02:00",
+        "bib": "2"
+      },
+      {
+        "teamName": "OK Linné 1",
+        "club": "OK Linné",
+        "startTime": "14:04:00",
+        "bib": "3"
+      },
+      {
+        "teamName": "Stora Tuna OK 1",
+        "club": "Stora Tuna OK",
+        "startTime": "14:06:00",
+        "bib": "4"
+      },
+      {
+        "teamName": "Alfta-Ösa OK 1",
+        "club": "Alfta-Ösa OK",
+        "startTime": "14:08:00",
+        "bib": "5"
+      }
+    ]
+  },
+  "relay-team-lower-third": {
+    "teamName": "Halden SK 1",
+    "club": "Halden SK",
+    "className": "H21"
+  },
+  "relay-runner-lower-third": {
+    "runnerName": "Erik Andersson",
+    "teamName": "Halden SK 1",
+    "legNumber": "2",
+    "club": "Halden SK",
+    "className": "H21"
+  },
+  "relay-split-times": {
+    "className": "H21",
+    "teamName": "Halden SK 1",
+    "competitionName": "SM-stafett 2024",
+    "splits": [
+      {
+        "controlCode": "101",
+        "legNumber": "1",
+        "time": "12:34",
+        "diff": "+0:00",
+        "position": 1
+      },
+      {
+        "controlCode": "102",
+        "legNumber": "1",
+        "time": "18:45",
+        "diff": "+0:05",
+        "position": 2
+      },
+      {
+        "controlCode": "103",
+        "legNumber": "1",
+        "time": "25:12",
+        "diff": "+0:03",
+        "position": 1
+      },
+      {
+        "controlCode": "104",
+        "legNumber": "1",
+        "time": "32:56",
+        "diff": "+0:00",
+        "position": 1
+      },
+      {
+        "controlCode": "Växling 1",
+        "legNumber": "1",
+        "time": "38:24",
+        "diff": "+0:00",
+        "position": 1
+      },
+      {
+        "controlCode": "201",
+        "legNumber": "2",
+        "time": "45:12",
+        "diff": "+0:08",
+        "position": 2
+      },
+      {
+        "controlCode": "202",
+        "legNumber": "2",
+        "time": "52:34",
+        "diff": "+0:12",
+        "position": 2
+      }
+    ]
+  },
+  "relay-split-times-focused": {
+    "className": "H21",
+    "teamName": "Halden SK 1",
+    "controlCode": "102",
+    "legNumber": "1",
+    "time": "18:45",
+    "leaderTeam": "IFK Göteborg 1",
+    "leaderTime": "18:40",
+    "diff": "+0:05",
+    "position": 2
+  },
+  "relay-results-finish": {
+    "className": "H21",
+    "competitionName": "SM-stafett 2024",
+    "results": [
+      {
+        "place": 1,
+        "teamName": "Halden SK 1",
+        "club": "Halden SK",
+        "time": "1:45:23",
+        "status": "OK"
+      },
+      {
+        "place": 2,
+        "teamName": "IFK Göteborg 1",
+        "club": "IFK Göteborg",
+        "time": "1:46:12",
+        "status": "OK"
+      },
+      {
+        "place": 3,
+        "teamName": "OK Linné 1",
+        "club": "OK Linné",
+        "time": "1:47:45",
+        "status": "OK"
+      },
+      {
+        "place": 4,
+        "teamName": "Stora Tuna OK 1",
+        "club": "Stora Tuna OK",
+        "time": "1:48:56",
+        "status": "OK"
+      },
+      {
+        "place": 5,
+        "teamName": "Alfta-Ösa OK 1",
+        "club": "Alfta-Ösa OK",
+        "time": "1:50:34",
+        "status": "OK"
+      },
+      {
+        "place": 6,
+        "teamName": "Domnarvets GOIF 1",
+        "club": "Domnarvets GOIF",
+        "time": "1:52:18",
+        "status": "OK"
+      },
+      {
+        "place": 7,
+        "teamName": "Sävedalens AIK 1",
+        "club": "Sävedalens AIK",
+        "time": "1:54:02",
+        "status": "OK"
+      },
+      {
+        "place": 8,
+        "teamName": "Tullinge SK 1",
+        "club": "Tullinge SK",
+        "time": "1:55:47",
+        "status": "OK"
+      }
+    ]
+  },
+  "relay-results-leg": {
+    "className": "H21",
+    "legNumber": "2",
+    "competitionName": "SM-stafett 2024",
+    "results": [
+      {
+        "place": 1,
+        "runnerName": "Erik Andersson",
+        "teamName": "Halden SK 1",
+        "club": "Halden SK",
+        "time": "35:12",
+        "diff": "+0:00"
+      },
+      {
+        "place": 2,
+        "runnerName": "Johan Svensson",
+        "teamName": "IFK Göteborg 1",
+        "club": "IFK Göteborg",
+        "time": "35:45",
+        "diff": "+0:33"
+      },
+      {
+        "place": 3,
+        "runnerName": "Anders Karlsson",
+        "teamName": "OK Linné 1",
+        "club": "OK Linné",
+        "time": "36:23",
+        "diff": "+1:11"
+      },
+      {
+        "place": 4,
+        "runnerName": "Mikael Johansson",
+        "teamName": "Stora Tuna OK 1",
+        "club": "Stora Tuna OK",
+        "time": "37:08",
+        "diff": "+1:56"
+      },
+      {
+        "place": 5,
+        "runnerName": "Peter Nilsson",
+        "teamName": "Alfta-Ösa OK 1",
+        "club": "Alfta-Ösa OK",
+        "time": "37:52",
+        "diff": "+2:40"
+      }
+    ]
+  },
+  "relay-results-leg-control": {
+    "className": "H21",
+    "legNumber": "2",
+    "controlCode": "203",
+    "competitionName": "SM-stafett 2024",
+    "results": [
+      {
+        "place": 1,
+        "runnerName": "Erik Andersson",
+        "teamName": "Halden SK 1",
+        "club": "Halden SK",
+        "time": "58:34",
+        "diff": "+0:00"
+      },
+      {
+        "place": 2,
+        "runnerName": "Johan Svensson",
+        "teamName": "IFK Göteborg 1",
+        "club": "IFK Göteborg",
+        "time": "59:12",
+        "diff": "+0:38"
+      },
+      {
+        "place": 3,
+        "runnerName": "Anders Karlsson",
+        "teamName": "OK Linné 1",
+        "club": "OK Linné",
+        "time": "1:00:05",
+        "diff": "+1:31"
+      },
+      {
+        "place": 4,
+        "runnerName": "Mikael Johansson",
+        "teamName": "Stora Tuna OK 1",
+        "club": "Stora Tuna OK",
+        "time": "1:01:23",
+        "diff": "+2:49"
+      }
+    ]
+  }
+}
+

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Template Preview</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      body {
+        background: transparent;
+        font-family: Arial, sans-serif;
+      }
+
+      #preview-container {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Wrapper for scaling graphics to fit preview panel */
+      #graphics-wrapper {
+        width: 1920px;
+        height: 1080px;
+        position: relative;
+        transform-origin: center center;
+        background: transparent;
+      }
+
+      .error-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 68, 68, 0.9);
+        color: white;
+        padding: 1rem;
+        border-radius: 4px;
+        font-size: 14px;
+        max-width: 80%;
+        text-align: center;
+      }
+
+      .loading-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #666;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="preview-container">
+      <div id="graphics-wrapper">
+        <div class="loading-message">Loading template...</div>
+      </div>
+    </div>
+
+    <script type="module">
+      /**
+       * Template Preview Loader
+       * Dynamically loads and displays OGRAF templates for preview
+       */
+
+      const container = document.getElementById('preview-container');
+      const graphicsWrapper = document.getElementById('graphics-wrapper');
+      let currentElement = null;
+      let currentTemplateId = null;
+      let currentManifest = null;
+      let isLoading = false;
+      let pendingPlayCommand = null; // Queue play commands that arrive during loading
+
+      /**
+       * Calculate and apply scaling to fit graphics in preview panel
+       */
+      function updateScale() {
+        if (!container || !graphicsWrapper) return;
+
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+
+        // Graphics are designed for 1920x1080
+        const graphicsWidth = 1920;
+        const graphicsHeight = 1080;
+
+        // Calculate scale to fit while maintaining aspect ratio
+        const scaleX = containerWidth / graphicsWidth;
+        const scaleY = containerHeight / graphicsHeight;
+        const scale = Math.min(scaleX, scaleY);
+
+        // Apply transform
+        graphicsWrapper.style.transform = `scale(${scale})`;
+
+        console.log('[TemplatePreview] Scale updated', {
+          containerWidth,
+          containerHeight,
+          scale
+        });
+      }
+
+      // Update scale on window resize
+      window.addEventListener('resize', updateScale);
+
+      // Initial scale update
+      setTimeout(updateScale, 100);
+
+      /**
+       * Show error message
+       */
+      function showError(message) {
+        graphicsWrapper.innerHTML = `<div class="error-message">${message}</div>`;
+        console.error('[TemplatePreview]', message);
+      }
+
+      /**
+       * Show loading message
+       */
+      function showLoading(message = 'Loading template...') {
+        graphicsWrapper.innerHTML = `<div class="loading-message">${message}</div>`;
+      }
+
+      /**
+       * Load and display template
+       */
+      async function loadTemplate(templateId, manifestData, data = {}) {
+        try {
+          console.log('[TemplatePreview] Loading template', { templateId, manifestData, data });
+
+          // Set loading state
+          isLoading = true;
+
+          // Clear graphics wrapper
+          graphicsWrapper.innerHTML = '';
+          currentElement = null;
+
+          // Construct module URL
+          // IMPORTANT: Always use port 5657 for template server, even if this page is served from Vite (5173)
+          const templateServerOrigin = 'http://localhost:5657';
+          const moduleUrl = `${templateServerOrigin}/templates/${templateId}/${manifestData.main}`;
+
+          console.log('[TemplatePreview] Importing module', moduleUrl);
+
+          // Dynamically import the module
+          await import(/* @vite-ignore */ moduleUrl);
+
+          // Wait for custom element registration
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Create the custom element
+          // Use templateId as tag name (matches the directory name and custom element registration)
+          const tagName = templateId;
+
+          // Check if custom element is defined
+          if (!customElements.get(tagName)) {
+            throw new Error(`Custom element "${tagName}" not registered. The graphic.js file should call customElements.define('${tagName}', YourClassName)`);
+          }
+
+          const element = document.createElement(tagName);
+
+          // Verify the element implements the OGRAF interface
+          if (typeof element.load !== 'function') {
+            throw new Error(`Element does not implement OGRAF interface: ${tagName}. Missing load() method.`);
+          }
+
+          // Add to graphics wrapper (hidden initially, will be shown on play)
+          element.style.display = 'none';
+          graphicsWrapper.appendChild(element);
+
+          // Call load method with data
+          console.log('[TemplatePreview] Calling load method', data);
+          const loadResult = await element.load({ data });
+          console.log('[TemplatePreview] Load result', loadResult);
+
+          // Store current element and state
+          currentElement = element;
+          currentTemplateId = templateId;
+          currentManifest = manifestData;
+          isLoading = false;
+
+          console.log('[TemplatePreview] Template loaded successfully');
+
+          // Update scale after template is loaded
+          setTimeout(updateScale, 100);
+
+          // Execute any pending play command
+          if (pendingPlayCommand) {
+            console.log('[TemplatePreview] Executing pending play command', pendingPlayCommand);
+            const options = pendingPlayCommand;
+            pendingPlayCommand = null;
+            await playTemplate(options);
+          }
+
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[TemplatePreview] Failed to load template', error);
+          console.error('[TemplatePreview] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+          showError(`Failed to load template: ${errorMessage}`);
+          isLoading = false;
+          pendingPlayCommand = null;
+        }
+      }
+
+      /**
+       * Update template data
+       */
+      async function updateData(data) {
+        if (!currentElement) {
+          console.warn('[TemplatePreview] No template loaded');
+          return;
+        }
+
+        try {
+          // Call load method with new data
+          if (typeof currentElement.load === 'function') {
+            console.log('[TemplatePreview] Updating data', data);
+            await currentElement.load({ data });
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[TemplatePreview] Failed to update data', errorMessage);
+          console.error('[TemplatePreview] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        }
+      }
+
+      /**
+       * Play template (show the graphic)
+       */
+      async function playTemplate(options = {}) {
+        // If template is still loading, queue the play command
+        if (isLoading) {
+          console.log('[TemplatePreview] Template is loading, queuing play command', options);
+          pendingPlayCommand = options;
+          return;
+        }
+
+        if (!currentElement) {
+          console.warn('[TemplatePreview] No template loaded, cannot play');
+          return;
+        }
+
+        try {
+          // Show the element
+          if (currentElement.style) {
+            currentElement.style.display = 'block';
+          }
+
+          // Call playAction method if it exists
+          if (typeof currentElement.playAction === 'function') {
+            console.log('[TemplatePreview] Calling playAction', options);
+            const result = await currentElement.playAction(options);
+            console.log('[TemplatePreview] PlayAction result', result);
+            return result;
+          } else {
+            console.warn('[TemplatePreview] Element does not have playAction method');
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[TemplatePreview] Failed to play template', errorMessage);
+          console.error('[TemplatePreview] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        }
+      }
+
+      /**
+       * Stop template (hide the graphic)
+       */
+      async function stopTemplate(options = {}) {
+        if (!currentElement) {
+          console.warn('[TemplatePreview] No template loaded');
+          return;
+        }
+
+        try {
+          // Call stopAction method if it exists
+          if (typeof currentElement.stopAction === 'function') {
+            console.log('[TemplatePreview] Calling stopAction', options);
+            const result = await currentElement.stopAction(options);
+            console.log('[TemplatePreview] StopAction result', result);
+
+            // Hide the element if skipAnimation is true
+            if (options.skipAnimation && currentElement.style) {
+              currentElement.style.display = 'none';
+            }
+
+            return result;
+          } else {
+            console.warn('[TemplatePreview] Element does not have stopAction method');
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error('[TemplatePreview] Failed to stop template', errorMessage);
+          console.error('[TemplatePreview] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        }
+      }
+
+      /**
+       * Parse URL parameters
+       */
+      function getUrlParams() {
+        const params = new URLSearchParams(window.location.search);
+        const result = {};
+        
+        for (const [key, value] of params.entries()) {
+          // Try to parse JSON values
+          try {
+            result[key] = JSON.parse(value);
+          } catch {
+            result[key] = value;
+          }
+        }
+        
+        return result;
+      }
+
+      /**
+       * Initialize preview
+       */
+      async function init() {
+        try {
+          const params = getUrlParams();
+
+          // Extract template ID from URL path or params
+          const pathParts = window.location.pathname.split('/');
+          const templateId = params.templateId || pathParts[pathParts.length - 1] || null;
+
+          if (!templateId) {
+            showError('No template ID specified. Use ?templateId=your-template-id');
+            return;
+          }
+
+          console.log('[TemplatePreview] Initializing with template', templateId);
+
+          // Fetch manifest
+          // IMPORTANT: Always use port 5657 for template server, even if this page is served from Vite (5173)
+          // In development, the /preview route redirects to Vite, but templates are served from port 5657
+          const templateServerOrigin = 'http://localhost:5657';
+
+          // Try .ograf.json first (new spec requirement), then fall back to manifest.json
+          let manifest = null;
+          let manifestUrl = `${templateServerOrigin}/templates/${templateId}/${templateId}.ograf.json`;
+          console.log('[TemplatePreview] Fetching manifest', manifestUrl);
+
+          let manifestResponse = await fetch(manifestUrl);
+          if (!manifestResponse.ok) {
+            // Fall back to manifest.json for backward compatibility
+            console.log('[TemplatePreview] .ograf.json not found, trying manifest.json');
+            manifestUrl = `${templateServerOrigin}/templates/${templateId}/manifest.json`;
+            manifestResponse = await fetch(manifestUrl);
+
+            if (!manifestResponse.ok) {
+              throw new Error(`Failed to fetch manifest: ${manifestResponse.status} ${manifestResponse.statusText}`);
+            }
+          }
+
+          manifest = await manifestResponse.json();
+          console.log('[TemplatePreview] Manifest loaded', manifest);
+
+          // Extract data from URL params (exclude templateId)
+          const { templateId: _, ...data } = params;
+
+          // Load template
+          await loadTemplate(templateId, manifest, data);
+
+        } catch (error) {
+          console.error('[TemplatePreview] Initialization failed', error);
+          showError(`Initialization failed: ${error.message}`);
+        }
+      }
+
+      /**
+       * Listen for postMessage commands (for updating data from parent window)
+       *
+       * IMPORTANT: This preview iframe uses postMessage ONLY for communication.
+       * It does NOT connect to WebSocket and does NOT send commands to PlaybackEngine.
+       * This ensures complete isolation from live outputs (NDI, Web, Graphics Window).
+       */
+      window.addEventListener('message', async (event) => {
+        console.log('[TemplatePreview] 📨 Received postMessage (isolated from WebSocket)', {
+          command: event.data.command,
+          spxcmd: event.data.spxcmd,
+          hasPayload: !!event.data.payload,
+          timestamp: new Date().toISOString()
+        });
+
+        const { spxcmd, command, payload } = event.data;
+
+        if (spxcmd === 'graphics:command') {
+          console.log('[TemplatePreview] Processing command (postMessage only, no WebSocket)', {
+            command,
+            isLoading,
+            hasCurrentElement: !!currentElement,
+            timestamp: new Date().toISOString()
+          });
+
+          switch (command) {
+            case 'load':
+              // Load/update data
+              // If template is already loaded, just update the data
+              // If template is still loading, wait for it to complete
+              if (payload && payload.fields) {
+                console.log('[TemplatePreview] Load command - waiting for template if needed', {
+                  isLoading,
+                  fieldCount: Object.keys(payload.fields).length,
+                  timestamp: new Date().toISOString()
+                });
+
+                // Wait for any in-progress loading to complete
+                while (isLoading) {
+                  console.log('[TemplatePreview] Waiting for template to finish loading...');
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                }
+
+                // Now update the data
+                if (currentElement) {
+                  console.log('[TemplatePreview] Updating data', {
+                    fieldCount: Object.keys(payload.fields).length,
+                    timestamp: new Date().toISOString()
+                  });
+                  await updateData(payload.fields);
+                  console.log('[TemplatePreview] Data updated successfully');
+                } else {
+                  console.warn('[TemplatePreview] Cannot load data: no template loaded');
+                }
+              }
+              break;
+
+            case 'update':
+              // Update data (same as load for preview purposes)
+              if (payload && payload.data) {
+                console.log('[TemplatePreview] Update command - waiting for template if needed', {
+                  isLoading,
+                  fieldCount: Object.keys(payload.data).length,
+                  timestamp: new Date().toISOString()
+                });
+
+                // Wait for any in-progress loading to complete
+                while (isLoading) {
+                  console.log('[TemplatePreview] Waiting for template to finish loading...');
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                }
+
+                if (currentElement) {
+                  console.log('[TemplatePreview] Updating data', {
+                    fieldCount: Object.keys(payload.data).length,
+                    timestamp: new Date().toISOString()
+                  });
+                  await updateData(payload.data);
+                  console.log('[TemplatePreview] Data updated successfully');
+                } else {
+                  console.warn('[TemplatePreview] Cannot update data: no template loaded');
+                }
+              }
+              break;
+
+            case 'play':
+              // Play the graphic with options
+              // playTemplate will queue the command if template is still loading
+              console.log('[TemplatePreview] Play command', {
+                hasOptions: !!(payload && payload.options),
+                options: payload?.options,
+                isLoading,
+                timestamp: new Date().toISOString()
+              });
+
+              if (payload && payload.options) {
+                await playTemplate(payload.options);
+              } else {
+                await playTemplate();
+              }
+              console.log('[TemplatePreview] Play command completed');
+              break;
+
+            case 'stop':
+              // Stop the graphic
+              console.log('[TemplatePreview] Stop command', {
+                hasOptions: !!(payload && payload.options),
+                options: payload?.options,
+                timestamp: new Date().toISOString()
+              });
+
+              if (payload && payload.options) {
+                await stopTemplate(payload.options);
+              } else {
+                await stopTemplate();
+              }
+              console.log('[TemplatePreview] Stop command completed');
+              break;
+
+            default:
+              console.warn('[TemplatePreview] Unknown command', command);
+          }
+        } else {
+          console.log('[TemplatePreview] Ignoring non-graphics message', {
+            spxcmd,
+            timestamp: new Date().toISOString()
+          });
+        }
+      });
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>
+

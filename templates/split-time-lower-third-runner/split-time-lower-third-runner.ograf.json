@@ -1,0 +1,56 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "split-time-lower-third-runner",
+  "version": "1.0.0",
+  "name": "Split Time Lower Third (Runner)",
+  "description": "Lower third graphic for tracking a specific runner's progress at a selected control point with dynamic positioning and live timing.",
+  "author": {
+    "name": "OL-Grafik"
+  },
+  "main": "graphic.js",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "className": {
+        "type": "string",
+        "description": "The class name (e.g., M21, D21)"
+      },
+      "controlCode": {
+        "type": "string",
+        "description": "The control point code (e.g., 99, Start, Finish)"
+      },
+      "controlName": {
+        "type": "string",
+        "description": "The control point name (e.g., Control 99, Start, Finish)"
+      },
+      "runnerId": {
+        "type": "string",
+        "description": "The selected runner's ID"
+      },
+      "runnerName": {
+        "type": "string",
+        "description": "The selected runner's name"
+      },
+      "runnerBib": {
+        "type": "string",
+        "description": "The selected runner's bib number"
+      },
+      "runnerClub": {
+        "type": "string",
+        "description": "The selected runner's club"
+      },
+      "results": {
+        "type": "array",
+        "description": "Array of runner results at the selected control",
+        "items": {
+          "type": "object"
+        }
+      }
+    },
+    "required": ["className", "controlCode", "runnerId", "runnerName", "results"]
+  },
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1
+}
+

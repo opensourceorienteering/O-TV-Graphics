@@ -1,0 +1,389 @@
+{
+  "general-lower-third": {
+    "namn": "Erik Andersson",
+    "titel": "Svensk Mästare 2024"
+  },
+  "individual-start-list": {
+    "className": "H21",
+    "competitionName": "SM-veckan 2024",
+    "runners": [
+      {
+        "name": "Erik Andersson",
+        "bib": "101",
+        "startTime": "10:00:00",
+        "club": "OK Linné"
+      },
+      {
+        "name": "Anna Svensson",
+        "bib": "102",
+        "startTime": "10:02:00",
+        "club": "IFK Göteborg"
+      },
+      {
+        "name": "Johan Karlsson",
+        "bib": "103",
+        "startTime": "10:04:00",
+        "club": "Halden SK"
+      },
+      {
+        "name": "Maria Nilsson",
+        "bib": "104",
+        "startTime": "10:06:00",
+        "club": "OK Ravinen"
+      },
+      {
+        "name": "Lars Pettersson",
+        "bib": "105",
+        "startTime": "10:08:00",
+        "club": "IFK Lidingö SOK"
+      },
+      {
+        "name": "Karin Johansson",
+        "bib": "106",
+        "startTime": "10:10:00",
+        "club": "Stora Tuna OK"
+      },
+      {
+        "name": "Per Gustafsson",
+        "bib": "107",
+        "startTime": "10:12:00",
+        "club": "Domnarvets GOIF"
+      },
+      {
+        "name": "Sofia Eriksson",
+        "bib": "108",
+        "startTime": "10:14:00",
+        "club": "OK Tisaren"
+      },
+      {
+        "name": "Anders Larsson",
+        "bib": "109",
+        "startTime": "10:16:00",
+        "club": "Sävedalens AIK"
+      },
+      {
+        "name": "Emma Olsson",
+        "bib": "110",
+        "startTime": "10:18:00",
+        "club": "OK Orion"
+      },
+      {
+        "name": "Mikael Hansson",
+        "bib": "111",
+        "startTime": "10:20:00",
+        "club": "Tullinge SK"
+      },
+      {
+        "name": "Lisa Bergström",
+        "bib": "112",
+        "startTime": "10:22:00",
+        "club": "IK Hakarpspojkarna"
+      }
+    ],
+    "maxRows": 10
+  },
+  "individual-runner-lower-third": {
+    "runnerName": "Erik Andersson",
+    "club": "OK Linné",
+    "bibNumber": "101",
+    "className": "H21"
+  },
+  "individual-split-times": {
+    "className": "H21",
+    "runnerName": "Erik Andersson",
+    "competitionName": "SM-veckan 2024",
+    "splits": [
+      {
+        "controlCode": "31",
+        "time": "3:45",
+        "diff": "-",
+        "position": 1
+      },
+      {
+        "controlCode": "32",
+        "time": "8:12",
+        "diff": "+0:05",
+        "position": 2
+      },
+      {
+        "controlCode": "33",
+        "time": "12:34",
+        "diff": "+0:12",
+        "position": 3
+      },
+      {
+        "controlCode": "34",
+        "time": "18:56",
+        "diff": "+0:08",
+        "position": 2
+      },
+      {
+        "controlCode": "35",
+        "time": "24:23",
+        "diff": "+0:15",
+        "position": 3
+      },
+      {
+        "controlCode": "36",
+        "time": "29:45",
+        "diff": "+0:10",
+        "position": 2
+      },
+      {
+        "controlCode": "37",
+        "time": "35:12",
+        "diff": "+0:18",
+        "position": 3
+      },
+      {
+        "controlCode": "38",
+        "time": "41:34",
+        "diff": "+0:22",
+        "position": 4
+      },
+      {
+        "controlCode": "39",
+        "time": "47:56",
+        "diff": "+0:25",
+        "position": 4
+      },
+      {
+        "controlCode": "40",
+        "time": "53:18",
+        "diff": "+0:20",
+        "position": 3
+      },
+      {
+        "controlCode": "41",
+        "time": "58:45",
+        "diff": "+0:18",
+        "position": 3
+      },
+      {
+        "controlCode": "42",
+        "time": "64:12",
+        "diff": "+0:15",
+        "position": 2
+      }
+    ],
+    "maxRows": 10
+  },
+  "individual-split-times-focused": {
+    "className": "H21",
+    "runnerName": "Erik Andersson",
+    "controlCode": "35",
+    "time": "24:23",
+    "leaderName": "Johan Karlsson",
+    "leaderTime": "24:08",
+    "diff": "+0:15",
+    "position": 3
+  },
+  "individual-results-finish": {
+    "className": "H21",
+    "competitionName": "SM-veckan 2024",
+    "results": [
+      {
+        "place": 1,
+        "name": "Johan Karlsson",
+        "bib": "103",
+        "club": "Halden SK",
+        "time": "68:45",
+        "status": "OK"
+      },
+      {
+        "place": 2,
+        "name": "Erik Andersson",
+        "bib": "101",
+        "club": "OK Linné",
+        "time": "69:12",
+        "status": "OK"
+      },
+      {
+        "place": 3,
+        "name": "Lars Pettersson",
+        "bib": "105",
+        "club": "IFK Lidingö SOK",
+        "time": "70:34",
+        "status": "OK"
+      },
+      {
+        "place": 4,
+        "name": "Per Gustafsson",
+        "bib": "107",
+        "club": "Domnarvets GOIF",
+        "time": "71:23",
+        "status": "OK"
+      },
+      {
+        "place": 5,
+        "name": "Anders Larsson",
+        "bib": "109",
+        "club": "Sävedalens AIK",
+        "time": "72:45",
+        "status": "OK"
+      },
+      {
+        "place": 6,
+        "name": "Mikael Hansson",
+        "bib": "111",
+        "club": "Tullinge SK",
+        "time": "73:56",
+        "status": "OK"
+      },
+      {
+        "place": 7,
+        "name": "Anna Svensson",
+        "bib": "102",
+        "club": "IFK Göteborg",
+        "time": "75:12",
+        "status": "OK"
+      },
+      {
+        "place": 8,
+        "name": "Maria Nilsson",
+        "bib": "104",
+        "club": "OK Ravinen",
+        "time": "76:34",
+        "status": "OK"
+      },
+      {
+        "place": 9,
+        "name": "Karin Johansson",
+        "bib": "106",
+        "club": "Stora Tuna OK",
+        "time": "77:45",
+        "status": "OK"
+      },
+      {
+        "place": 10,
+        "name": "Sofia Eriksson",
+        "bib": "108",
+        "club": "OK Tisaren",
+        "time": "78:56",
+        "status": "OK"
+      },
+      {
+        "place": 11,
+        "name": "Emma Olsson",
+        "bib": "110",
+        "club": "OK Orion",
+        "time": "80:12",
+        "status": "OK"
+      },
+      {
+        "place": 12,
+        "name": "Lisa Bergström",
+        "bib": "112",
+        "club": "IK Hakarpspojkarna",
+        "time": "81:34",
+        "status": "OK"
+      }
+    ],
+    "maxRows": 10
+  },
+  "individual-results-control": {
+    "className": "H21",
+    "controlCode": "35",
+    "competitionName": "SM-veckan 2024",
+    "results": [
+      {
+        "place": 1,
+        "name": "Johan Karlsson",
+        "bib": "103",
+        "club": "Halden SK",
+        "time": "24:08",
+        "diff": "-"
+      },
+      {
+        "place": 2,
+        "name": "Lars Pettersson",
+        "bib": "105",
+        "club": "IFK Lidingö SOK",
+        "time": "24:12",
+        "diff": "+0:04"
+      },
+      {
+        "place": 3,
+        "name": "Erik Andersson",
+        "bib": "101",
+        "club": "OK Linné",
+        "time": "24:23",
+        "diff": "+0:15"
+      },
+      {
+        "place": 4,
+        "name": "Per Gustafsson",
+        "bib": "107",
+        "club": "Domnarvets GOIF",
+        "time": "24:45",
+        "diff": "+0:37"
+      },
+      {
+        "place": 5,
+        "name": "Anders Larsson",
+        "bib": "109",
+        "club": "Sävedalens AIK",
+        "time": "25:12",
+        "diff": "+1:04"
+      },
+      {
+        "place": 6,
+        "name": "Mikael Hansson",
+        "bib": "111",
+        "club": "Tullinge SK",
+        "time": "25:34",
+        "diff": "+1:26"
+      },
+      {
+        "place": 7,
+        "name": "Anna Svensson",
+        "bib": "102",
+        "club": "IFK Göteborg",
+        "time": "25:56",
+        "diff": "+1:48"
+      },
+      {
+        "place": 8,
+        "name": "Maria Nilsson",
+        "bib": "104",
+        "club": "OK Ravinen",
+        "time": "26:23",
+        "diff": "+2:15"
+      },
+      {
+        "place": 9,
+        "name": "Karin Johansson",
+        "bib": "106",
+        "club": "Stora Tuna OK",
+        "time": "26:45",
+        "diff": "+2:37"
+      },
+      {
+        "place": 10,
+        "name": "Sofia Eriksson",
+        "bib": "108",
+        "club": "OK Tisaren",
+        "time": "27:12",
+        "diff": "+3:04"
+      },
+      {
+        "place": 11,
+        "name": "Emma Olsson",
+        "bib": "110",
+        "club": "OK Orion",
+        "time": "27:34",
+        "diff": "+3:26"
+      },
+      {
+        "place": 12,
+        "name": "Lisa Bergström",
+        "bib": "112",
+        "club": "IK Hakarpspojkarna",
+        "time": "27:56",
+        "diff": "+3:48"
+      }
+    ],
+    "maxRows": 10
+  }
+}
+
