@@ -98,6 +98,89 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
   }
 
   /**
+   * Recalculate positions based on actual times
+   * This fixes issues where the API provides incorrect or stale position data
+   */
+  recalculatePositions(results) {
+    console.log('[SplitTimeLowerThirdRunner] Recalculating positions based on times');
+
+    // Separate runners with valid times from those without
+    const runnersWithTimes = [];
+    const runnersWithoutTimes = [];
+
+    for (const runner of results) {
+      if (this.hasValidTime(runner)) {
+        runnersWithTimes.push(runner);
+      } else {
+        runnersWithoutTimes.push(runner);
+      }
+    }
+
+    // Find the leader's absolute time (time without "+" prefix)
+    let leaderTime = 0;
+    for (const runner of runnersWithTimes) {
+      if (!runner.time.startsWith('+')) {
+        leaderTime = this.parseTimeToSeconds(runner.time);
+        console.log('[SplitTimeLowerThirdRunner] Found leader time', {
+          name: runner.name,
+          time: runner.time,
+          seconds: leaderTime
+        });
+        break;
+      }
+    }
+
+    // Calculate absolute time for each runner
+    const runnersWithAbsoluteTimes = runnersWithTimes.map(runner => {
+      let absoluteTime;
+      if (runner.time.startsWith('+')) {
+        // Time difference - add to leader time
+        const diff = this.parseTimeToSeconds(runner.time);
+        absoluteTime = leaderTime + diff;
+      } else {
+        // Absolute time
+        absoluteTime = this.parseTimeToSeconds(runner.time);
+      }
+
+      return {
+        runner,
+        absoluteTime
+      };
+    });
+
+    // Sort by absolute time (ascending = fastest first)
+    runnersWithAbsoluteTimes.sort((a, b) => a.absoluteTime - b.absoluteTime);
+
+    // Assign positions based on sorted order
+    runnersWithAbsoluteTimes.forEach(({ runner }, index) => {
+      const oldPosition = runner.position;
+      runner.position = (index + 1).toString();
+
+      if (oldPosition !== runner.position) {
+        console.log('[SplitTimeLowerThirdRunner] Position corrected', {
+          name: runner.name,
+          time: runner.time,
+          oldPosition,
+          newPosition: runner.position
+        });
+      }
+    });
+
+    // Runners without times don't get a position (or keep their existing one)
+    // This is fine - they'll be filtered out later anyway
+
+    console.log('[SplitTimeLowerThirdRunner] Positions recalculated', {
+      runnersWithTimes: runnersWithTimes.length,
+      runnersWithoutTimes: runnersWithoutTimes.length,
+      topThree: runnersWithAbsoluteTimes.slice(0, 3).map(({ runner }) => ({
+        name: runner.name,
+        position: runner.position,
+        time: runner.time
+      }))
+    });
+  }
+
+  /**
    * Process data and set up runner tracking
    */
   processData() {
@@ -117,6 +200,10 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
       this.displayRunners = [];
       return;
     }
+
+    // CRITICAL FIX: Recalculate positions based on actual times
+    // The API's position field may be stale or incorrect
+    this.recalculatePositions(results);
 
     // Find the selected runner FIRST in the full results list (before filtering)
     // This ensures we can track them even if they haven't passed the control yet
@@ -211,6 +298,11 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
         startTimeString: this.selectedRunner.startTime,
         startTimeUnix: this.selectedRunnerStartTime,
         startTimeDate: new Date(this.selectedRunnerStartTime * 1000).toISOString()
+      });
+    } else {
+      console.warn('[SplitTimeLowerThirdRunner] ⚠️  NO START TIME AVAILABLE', {
+        runnerName: this.selectedRunner.name,
+        runnerData: this.selectedRunner
       });
     }
 
@@ -562,11 +654,15 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
 
   /**
    * Parse time string to seconds (for split times, NOT start times)
+   * Handles formats: "MM:SS", "HH:MM:SS", "+MM:SS", "+HH:MM:SS"
    */
   parseTimeToSeconds(timeStr) {
     if (!timeStr || timeStr === '--:--') return 0;
 
-    const parts = timeStr.split(':');
+    // Remove leading "+" if present (time difference format)
+    const cleanTimeStr = timeStr.startsWith('+') ? timeStr.substring(1) : timeStr;
+
+    const parts = cleanTimeStr.split(':');
     if (parts.length === 2) {
       // MM:SS
       return parseInt(parts[0]) * 60 + parseInt(parts[1]);
@@ -689,6 +785,11 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
    */
   getLiveTimingDisplay() {
     if (!this.liveTimingActive || !this.selectedRunnerStartTime) {
+      console.log('[SplitTimeLowerThirdRunner] ⚠️  Live timing NOT active or no start time', {
+        liveTimingActive: this.liveTimingActive,
+        selectedRunnerStartTime: this.selectedRunnerStartTime,
+        returningStaticTime: this.selectedRunner.time
+      });
       return this.selectedRunner.time || '--:--';
     }
 
@@ -701,10 +802,24 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
 
       if (timeUntilStart > 0) {
         // Countdown to start (show negative)
-        return `-${this.formatTime(Math.abs(timeUntilStart))}`;
+        const countdown = `-${this.formatTime(Math.abs(timeUntilStart))}`;
+        console.log('[SplitTimeLowerThirdRunner] ⏱️  COUNTDOWN', {
+          timeUntilStart,
+          countdown,
+          startTime: new Date(this.selectedRunnerStartTime * 1000).toISOString(),
+          currentTime: new Date(currentTime * 1000).toISOString()
+        });
+        return countdown;
       } else {
         // Count up from start
-        return this.formatTime(Math.abs(timeUntilStart));
+        const countup = this.formatTime(Math.abs(timeUntilStart));
+        console.log('[SplitTimeLowerThirdRunner] ⏱️  COUNTUP', {
+          timeUntilStart,
+          countup,
+          startTime: new Date(this.selectedRunnerStartTime * 1000).toISOString(),
+          currentTime: new Date(currentTime * 1000).toISOString()
+        });
+        return countup;
       }
     }
 
@@ -924,7 +1039,15 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
    * Start live timing updates
    */
   startLiveTiming() {
-    console.log('[SplitTimeLowerThirdRunner] Starting live timing');
+    console.log('[SplitTimeLowerThirdRunner] Starting live timing', {
+      liveTimingActive: this.liveTimingActive,
+      selectedRunnerStartTime: this.selectedRunnerStartTime,
+      selectedRunnerStartTimeDate: this.selectedRunnerStartTime ? new Date(this.selectedRunnerStartTime * 1000).toISOString() : null,
+      isStartControl: this.isStartControl
+    });
+
+    // Update immediately to avoid showing stale data
+    this.updateLiveTiming();
 
     // Update every 100ms for smooth countdown/countup
     this.liveTimingInterval = setInterval(() => {
@@ -1047,7 +1170,7 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
 
         body {
           font-family: Inter, sans-serif;
-          font-size: 24px;
+          font-size: 28px;
         }
 
         .container {
@@ -1308,6 +1431,8 @@ class SplitTimeLowerThirdRunner extends HTMLElement {
   }
 }
 
-// Register the custom element
-customElements.define('split-time-lower-third-runner', SplitTimeLowerThirdRunner);
+// Register the custom element (only if not already registered)
+if (!customElements.get('split-time-lower-third-runner')) {
+  customElements.define('split-time-lower-third-runner', SplitTimeLowerThirdRunner);
+}
 
