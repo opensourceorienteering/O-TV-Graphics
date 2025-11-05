@@ -153,9 +153,11 @@
           // Construct module URL
           // IMPORTANT: Always use port 5657 for template server, even if this page is served from Vite (5173)
           const templateServerOrigin = 'http://localhost:5657';
-          const moduleUrl = `${templateServerOrigin}/templates/${templateId}/${manifestData.main}`;
+          // Add cache-busting timestamp to force fresh loads when templates are updated
+          const cacheBuster = Date.now();
+          const moduleUrl = `${templateServerOrigin}/templates/${templateId}/${manifestData.main}?v=${cacheBuster}`;
 
-          console.log('[TemplatePreview] Importing module', moduleUrl);
+          console.log('[TemplatePreview] Importing module', moduleUrl, 'cacheBuster:', cacheBuster);
 
           // Dynamically import the module
           await import(/* @vite-ignore */ moduleUrl);

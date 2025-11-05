@@ -576,17 +576,38 @@ export class PlaybackEngine {
         }
       }
 
+      // Determine which step to play
+      // If graphic was recently stopped (within 1500ms timeout), restore the previous step
+      // This enables "undo" functionality for operators
+      let activeGraphic = this.activeGraphics.get(graphicId);
+      const preservedStep = activeGraphic?.currentStep;
+
       // Play the graphic
-      logger.info('Sending play command', { graphicId });
-      const playResult = await this.sendCommand('play', {
-        id: graphicId,
-        options: {
-          skipAnimation: false
-        }
-      });
+      let playResult;
+      if (preservedStep && preservedStep > 1) {
+        logger.info('Sending play command with preserved step (undo functionality)', {
+          graphicId,
+          preservedStep
+        });
+        playResult = await this.sendCommand('play', {
+          id: graphicId,
+          options: {
+            skipAnimation: false,
+            goto: preservedStep // Resume from preserved step
+          }
+        });
+      } else {
+        logger.info('Sending play command', { graphicId });
+        playResult = await this.sendCommand('play', {
+          id: graphicId,
+          options: {
+            skipAnimation: false
+          }
+        });
+      }
 
       // Update active graphic state
-      const activeGraphic = this.activeGraphics.get(graphicId);
+      activeGraphic = this.activeGraphics.get(graphicId);
       const currentStep = playResult?.currentStep || 1;
       if (activeGraphic) {
         activeGraphic.isPlaying = true;
@@ -682,16 +703,19 @@ export class PlaybackEngine {
       });
 
       // Update active graphic state
+      // IMPORTANT: Preserve currentStep in ActiveGraphic for "undo" functionality
+      // This allows operators to replay the graphic within 1500ms and resume from the same step
       const activeGraphic = this.activeGraphics.get(graphicId);
       if (activeGraphic) {
         activeGraphic.isPlaying = false;
+        // Keep currentStep in activeGraphic - it will be cleared when graphic is disposed
       }
 
       // Update rundown item state
       const rundownManager = getRundownManager();
       await rundownManager.updateItem(projectId, rundownId, itemId, {
         onair: false,
-        currentStep: undefined // Clear current step when stopped
+        currentStep: undefined // Clear from UI, but preserved in activeGraphic for quick replay
       });
 
       // Schedule removal from active graphics after animation completes

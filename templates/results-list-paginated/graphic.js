@@ -278,13 +278,14 @@ class ResultsListPaginated extends HTMLElement {
         * {
           box-sizing: border-box;
         }
+        
 
         :host {
           display: block;
           width: 1920px;
           height: 1080px;
           font-family: Inter, sans-serif;
-          font-size: 24px;
+          font-size: 28px;
         }
 
         .container {
@@ -361,7 +362,7 @@ class ResultsListPaginated extends HTMLElement {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          font-size: 1.375rem;
+          font-size: 1.125rem;
           color: #301525;
           white-space: nowrap;
           opacity: 0;
@@ -393,9 +394,10 @@ class ResultsListPaginated extends HTMLElement {
         }
 
         .runner .club {
-          font-size: 1.3rem;
+          font-size: 1rem;
           width: 400px;
           text-align: left;
+          flex-grow: 1;
           overflow: hidden;
           text-overflow: ellipsis;
           padding: 0.625rem 0;
@@ -710,6 +712,8 @@ class ResultsListPaginated extends HTMLElement {
   }
 }
 
-// Register the custom element
-customElements.define('results-list-paginated', ResultsListPaginated);
+// Register the custom element (only if not already registered)
+if (!customElements.get('results-list-paginated')) {
+  customElements.define('results-list-paginated', ResultsListPaginated);
+}
 

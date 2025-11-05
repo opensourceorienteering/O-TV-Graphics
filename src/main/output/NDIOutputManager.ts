@@ -331,12 +331,14 @@ class NDIOutputManager {
       }
 
       // Prepare video frame with fourCC format
+      // IMPORTANT: Use BGRA/RGBA to maintain full alpha channel support
+      // Graphics overlays require transparency to composite over other video sources
       // FourCC values: RGBA = 1094862674, BGRA = 1095911234, UYVY = 1498831189
       let fourCC: number;
       if (format === 'RGBA') {
-        fourCC = 1094862674;
+        fourCC = 1094862674; // RGBA with alpha channel
       } else if (format === 'BGRA') {
-        fourCC = 1095911234;
+        fourCC = 1095911234; // BGRA with alpha channel
       } else {
         fourCC = 1498831189; // UYVY
       }

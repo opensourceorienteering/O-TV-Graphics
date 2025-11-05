@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "Cross-platform graphics software for orienteering competitions",
   "main": "dist-electron/main/index.js",
-  "author": "OL-Grafik",
+  "author": {
+    "name": "OL-Grafik",
+    "email": "info@ol-grafik.com"
+  },
+  "homepage": "https://github.com/yourusername/ol-grafik",
   "license": "MIT",
   "private": true,
   "scripts": {

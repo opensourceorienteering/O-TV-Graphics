@@ -64,9 +64,11 @@ export class OGrafRenderer {
 
       // Construct the module URL using templateId
       // The web server serves templates at: /templates/{templateId}/{file}
-      const moduleUrl = `${this.baseUrl}/templates/${templateId}/${manifest.main}`;
+      // Add cache-busting timestamp to force fresh loads when templates are updated
+      const cacheBuster = Date.now();
+      const moduleUrl = `${this.baseUrl}/templates/${templateId}/${manifest.main}?v=${cacheBuster}`;
 
-      console.log('[OGrafRenderer] Loading module', { moduleUrl, templateId, mainFile: manifest.main });
+      console.log('[OGrafRenderer] Loading module', { moduleUrl, templateId, mainFile: manifest.main, cacheBuster });
 
       // Dynamically import the module
       await import(/* @vite-ignore */ moduleUrl);

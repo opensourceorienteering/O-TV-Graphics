@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { getLogger } from '../utils/logger';
-import { getConfig } from '../utils/config';
 import { getProjectManager } from './ProjectManager';
 import {
   SPXRundown,

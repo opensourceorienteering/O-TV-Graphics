@@ -340,8 +340,9 @@
           currentElement = null;
         }
         
-        // Load the module
-        const moduleUrl = `http://localhost:5657/templates/${templateId}/graphic.js`;
+        // Load the module with cache-busting to force fresh loads
+        const cacheBuster = Date.now();
+        const moduleUrl = `http://localhost:5657/templates/${templateId}/graphic.js?v=${cacheBuster}`;
         await import(moduleUrl);
         
         // Wait for custom element registration

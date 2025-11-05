@@ -320,8 +320,14 @@ export class WebSocketServer {
       });
 
       try {
-        this.httpServer.listen(this.port, () => {
-          logger.info('WebSocket server started', { port: this.port });
+        // Bind to 0.0.0.0 to allow remote access from other devices on the network
+        // This is essential for Web Output to work on remote devices
+        this.httpServer.listen(this.port, '0.0.0.0', () => {
+          logger.info('WebSocket server started', {
+            port: this.port,
+            host: '0.0.0.0',
+            note: 'Accessible from network devices'
+          });
           resolve();
         });
       } catch (error) {

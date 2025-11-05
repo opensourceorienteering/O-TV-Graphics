@@ -107,8 +107,11 @@ export class WebServer {
     this.app.get('/preview', (req, res) => {
       if (isDev) {
         // In development, redirect to Vite dev server
-        const viteUrl = `http://localhost:5173/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server for preview', { viteUrl });
+        // Preserve the original hostname for remote access
+        const host = req.get('host') || 'localhost:5657';
+        const hostname = host.split(':')[0];
+        const viteUrl = `http://${hostname}:5173/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        logger.debug('Redirecting to Vite dev server for preview', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -130,8 +133,11 @@ export class WebServer {
     this.app.get('/output', (req, res) => {
       if (isDev) {
         // In development, redirect to Vite dev server
-        const viteUrl = `http://localhost:5173/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server', { viteUrl });
+        // Preserve the original hostname for remote access
+        const host = req.get('host') || 'localhost:5657';
+        const hostname = host.split(':')[0];
+        const viteUrl = `http://${hostname}:5173/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        logger.debug('Redirecting to Vite dev server', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -156,9 +162,13 @@ export class WebServer {
 
       if (isDev) {
         // In development, redirect to Vite dev server with ID in query
+        // Preserve the original hostname for remote access
+        const host = req.get('host') || 'localhost:5657';
+        const hostname = host.split(':')[0];
         const queryParams = new URLSearchParams(req.query as any);
         queryParams.set('id', id);
-        const viteUrl = `http://localhost:5173/web-output.html?${queryParams.toString()}`;
+        const viteUrl = `http://${hostname}:5173/web-output.html?${queryParams.toString()}`;
+        logger.debug('Redirecting to Vite dev server with ID', { viteUrl, originalHost: host, id });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory (ID will be in URL for client to read)
@@ -277,8 +287,14 @@ export class WebServer {
   public async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.server = this.app.listen(this.port, () => {
-          logger.info('Web server started', { port: this.port });
+        // Bind to 0.0.0.0 to allow remote access from other devices on the network
+        // This is essential for Web Output to work on remote devices
+        this.server = this.app.listen(this.port, '0.0.0.0', () => {
+          logger.info('Web server started', {
+            port: this.port,
+            host: '0.0.0.0',
+            note: 'Accessible from network devices'
+          });
           resolve();
         });
 

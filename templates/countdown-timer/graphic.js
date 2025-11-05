@@ -254,7 +254,7 @@ class CountdownTimer extends HTMLElement {
 
         :host {
           font-family: Inter, sans-serif;
-          font-size: 20px;
+          font-size: 28px;
         }
 
         .container {
@@ -327,6 +327,8 @@ class CountdownTimer extends HTMLElement {
   }
 }
 
-// Register the custom element
-customElements.define('countdown-timer', CountdownTimer);
+// Register the custom element (only if not already registered)
+if (!customElements.get('countdown-timer')) {
+  customElements.define('countdown-timer', CountdownTimer);
+}
 

@@ -31,7 +31,7 @@
       "id": "liveresults-simulation",
       "type": "liveresults",
       "name": "LiveResults (Simulation)",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "baseUrl": "http://localhost:3001",
         "cacheInterval": 15000,
@@ -39,8 +39,8 @@
       }
     },
     {
-      "id": "simulation",
-      "name": "simulation",
+      "id": "liveres-simulator",
+      "name": "liveres-simulator",
       "type": "liveresults",
       "enabled": true,
       "config": {
@@ -51,7 +51,7 @@
   "output": {
     "ndi": {
       "enabled": true,
-      "name": "OL-Grafik NDI Output",
+      "name": "Grafik",
       "fps": 50,
       "colorFormat": "BGRA"
     },

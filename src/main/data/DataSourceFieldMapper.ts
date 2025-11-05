@@ -5,7 +5,7 @@
 
 import { getLogger } from '../utils/logger';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
-import { getLiveResultsClient, LiveResultsClient } from './LiveResultsClient';
+import { LiveResultsClient } from './LiveResultsClient';
 import { getDataStore } from './DataStore';
 import { getDataSourceRegistry } from './DataSourceRegistry';
 import { LiveResultsDataSource } from './sources/LiveResultsDataSource';
@@ -101,7 +101,7 @@ export class DataSourceFieldMapper {
         const availableSources = registry.getAll().map(ds => ds.config.id);
         logger.error('Data source not found in registry', {
           dataSourceId,
-          availableDataSources
+          availableSources
         });
 
         const availableList = availableSources.length > 0

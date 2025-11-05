@@ -76,7 +76,7 @@ export function TemplateSettingsPanel({
     // 1. Auto-populated and hidden (shown nowhere, just populated)
     // 2. Auto-populated with override (shown in "Field Overrides" section)
     // Either way, they shouldn't appear in "Manual Input Values" section
-    return template.dataSourceConfig.api.fieldMappings.map(m => m.templateField);
+    return template.dataSourceConfig.api.fieldMappings.map((m: { templateField: string }) => m.templateField);
   };
 
   // Update editing fields when item changes

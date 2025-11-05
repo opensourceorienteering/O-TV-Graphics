@@ -12,9 +12,15 @@ import { OGrafManifest } from '../../shared/types/ograf';
 let renderer: OGrafRenderer | null = null;
 let socket: Socket | null = null;
 
-// Get WebSocket server URL from query parameters or use default
+// Get WebSocket server URL from query parameters or auto-detect from current page URL
 const urlParams = new URLSearchParams(window.location.search);
-const wsHost = urlParams.get('host') || 'localhost';
+
+// Auto-detect server host from current page URL (for remote access)
+// If the page is accessed via http://192.168.1.100:5173/web-output, use 192.168.1.100
+// This allows remote devices to automatically connect to the correct server
+const defaultHost = window.location.hostname || 'localhost';
+
+const wsHost = urlParams.get('host') || defaultHost;
 const wsPort = urlParams.get('wsPort') || '5656';
 const webServerPort = urlParams.get('webPort') || '5657';
 const wsUrl = `http://${wsHost}:${wsPort}`;
@@ -152,7 +158,16 @@ function initWebSocket() {
 
   // Listen for graphics commands from server
   socket.on('SPXMessage2Client', async (data: any) => {
-    logger.log('[WebOutput] 📨 Message from server:', data);
+    // Enhanced logging for debugging - show command type prominently
+    if (data.spxcmd === 'graphics:command') {
+      logger.log('[WebOutput] 📨 GRAPHICS COMMAND:', {
+        command: data.command,
+        graphicId: data.payload?.id,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      logger.log('[WebOutput] 📨 Message from server:', data);
+    }
     await handleCommand(data);
   });
 }
@@ -307,23 +322,31 @@ async function handleStop(payload: any) {
  */
 async function handleUpdate(payload: any) {
   const { id, data } = payload;
-  logger.log('[WebOutput] Updating graphic', { id, dataKeys: Object.keys(data || {}) });
+
+  // Enhanced logging for debugging update issues
+  logger.log('[WebOutput] 🔄 UPDATE COMMAND RECEIVED', {
+    id,
+    dataKeys: Object.keys(data || {}),
+    dataPreview: data ? JSON.stringify(data).substring(0, 200) : 'null',
+    timestamp: new Date().toISOString()
+  });
 
   // Check if loaded
   if (!renderer!.isLoaded(id)) {
-    logger.warn('[WebOutput] Graphic not loaded, cannot update', id);
+    logger.warn('[WebOutput] ❌ Graphic not loaded, cannot update', id);
     sendResponse('update', id, { success: false, error: 'Graphic not loaded' });
     return;
   }
 
   try {
+    logger.log('[WebOutput] 📤 Calling renderer.updateGraphic()...', { id });
     const result = await renderer!.updateGraphic(id, data);
-    logger.log('[WebOutput] Graphic updated', result);
+    logger.log('[WebOutput] ✅ Graphic updated successfully!', { id, result });
 
     // Send success response
     sendResponse('update', id, { success: true, result });
   } catch (error) {
-    logger.error('[WebOutput] Update failed', id, error);
+    logger.error('[WebOutput] ❌ Update failed', id, error);
 
     // Send error response
     sendResponse('update', id, {

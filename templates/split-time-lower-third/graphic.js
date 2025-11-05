@@ -468,7 +468,7 @@ class SplitTimeLowerThird extends HTMLElement {
 
         body {
           font-family: Inter, sans-serif;
-          font-size: 24px;
+          font-size: 28px;
         }
 
         .container {
@@ -657,6 +657,8 @@ class SplitTimeLowerThird extends HTMLElement {
   }
 }
 
-// Register the custom element
-customElements.define('split-time-lower-third', SplitTimeLowerThird);
+// Register the custom element (only if not already registered)
+if (!customElements.get('split-time-lower-third')) {
+  customElements.define('split-time-lower-third', SplitTimeLowerThird);
+}
 

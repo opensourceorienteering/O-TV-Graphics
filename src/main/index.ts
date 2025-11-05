@@ -6,7 +6,7 @@
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
 import { initLogger } from './utils/logger';
-import { loadConfig, saveConfig } from './utils/config';
+import { loadConfig } from './utils/config';
 import { WebSocketServer } from './data/WebSocketServer';
 import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
@@ -53,6 +53,8 @@ let appConfig: any = null;
 
 // Track initialization state to prevent duplicate initialization during HMR
 let servicesInitialized = false;
+let handlersRegistered = false;
+let windowsCreated = false;
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 // This is only needed for production builds with Squirrel installer
@@ -128,7 +130,6 @@ async function initializeServices() {
     // Initialize data source registry
     initDataSourceRegistry();
     registerBuiltInDataSources();
-    logger.info('Data source registry initialized');
 
     // Create data source instances from config
     const registry = getDataSourceRegistry();
@@ -143,8 +144,12 @@ async function initializeServices() {
               name: dsConfig.name
             });
           } catch (error) {
-            logger.error('Failed to create data source from config', {
+            // Log as warning instead of error - data sources may be unavailable at startup
+            // (e.g., simulator not running, network issues, etc.)
+            logger.warn('Failed to initialize data source from config (will retry on demand)', {
               id: dsConfig.id,
+              type: dsConfig.type,
+              name: dsConfig.name,
               error: error instanceof Error ? error.message : String(error)
             });
           }
@@ -175,15 +180,11 @@ async function initializeServices() {
 
     // Initialize project and rundown managers
     initProjectManager();
-    logger.info('Project manager initialized');
-
     initRundownManager();
-    logger.info('Rundown manager initialized');
 
     // Initialize playback engine
     const playbackEngine = initPlaybackEngine();
     playbackEngine.setWebSocketServer(wsServer!);
-    logger.info('Playback engine initialized');
 
     // Mark services as initialized to prevent duplicate initialization
     servicesInitialized = true;
@@ -278,11 +279,18 @@ async function initializeNDI() {
  * Create application windows
  */
 async function createWindows() {
+  // Prevent duplicate window creation during HMR in development mode
+  if (windowsCreated) {
+    logger.debug('Windows already created, skipping duplicate creation');
+    return;
+  }
+
   // Create main control panel window
   mainWindow = createMainWindow();
-  
+
   mainWindow.on('closed', () => {
     mainWindow = null;
+    windowsCreated = false; // Allow recreation if window is closed
   });
 
   // Create graphics output window (hidden by default)
@@ -295,6 +303,7 @@ async function createWindows() {
   // Set graphics window reference for IPC handlers
   setGraphicsWindow(graphicsWindow);
 
+  windowsCreated = true;
   logger.info('Application windows created');
 }
 
@@ -379,30 +388,41 @@ app.whenReady().then(async () => {
   try {
     logger.info('OL-Grafik starting...', {
       version: app.getVersion(),
-      platform: process.platform
+      platform: process.platform,
+      isDev,
+      servicesInitialized,
+      handlersRegistered,
+      windowsCreated
     });
 
     // Configure security policies
     setupContentSecurityPolicy();
 
-    // Register IPC handlers
-    registerTemplateHandlers();
-    registerDataHandlers();
-    registerDataSourceHandlers();
-    registerProjectHandlers();
-    registerPlaybackHandlers();
-    registerOutputHandlers();
-    registerSettingsHandlers();
-    registerSystemHandlers();
-
-    // Initialize backend services
+    // Initialize backend services FIRST (before registering IPC handlers that depend on them)
     await initializeServices();
 
-    // Create windows
-    await createWindows();
+    // Register IPC handlers AFTER services are initialized
+    // This ensures all managers (project, rundown, etc.) are ready when handlers are called
+    // Protect against duplicate registration during HMR in development mode
+    if (!handlersRegistered) {
+      registerTemplateHandlers();
+      registerDataHandlers();
+      registerDataSourceHandlers();
+      registerProjectHandlers();
+      registerPlaybackHandlers();
+      registerOutputHandlers();
+      registerSettingsHandlers();
+      registerSystemHandlers();
+      registerWindowHandlers();
+      handlersRegistered = true;
+      logger.info('IPC handlers registered');
+    } else {
+      logger.debug('IPC handlers already registered, skipping duplicate registration');
+    }
 
-    // Register window handlers after windows are created
-    registerWindowHandlers();
+    // Create windows AFTER IPC handlers are registered
+    // This prevents race conditions where renderer tries to call IPC before handlers are ready
+    await createWindows();
 
     // Initialize NDI output system
     await initializeNDI();
