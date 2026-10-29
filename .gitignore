@@ -52,3 +52,13 @@ templates/user/*
 # Plugins (user plugins)
 plugins/user/*
 
+
+# Local configuration (copy config.example.json to config.json)
+config.json
+
+# Third-party reference application binaries (kept locally, not in git)
+ExampleApp/
+
+# Local Companion build output
+companion/pkg/
+companion/*.tgz

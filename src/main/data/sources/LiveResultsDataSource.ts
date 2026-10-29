@@ -13,7 +13,8 @@ import {
   Class,
   Result,
   convertLiveResultsCompetition,
-  convertLiveResultsClass
+  convertLiveResultsClass,
+  convertLiveResultsResult
 } from '../../../shared/types/dataSource';
 
 const logger = getLogger();
@@ -39,7 +40,11 @@ export class LiveResultsDataSource implements IDataSource {
     const clientOptions: LiveResultsClientOptions = {
       baseUrl: this.config.config.baseUrl,
       cacheInterval: this.config.config.cacheInterval,
-      timeout: this.config.config.timeout
+      timeout: this.config.config.timeout,
+      api: this.config.config.api,
+      localPollFloorMs: this.config.config.localPollFloorMs,
+      push: this.config.config.push,
+      pushUrl: this.config.config.pushUrl
     };
     this.client = new LiveResultsClient(clientOptions);
 
@@ -80,8 +85,8 @@ export class LiveResultsDataSource implements IDataSource {
   }
 
   destroy(): void {
-    // Stop all polling
-    this.client.stopAllPolling();
+    // Stops all polling and clears the client's caches
+    this.client.destroy();
     
     this._initialized = false;
     
@@ -146,14 +151,8 @@ export class LiveResultsDataSource implements IDataSource {
     }
 
     try {
-      // LiveResultsClient doesn't have getResults - we need to use getClassResults
-      // For now, return empty array - this needs to be implemented properly
-      logger.warn('getResults not yet implemented for LiveResultsDataSource', {
-        id: this.config.id,
-        competitionId,
-        className
-      });
-      return [];
+      const response = await this.client.getClassResults(competitionId, className);
+      return (response.data.results ?? []).map(convertLiveResultsResult);
     } catch (error) {
       logger.error('Failed to get results', {
         id: this.config.id,

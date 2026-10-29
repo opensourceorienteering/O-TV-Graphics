@@ -1,0 +1,8 @@
+{
+  "id": "iof",
+  "name": "IOF",
+  "description": "IOF TV graphics style (IOF TV Manual for Broadcasters, GFX layout overview): red rank and time boxes, blue headers and footers, uppercase Franklin Gothic, 100 px safe margins, three-layer slide animation.",
+  "author": "Split Control, after the IOF broadcast graphics guidelines and the IOF theme of co-stream-gfx",
+  "colors": ["#e30420", "#307ea1", "#00794c"],
+  "fonts": "Libre Franklin (OFL) stands in for ITC Franklin Gothic; install ITC Franklin Gothic Std to use the original. Put the IOF/event logo in ASSETS and set it as the project's graphics logo."
+}

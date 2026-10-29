@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * Global type definitions for renderer process
  */

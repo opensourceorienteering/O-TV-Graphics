@@ -8,7 +8,8 @@ import { TemplateDataSourceConfig } from '../../shared/types/template-datasource
 import { LiveResultsClient } from './LiveResultsClient';
 import { getDataStore } from './DataStore';
 import { getDataSourceRegistry } from './DataSourceRegistry';
-import { LiveResultsDataSource } from './sources/LiveResultsDataSource';
+import { competitionClock, startTimeEpochMs } from './liveTime';
+import { getClubLogoService } from './ClubLogoService';
 
 const logger = getLogger();
 
@@ -36,6 +37,13 @@ export class DataSourceFieldMapper {
       dataSourceValues,
       dataSourceId
     });
+
+    // Values a graphic always needs, whatever the operator picked (e.g. start lists read the
+    // start times: controlCode "Start")
+    const fixedValues = (dataSourceConfig.api as any)?.fixedValues;
+    if (fixedValues && typeof fixedValues === 'object') {
+      dataSourceValues = { ...dataSourceValues, ...fixedValues };
+    }
 
     // Only fetch API data if mode is 'api' or 'hybrid'
     if (dataSourceConfig.mode === 'manual') {
@@ -116,12 +124,13 @@ export class DataSourceFieldMapper {
         dataSourceType: dataSource.config.type
       });
 
-      if (!(dataSource instanceof LiveResultsDataSource)) {
-        throw new Error(`Data source '${dataSourceId}' is not a LiveResults source (type: ${dataSource.config.type})`);
+      // Any source that exposes a LiveResults-compatible client works: Liveresultat (REST/legacy)
+      // or a MeOS MOP database (MySQLDataSource + MopBackend).
+      const client: LiveResultsClient | undefined =
+        typeof (dataSource as any).getClient === 'function' ? (dataSource as any).getClient() : undefined;
+      if (!client) {
+        throw new Error(`Data source '${dataSourceId}' cannot feed templates (type: ${dataSource.config.type})`);
       }
-
-      // Get the client from the LiveResultsDataSource instance
-      const client: LiveResultsClient = (dataSource as any).client;
       logger.debug('Using LiveResults client from data source', {
         dataSourceId,
         baseUrl: dataSource.config.config.baseUrl
@@ -136,15 +145,27 @@ export class DataSourceFieldMapper {
 
       logger.debug('Fetching LiveResults class results', { competitionId, className });
 
-      // Get competition info for context
+      // Get competition info for context (date + timezone are needed for live clocks).
+      // getCompetitionInfo is one small cached request; the full competition list is a fallback.
       const competitionsStartTime = Date.now();
-      const competitionsResponse = await client.getCompetitions();
-      const competition = competitionsResponse.data.find(c => c.id === competitionId);
-      logger.debug('Fetched competitions', { durationMs: Date.now() - competitionsStartTime });
+      let competition: { name?: string; date?: string; timediff?: number; timezone?: string } | undefined;
+      try {
+        competition = await client.getCompetitionInfo(competitionId);
+      } catch (error) {
+        logger.warn('getCompetitionInfo failed, falling back to competition list', {
+          competitionId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        const competitionsResponse = await client.getCompetitions();
+        competition = competitionsResponse.data.find(c => c.id === competitionId);
+      }
+      const clockOffsetMs = await client.getServerClockOffsetMs();
+      logger.debug('Fetched competition info', { durationMs: Date.now() - competitionsStartTime });
 
       // Get raw class results for splitcontrols data
       const classResultsStartTime = Date.now();
-      const rawClassResults = await client.getClassResults(competitionId, className);
+      // A poll that just detected a change fetched this class moments ago: reuse it
+      const rawClassResults = await client.getClassResults(competitionId, className, { maxAgeMs: 2000 });
       logger.debug('Fetched class results', { durationMs: Date.now() - classResultsStartTime });
 
       // Get controlCode from dataSourceValues if specified
@@ -154,21 +175,52 @@ export class DataSourceFieldMapper {
       // IMPORTANT: Pass the data source's client to ensure we fetch from the correct API
       const transformStartTime = Date.now();
       const dataStore = getDataStore();
-      const ografData = await dataStore.getTransformedClassResults(
+      const cachedOgrafData = await dataStore.getTransformedClassResults(
         competitionId,
         className,
         {
           competitionName: competition?.name,
           controlCode, // Pass control code for split time filtering
-          client // Pass the data source's LiveResultsClient instance
+          client, // Pass the data source's LiveResultsClient instance
+          maxAgeMs: 2000
         }
       );
       logger.debug('Transformed class results', { durationMs: Date.now() - transformStartTime });
 
-      // Apply rundown-level settings overrides
-      if (rundownSettings?.competitionNameOverride) {
-        ografData.competitionName = rundownSettings.competitionNameOverride;
-      }
+      // The DataStore caches this object, so never mutate it: work on copies.
+      const clock = competition ? competitionClock(competition) : null;
+      const rawByRunner = new Map<string, any>();
+      for (const raw of rawClassResults.data.results ?? []) rawByRunner.set(`${raw.name}|${raw.club}`, raw);
+      // Radio controls of the class, and every runner's times at them, for split graphics
+      const splitControls = (rawClassResults.data.splitcontrols ?? []).map((c: any) =>
+        typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
+      const logos = getClubLogoService();
+      const ografData = {
+        ...cachedOgrafData,
+        competitionName: rundownSettings?.competitionNameOverride || cachedOgrafData.competitionName,
+        results: (cachedOgrafData.results ?? []).map(runner => {
+          const raw = rawByRunner.get(`${runner.name}|${runner.club}`);
+          const startCs = raw?.start ? Number(raw.start) : undefined;
+          const startTimeMs = clock && startCs ? startTimeEpochMs(clock, startCs) : undefined;
+          const extra: Record<string, any> = {};
+          if (startTimeMs) extra.startTimeMs = startTimeMs;
+          if (raw?.country) extra.country = raw.country;
+          const logo = logos?.lookup(runner.club);
+          if (logo) extra.clubLogo = logo;
+          if (raw?.splits && splitControls.length) {
+            extra.splitTimes = splitControls
+              .map((c: { code: number }) => ({
+                code: c.code,
+                time: Number(raw.splits[String(c.code)]) || 0,
+                place: Number(raw.splits[`${c.code}_place`]) || 0,
+                timeplus: Number(raw.splits[`${c.code}_timeplus`]) || 0,
+                status: Number(raw.splits[`${c.code}_status`] ?? 0)
+              }))
+              .filter((t: { time: number }) => t.time > 0);
+          }
+          return { ...runner, ...extra };
+        })
+      };
 
       // Now apply field mappings from datasource config
       const mappedFields: Record<string, any> = {};
@@ -205,6 +257,17 @@ export class DataSourceFieldMapper {
       if (rundownSettings?.raceLocation) {
         mappedFields.raceLocation = rundownSettings.raceLocation;
       }
+
+      // Live clock context for templates that show running times:
+      //   now (server time) = Date.now() + clockOffsetMs
+      //   running time      = now - result.startTimeMs
+      mappedFields.clockOffsetMs = clockOffsetMs;
+      if (clock) {
+        mappedFields.competitionTimeZone = clock.timeZone;
+        mappedFields.competitionTimediff = clock.timediffHours;
+      }
+      mappedFields.dataTimestamp = Date.now();
+      mappedFields.splitControls = splitControls;
       logger.debug('Applied field mappings', { durationMs: Date.now() - mappingStartTime });
 
       // Handle control point selection
@@ -328,7 +391,9 @@ export class DataSourceFieldMapper {
         dataSourceValues,
         totalDurationMs: totalDuration
       });
-      return {};
+      // Rethrow: callers must decide. Returning {} here used to blank graphics on air
+      // whenever a single poll failed (network blip, 5xx).
+      throw error;
     }
   }
 

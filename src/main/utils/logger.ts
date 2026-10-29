@@ -14,7 +14,7 @@ let logDirectory: string | null = null;
 
 /**
  * Get the appropriate log directory based on environment
- * In production: Use Electron's logs directory (e.g., ~/Library/Logs/OL-Grafik on macOS)
+ * In production: Use Electron's logs directory (e.g., ~/Library/Logs/Split Control on macOS)
  * In development: Use LOG folder in project root
  */
 function getLogDirectory(): string {
@@ -30,9 +30,9 @@ function getLogDirectory(): string {
   if (isProduction) {
     // Production: Use Electron's logs directory
     // This is platform-specific:
-    // - macOS: ~/Library/Logs/OL-Grafik
-    // - Windows: %USERPROFILE%\AppData\Roaming\OL-Grafik\logs
-    // - Linux: ~/.config/OL-Grafik/logs
+    // - macOS: ~/Library/Logs/Split Control
+    // - Windows: %USERPROFILE%\AppData\Roaming\Split Control\logs
+    // - Linux: ~/.config/Split Control/logs
     logDirectory = app.getPath('logs');
   } else {
     // Development: Use LOG folder in project root for easier debugging

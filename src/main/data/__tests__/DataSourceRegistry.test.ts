@@ -182,10 +182,10 @@ describe('DataSourceRegistry', () => {
         config: {}
       };
 
-      await expect(registry.create(config)).rejects.toThrow('No factory registered for data source type: unknown');
+      await expect(registry.create(config)).rejects.toThrow('Data source type not registered: unknown');
     });
 
-    it('should throw error if source with same ID already exists', async () => {
+    it('should return the existing instance if a source with the same ID already exists', async () => {
       const config: DataSourceConfig = {
         id: 'test-source',
         name: 'Test Source',
@@ -194,9 +194,11 @@ describe('DataSourceRegistry', () => {
         config: {}
       };
 
-      await registry.create(config);
+      const first = await registry.create(config);
+      const second = await registry.create(config);
 
-      await expect(registry.create(config)).rejects.toThrow('Data source with ID test-source already exists');
+      expect(second).toBe(first);
+      expect(registry.getAll()).toHaveLength(1);
     });
 
     it('should propagate initialization errors', async () => {

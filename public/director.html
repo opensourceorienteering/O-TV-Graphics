@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Director start alerts</title>
+<style>
+  :root { color-scheme: dark; --bg: #111; --panel: #1b1b1b; --line: #2c2c2c; --text: #eee; --muted: #999; --accent: #fe5900; --soon: #f59e0b; --now: #ef4444; --fav: #facc15; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 16px; background: #181818; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0 8px 0 0; }
+  .clock { margin-left: auto; font: 700 40px/1 ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  select, input, button { font: inherit; color: inherit; background: #222; border: 1px solid #3a3a3a; border-radius: 6px; padding: 6px 10px; }
+  button { cursor: pointer; }
+  button.on { background: #14532d; border-color: #22c55e; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .classes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .classes label { background: #222; border: 1px solid #333; border-radius: 999px; padding: 4px 10px; cursor: pointer; user-select: none; }
+  .classes input { margin-right: 6px; }
+  main { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; padding: 16px; }
+  .col { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .col h2 { margin: 0; padding: 10px 14px; font-size: 22px; background: #232323; display: flex; justify-content: space-between; }
+  .col h2 small { color: var(--muted); font-weight: 400; font-size: 14px; align-self: center; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+  .star { background: none; border: none; font-size: 22px; color: #555; padding: 0; }
+  .fav .star { color: var(--fav); }
+  .who b { display: block; font-size: 18px; }
+  .who span { color: var(--muted); font-size: 14px; }
+  .when { text-align: right; font-variant-numeric: tabular-nums; }
+  .when .t { font-size: 14px; color: var(--muted); display: block; }
+  .when .cd { font: 700 22px/1 ui-monospace, Menlo, monospace; }
+  .soon .cd { color: var(--soon); }
+  .now { background: rgba(239, 68, 68, .18); }
+  .now .cd { color: var(--now); }
+  .fav.alerting { animation: flash .5s steps(2) infinite; }
+  @keyframes flash { 50% { background: rgba(250, 204, 21, .35); } }
+  .empty { padding: 14px; color: var(--muted); }
+  .err { color: #f87171; padding: 0 16px; }
+  .hint { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Director start alerts</h1>
+  <select id="rundown" aria-label="Rundown"></select>
+  <button id="sound" title="Browsers only allow sound after a click">🔇 Sound off</button>
+  <label class="hint">Alert <input id="offset" type="number" min="5" max="600" value="45" style="width:4.5em"> s before start</label>
+  <label class="hint"><input id="onlyFav" type="checkbox"> Only favourites</label>
+  <div class="clock" id="clock">--:--:--</div>
+</header>
+<div class="bar"><span class="hint">Classes:</span><div class="classes" id="classes"></div></div>
+<div class="err" id="err"></div>
+<main id="cols"></main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('director.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('director.' + k, JSON.stringify(v)); } catch {} }
+  };
+  let ctx = null;              // { source, comp }
+  let offsetMs = 0, timeZone;
+  let data = {};               // className -> runners
+  let favs = new Set(store.get('favs', []));
+  let selected = new Set();
+  let audio = null;
+  const alerted = new Set();
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const now = () => Date.now() + offsetMs;
+  const key = (cls, r) => `${ctx?.comp}|${cls}|${r.name}|${r.club}`;
+  const tod = (ms) => { try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', ...(timeZone ? { timeZone } : {}) }).format(ms); } catch { return new Date(ms).toTimeString().slice(0, 8); } };
+  const clock = (sec) => { const neg = sec < 0; sec = Math.abs(Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return (neg ? '-' : '') + m + ':' + String(s).padStart(2, '0'); };
+
+  async function api(path) {
+    const r = await fetch('/api/director/' + path);
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error || r.statusText);
+    return body;
+  }
+
+  async function loadRundowns() {
+    const list = await api('rundowns');
+    const sel = $('rundown');
+    sel.innerHTML = list.map((r, i) => `<option value="${i}">${esc(r.projectName)} / ${esc(r.rundownName)}${r.competitionName ? ' – ' + esc(r.competitionName) : ''}</option>`).join('') || '<option>No rundown with a competition</option>';
+    let idx = list.findIndex(r => String(r.source) === params.get('source') && String(r.comp) === params.get('comp'));
+    if (idx < 0 && params.get('source') && params.get('comp')) { list.push({ source: params.get('source'), comp: Number(params.get('comp')), projectName: 'Link', rundownName: '' }); idx = list.length - 1; sel.insertAdjacentHTML('beforeend', `<option value="${idx}">From link</option>`); }
+    if (idx < 0) idx = store.get('rundownIdx', 0);
+    sel.value = String(Math.min(idx, list.length - 1));
+    sel.onchange = () => { store.set('rundownIdx', Number(sel.value)); choose(list[Number(sel.value)]); };
+    if (list.length) choose(list[Number(sel.value)]);
+  }
+
+  async function choose(r) {
+    ctx = { source: r.source, comp: r.comp, event: r.event };
+    data = {};
+    const classes = await api(`classes?source=${encodeURIComponent(ctx.source)}&comp=${ctx.comp}`);
+    selected = new Set(store.get('classes.' + ctx.comp, []).filter(c => classes.includes(c)));
+    $('classes').innerHTML = classes.map(c => `<label><input type="checkbox" value="${esc(c)}" ${selected.has(c) ? 'checked' : ''}>${esc(c)}</label>`).join('');
+    $('classes').onchange = (e) => {
+      if (e.target.checked) selected.add(e.target.value); else selected.delete(e.target.value);
+      store.set('classes.' + ctx.comp, [...selected]);
+      refresh();
+    };
+    refresh();
+  }
+
+  async function refresh() {
+    if (!ctx) return;
+    $('err').textContent = '';
+    for (const cls of selected) {
+      try {
+        const body = await api(`starts?source=${encodeURIComponent(ctx.source)}&comp=${ctx.comp}&class=${encodeURIComponent(cls)}${ctx.event ? '&event=' + encodeURIComponent(ctx.event) : ''}`);
+        offsetMs = body.clockOffsetMs || 0;
+        timeZone = body.timeZone;
+        data[cls] = body.runners.filter(r => r.startTimeMs);
+        for (const r of data[cls]) { const k = key(cls, r); if (r.favourite) favs.add(k); }
+      } catch (e) { $('err').textContent = `${cls}: ${e.message}`; }
+    }
+    render();
+  }
+
+  function render() {
+    const t = now();
+    const onlyFav = $('onlyFav').checked;
+    $('cols').innerHTML = [...selected].map(cls => {
+      const rows = (data[cls] || [])
+        .filter(r => r.startTimeMs > t - 60_000 && (!onlyFav || favs.has(key(cls, r))))
+        .sort((a, b) => a.startTimeMs - b.startTimeMs)
+        .slice(0, 30)
+        .map(r => {
+          const left = (r.startTimeMs - t) / 1000;
+          const k = key(cls, r);
+          const cls2 = [favs.has(k) ? 'fav' : '', left <= 0 ? 'now' : left < 120 ? 'soon' : '', favs.has(k) && left > -10 && left < Number($('offset').value) ? 'alerting' : ''].join(' ');
+          return `<div class="row ${cls2}"><button class="star" data-k="${esc(k)}" title="Favourite">★</button>` +
+            `<div class="who"><b>${esc(r.name)}</b><span>${esc(r.bib ? '#' + r.bib + ' · ' : '')}${esc(r.club)}</span></div>` +
+            `<div class="when"><span class="t">${tod(r.startTimeMs)}</span><span class="cd">${left > 0 ? '-' + clock(left).replace('-', '') : '+' + clock(-left)}</span></div></div>`;
+        }).join('') || '<div class="empty">No more starters</div>';
+      return `<section class="col"><h2>${esc(cls)}<small>${(data[cls] || []).length} runners</small></h2>${rows}</section>`;
+    }).join('') || '<div class="empty">Pick one or more classes above.</div>';
+  }
+
+  $('cols').addEventListener('click', async (e) => {
+    const k = e.target.closest('.star')?.dataset.k;
+    if (!k) return;
+    const on = !favs.has(k);
+    if (on) favs.add(k); else favs.delete(k);
+    store.set('favs', [...favs]);
+    render();
+    // Shared with Split Control's start list (Plan) and the Live runner finder
+    if (ctx?.event) {
+      const [, cls, name, club] = k.split('|');
+      try {
+        await fetch('/api/director/favourite', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ event: ctx.event, className: cls, name, club, favourite: on }) });
+      } catch {}
+    }
+  });
+  $('onlyFav').onchange = render;
+  $('offset').value = store.get('offset', 45);
+  $('offset').onchange = () => store.set('offset', Number($('offset').value));
+
+  $('sound').onclick = () => {
+    if (audio) { audio.close(); audio = null; } else { audio = new (window.AudioContext || window.webkitAudioContext)(); }
+    $('sound').textContent = audio ? '🔊 Sound on' : '🔇 Sound off';
+    $('sound').classList.toggle('on', !!audio);
+  };
+
+  // Three short beeps and one long, like a start clock
+  function beep() {
+    if (!audio) return;
+    const t0 = audio.currentTime;
+    [[0, .2], [1, .2], [2, .2], [3, .8]].forEach(([at, len]) => {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = at === 3 ? 760 : 380;
+      g.gain.setValueAtTime(.0001, t0 + at); g.gain.exponentialRampToValueAtTime(.4, t0 + at + .02);
+      g.gain.setValueAtTime(.4, t0 + at + len - .03); g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
+      o.connect(g).connect(audio.destination); o.start(t0 + at); o.stop(t0 + at + len + .05);
+    });
+  }
+
+  function tick() {
+    const t = now();
+    $('clock').textContent = tod(t);
+    const lead = Number($('offset').value) * 1000;
+    for (const cls of selected) {
+      for (const r of data[cls] || []) {
+        const k = key(cls, r);
+        if (!favs.has(k) || alerted.has(k)) continue;
+        const left = r.startTimeMs - t;
+        if (left <= lead && left > lead - 5000) { alerted.add(k); beep(); }
+      }
+    }
+    render();
+  }
+
+  setInterval(tick, 1000);
+  setInterval(refresh, 60_000);  // start lists rarely change; served from the app's cache
+  loadRundowns().catch(e => { $('err').textContent = e.message; });
+})();
+</script>
+</body>
+</html>

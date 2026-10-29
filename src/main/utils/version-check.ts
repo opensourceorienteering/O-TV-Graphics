@@ -1,14 +1,11 @@
 /**
  * Node.js version validation
  *
- * OL-Grafik requires Node.js v18-v20 due to NDI (grandiose) compatibility.
- * This module checks the Node.js version on startup and provides clear
- * error messages if the version is incompatible.
+ * The main process runs on the Node.js runtime bundled with Electron.
+ * Split Control needs Node.js 22 or newer: Electron 44 bundles Node.js 24.
  *
- * Grandiose package compatibility:
- * - Requires Node.js >= 16.0
- * - Does NOT support Node.js v22+ (native module compilation issues)
- * - OL-Grafik supports Node.js v18.x, v19.x, and v20.x
+ * NDI bindings (@stagetimerio/grandiose) are a Node-API addon, so there is
+ * no upper version limit any more.
  *
  * NOTE: This module does NOT use the logger because it runs before logger initialization.
  * All logging is done to console.error instead.
@@ -16,8 +13,7 @@
 
 import { app, dialog } from 'electron';
 
-const MIN_NODE_MAJOR = 18;
-const MAX_NODE_MAJOR = 20;
+const MIN_NODE_MAJOR = 22;
 
 interface VersionCheckResult {
   compatible: boolean;
@@ -28,82 +24,30 @@ interface VersionCheckResult {
 }
 
 /**
- * Parse semantic version string into major, minor, patch
- */
-function parseVersion(version: string): { major: number; minor: number; patch: number } {
-  const cleaned = version.replace(/^v/, '');
-  const parts = cleaned.split('.').map(p => parseInt(p, 10));
-  
-  return {
-    major: parts[0] || 0,
-    minor: parts[1] || 0,
-    patch: parts[2] || 0
-  };
-}
-
-/**
- * Check if the current Node.js version is compatible with OL-Grafik
+ * Check if the current Node.js version is compatible with Split Control
  */
 export function checkNodeVersion(): VersionCheckResult {
-  const currentVersion = process.version; // e.g., "v20.11.0"
-  const parsed = parseVersion(currentVersion);
-  const majorVersion = parsed.major;
+  const currentVersion = process.version; // e.g., "v24.11.0"
+  const majorVersion = parseInt(currentVersion.replace(/^v/, '').split('.')[0], 10) || 0;
 
-  console.log('[version-check] Checking Node.js version compatibility', {
-    currentVersion,
-    minMajor: MIN_NODE_MAJOR,
-    maxMajor: MAX_NODE_MAJOR
-  });
-
-  // Check if version is compatible (v18.x, v19.x, or v20.x)
-  if (majorVersion >= MIN_NODE_MAJOR && majorVersion <= MAX_NODE_MAJOR) {
+  if (majorVersion >= MIN_NODE_MAJOR) {
     console.log('[version-check] Node.js version is compatible', { version: currentVersion });
-    return {
-      compatible: true,
-      currentVersion,
-      majorVersion
-    };
+    return { compatible: true, currentVersion, majorVersion };
   }
 
-  // Version is incompatible
-  let errorMessage: string;
-  let recommendation: string;
-
-  if (majorVersion < MIN_NODE_MAJOR) {
-    // Too old
-    errorMessage = `Node.js ${currentVersion} is too old. OL-Grafik requires Node.js v${MIN_NODE_MAJOR}.x - v${MAX_NODE_MAJOR}.x for NDI support.`;
-    recommendation = `Please upgrade to Node.js v${MAX_NODE_MAJOR} LTS:\n\n` +
-      `• Download from: https://nodejs.org/\n` +
-      `• Or use nvm: nvm install ${MAX_NODE_MAJOR} && nvm use ${MAX_NODE_MAJOR}\n\n` +
-      `Note: This error is caused by Electron bundling Node.js ${currentVersion}.\n` +
-      `You may need to upgrade Electron to a version that bundles Node.js v${MIN_NODE_MAJOR}+.`;
-  } else {
-    // Too new (v22+)
-    errorMessage = `Node.js ${currentVersion} is not compatible. OL-Grafik requires Node.js v${MIN_NODE_MAJOR}.x - v${MAX_NODE_MAJOR}.x due to NDI (grandiose) package limitations.`;
-    recommendation = `Please downgrade to Node.js v${MAX_NODE_MAJOR} LTS:\n\n` +
-      `• Download from: https://nodejs.org/dist/latest-v${MAX_NODE_MAJOR}.x/\n` +
-      `• Or use nvm: nvm install ${MAX_NODE_MAJOR} && nvm use ${MAX_NODE_MAJOR}\n\n` +
-      `Why? The grandiose package (NDI bindings) does not support Node.js v22+ due to\n` +
-      `native module compatibility issues. Node.js v${MAX_NODE_MAJOR} LTS is supported until April 2026.\n\n` +
-      `Note: This error is caused by Electron bundling Node.js ${currentVersion}.\n` +
-      `You may need to downgrade Electron to a version that bundles Node.js v${MIN_NODE_MAJOR}-v${MAX_NODE_MAJOR}.`;
-  }
+  const errorMessage = `Node.js ${currentVersion} is too old. Split Control requires Node.js v${MIN_NODE_MAJOR} or newer.`;
+  const recommendation =
+    `This runtime is bundled with Electron. Upgrade Electron (npm install) so that it bundles ` +
+    `Node.js v${MIN_NODE_MAJOR}+, or start from a current release of Split Control.`;
 
   console.error('[version-check] Node.js version is incompatible', {
     currentVersion,
     majorVersion,
     minMajor: MIN_NODE_MAJOR,
-    maxMajor: MAX_NODE_MAJOR,
     errorMessage
   });
 
-  return {
-    compatible: false,
-    currentVersion,
-    majorVersion,
-    errorMessage,
-    recommendation
-  };
+  return { compatible: false, currentVersion, majorVersion, errorMessage, recommendation };
 }
 
 /**
@@ -127,7 +71,7 @@ export function validateNodeVersionOrExit(): void {
     // Log detailed error
     console.error('[version-check] Exiting application due to Node.js version incompatibility', {
       currentVersion: result.currentVersion,
-      requiredVersion: `v${MIN_NODE_MAJOR}-v${MAX_NODE_MAJOR}`
+      requiredVersion: `>=v${MIN_NODE_MAJOR}`
     });
 
     // Exit the application

@@ -1,0 +1,184 @@
+/*
+ * IOF theme, after the IOF TV Manual for Broadcasters (2022) and the IOF GFX layout overview:
+ *  - IOF Red #e30420 for rank, time and highlight boxes; IOF Blue #307ea1 for headers and
+ *    footers; IOF Green #00794c for gains; white content, near-black text #231f20.
+ *  - All text uppercase, ITC Franklin Gothic (Libre Franklin, OFL, as the free stand-in).
+ *  - 100 px broadcast margins; no fractions of seconds.
+ *  - Motion: three layers, red left->centre, green right->centre, white top->bottom, then
+ *    the text fades on. Updates cross-dissolve.
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --red: #e30420;
+  --green: #00794c;
+  --blue: #307ea1;
+  --text: #231f20;
+  --divider: #d4d4d4;
+  --grey: #d9d9d9;
+  --font: "ITC Franklin Gothic Std", ITCFranklinGothicStd, "Libre Franklin", "Franklin Gothic Medium", Arial, sans-serif;
+  --fs: 30px;
+  --margin-x: 100px;
+  --margin-y: 100px;
+  --table-top: 196px;  /* below the corner clock (100 + 66 + gap) */
+  --table-x: 395px;   /* ~59 % of the width, upper centre */
+  --lower-w: 820px;
+  --side-w: 460px;
+  --podium-x: 340px;
+  --title-x: 360px;
+  --line-0: #e30420; --line-1: #307ea1; --line-2: #00794c; --line-3: #f9b122;
+  --line-4: #e5007d; --line-5: #009ee3; --line-6: #ec6607; --line-7: #0050a0;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+.gfx * { font-style: normal !important; }
+.hdr-mark, .ftr-mark, .ftr-sep, .ftr-class { display: none; }
+.nm-family { font-weight: 800; }
+.nm-given { font-weight: 500; }
+
+/* --- bars ---------------------------------------------------------------------------- */
+.hdr, .ftr { background: var(--blue); color: #fff; min-height: 52px; padding: 0 0 0 20px; gap: 18px; font-size: 30px; }
+.hdr-title, .ftr-label { font-weight: 800; }
+.hdr-sub { font-weight: 500; }
+.hdr-logo, .ftr-logo { margin-left: auto; align-self: stretch; background: #fff; width: 120px; padding: 6px 10px; }
+.hdr-logo--empty, .ftr-logo--empty { display: none; }
+.ftr-page { padding-right: 20px; font-weight: 500; }
+.panel--table .ftr:not(:has(.ftr-page)) { display: none; }
+.panel--table .ftr .ftr-label { visibility: hidden; }
+.panel--table .ftr { background: transparent; min-height: 40px; justify-content: flex-end; }
+.panel--table .ftr .ftr-page { color: #fff; background: var(--blue); padding: 4px 14px; }
+.panel--table .ftr-logo { display: none; }
+
+/* --- rows: red | white | red --------------------------------------------------------- */
+.row { background: #fff; color: var(--text); min-height: 46px; }
+.row + .row { box-shadow: inset 0 2px 0 var(--divider); }
+.c-place { background: var(--red); color: #fff; width: 58px; font-weight: 800; }
+.row + .row .c-place, .row + .row .c-time { box-shadow: inset 0 2px 0 rgb(255 255 255 / .55); }
+.c-name { padding: 0 16px; font-size: 1em; }
+.c-id { padding-right: 14px; gap: 10px; }
+.id-code { font-weight: 600; }
+.id-club { font-weight: 500; }
+.id-flag { height: 30px; box-shadow: 0 0 0 1px rgb(0 0 0 / .08); }
+.c-time { background: var(--red); color: #fff; min-width: 150px; padding: 0 16px; font-weight: 800; }
+.row--status .c-time { background: #8a8a8a; }
+.c-start { background: var(--red); color: #fff; min-width: 150px; justify-content: center; font-weight: 800; }
+.c-bib { min-width: 76px; color: var(--text); font-weight: 800; }
+
+.panel--table .row { min-height: 50px; }
+
+/* lower thirds: footer label + optional logo; highlighted runner outlined */
+.panel--lower .hdr { display: none; }
+.panel--lower .ftr { font-size: 30px; }
+.panel--lower .row--hl { box-shadow: inset 0 0 0 4px var(--text); z-index: 1; }
+.panel--lower .row--hl .c-place:empty { background: var(--red); }
+.panel--runner .row--hl { box-shadow: none; min-height: 64px; font-size: 34px; }
+.panel--runner .row--hl.is-running .c-time { background: var(--blue); }
+/* virtual time against the leader: green while ahead, red once behind */
+.row--hl.is-virtual .c-time:has(.is-ahead) { background: var(--green); }
+.row--hl.is-virtual .c-time:has(.is-behind) { background: var(--red); }
+.panel--start .row.is-counting .c-time { background: var(--blue); }
+.panel--start .row.is-running .c-time { background: var(--blue); }
+/* extended identity: bio lines in white under the name */
+.panel--extended .row--bio { min-height: 44px; font-size: 26px; font-weight: 500; }
+.panel--extended .row--bio .c-name { padding-left: 18px; }
+.pod .pod-time { background: transparent; color: var(--text); min-width: 0; padding: 0; justify-content: flex-start; }
+.panel--runner .row--ref { background: var(--grey); font-size: 26px; min-height: 42px; }
+.panel--runner .row--ref .c-place { background: #b8b8b8; color: var(--text); }
+.panel--runner .row--ref .c-time { background: #b8b8b8; color: var(--text); }
+.gfx .panel--strap { width: auto; min-width: 560px; max-width: 1200px; }
+.panel--strap .c-name { flex: 0 1 auto; margin-right: auto; }
+.panel--strap .row { min-height: 66px; font-size: 38px; }
+.panel--strap .c-place { width: auto; padding: 0 18px; }
+.panel--startgroup .hdr { display: flex; }
+.panel--startgroup .hdr-sub { display: none; }
+.hdr-clock { margin-left: auto; background: var(--red); align-self: stretch; display: flex; align-items: center; padding: 0 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.panel--startgroup .ftr { display: none; }
+.panel--startgroup .c-bib { background: var(--red); color: #fff; }
+
+/* side panels: label white, value red; footer blue */
+.panel--side .hdr { display: none; }
+.panel--info .hdr { display: flex; }
+.panel--info .ftr { display: none; }
+.panel--side .row { min-height: 44px; }
+.panel--side .c-label { padding: 0 14px; font-weight: 700; }
+.panel--side .c-value { background: var(--red); color: #fff; min-width: 150px; padding: 0 14px; font-weight: 800; }
+.panel--splits .c-place { background: transparent; color: var(--text); width: 48px; font-weight: 600; }
+.panel--splits .c-change { width: 52px; font-size: 22px; justify-content: center; }
+.panel--splits .c-change.up { color: var(--green); } .panel--splits .c-change.down { color: var(--red); }
+.panel--splits .c-time { min-width: 140px; }
+.panel--splits .c-time.is-best { background: var(--green); }
+
+/* podium / flower ceremony */
+.podium { display: flex; align-items: flex-end; gap: 0; background: transparent; }
+.pod { flex: 1 1 33%; display: flex; align-items: stretch; }
+.pod .c-place { width: 62px; font-size: 34px; }
+.pod-names { flex: 1; display: flex; flex-direction: column; }
+.pod .row { min-height: 54px; }
+.pod--1 .row { min-height: 78px; font-size: 34px; }
+.panel--podium .ftr { display: none; }
+
+/* clock */
+.panel--clock { font-size: 40px; font-weight: 800; }
+.clk-label { background: var(--blue); color: #fff; padding: 10px 18px; display: flex; align-items: center; font-size: 26px; }
+.clk-time { background: var(--red); color: #fff; padding: 10px 20px; min-width: 190px; text-align: center; }
+.clk-logo { background: #fff; width: 110px; padding: 6px; }
+
+/* event ID card: blue series bar, white body with logos left and event info right */
+.panel--title .hdr { min-height: 60px; font-size: 32px; }
+.title-body { background: #fff; min-height: 170px; }
+.title-logo { width: 260px; padding: 20px; border-right: 2px solid var(--divider); }
+.title-text { padding: 20px 32px; color: var(--text); }
+.title-main { font-size: 52px; font-weight: 800; line-height: 1.05; }
+.title-sub { font-size: 30px; font-weight: 700; margin-top: 10px; }
+
+/* position history */
+.chart-body { background: rgb(255 255 255 / .94); padding: 20px 28px; }
+.chart .ax, .chart .ay { font-weight: 700; fill: var(--text); }
+.chart .ln-label { font-weight: 800; }
+.panel--chart .ftr { display: none; }
+
+/* --- motion: the IOF three-layer slide ----------------------------------------------------
+ * Entry (about 50 frames at 50p): red from the left and green from the right meet in the
+ * middle and pass, the white content opens top to bottom behind them, then the text fades
+ * on row by row. Exit is the reverse, shorter and accelerating. Only transform and opacity
+ * are animated, so every frame is composited (smooth over NDI). Live data changes never
+ * replay this; see _core/live.js.
+ */
+.gfx {
+  --ease-in: cubic-bezier(.2, 0, 0, 1);     /* entries decelerate into place */
+  --ease-out: cubic-bezier(.4, 0, 1, 1);    /* exits accelerate away */
+  --ease-io: cubic-bezier(.65, 0, .25, 1);  /* layers that pass through */
+}
+.panel::before, .panel::after { content: ""; position: absolute; inset: 0; z-index: 10; pointer-events: none; visibility: hidden; }
+.panel::before { transform-origin: 0 50%; }
+.panel::after { transform-origin: 100% 50%; }
+@keyframes iof-layer { 0% { transform: scaleX(0); } 45%, 65% { transform: scaleX(.5); } 100% { transform: scaleX(0); } }
+@keyframes iof-white-in { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes iof-white-out { from { transform: none; } to { transform: scaleY(0); } }
+@keyframes iof-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.gfx[data-state="in"] .panel::before { background: var(--red); visibility: visible; animation: iof-layer 600ms var(--ease-io) both; }
+.gfx[data-state="in"] .panel::after { background: var(--green); visibility: visible; animation: iof-layer 600ms var(--ease-io) 80ms both; }
+/* the white layer: text is still transparent while it opens, so scaling it reads as a wipe */
+.gfx[data-state="in"] .panel > * { transform-origin: 50% 0; animation: iof-white-in 300ms var(--ease-in) 300ms both; }
+.gfx[data-state="in"] .panel :is(.row > span, .hdr > span, .ftr > span, .title-text, .title-logo, .title-sponsors, .clk-time, .clk-label, .clk-logo, .chart, .pod > span, .pod-names) {
+  animation: fade-in 220ms var(--ease-in) calc(540ms + min(var(--i, 0), 10) * 25ms) both;
+}
+.gfx[data-state="in"] .chart .ln path { stroke-dasharray: 1; animation: iof-draw 800ms var(--ease-io) calc(620ms + var(--i) * 60ms) both; }
+
+/* exit: text out, white closes upwards, the red layer passes */
+.gfx[data-state="leave"] .panel :is(.row > span, .hdr > span, .ftr > span, .title-text, .title-logo, .title-sponsors, .clk-time, .clk-label, .clk-logo, .chart, .pod > span, .pod-names) {
+  animation: fade-out 120ms var(--ease-out) both;
+}
+.gfx[data-state="leave"] .panel > * { transform-origin: 50% 0; animation: iof-white-out 220ms var(--ease-out) 100ms both; }
+.gfx[data-state="leave"] .panel::before { background: var(--red); visibility: visible; animation: iof-layer 380ms var(--ease-io) 60ms both; }
+
+/* page change: the rows cross-dissolve (IOF: dissolve between result states) */
+.gfx[data-state="step-out"] .rows { animation: fade-out 200ms var(--ease-out) both; }
+.gfx[data-state="step"] .row { animation: fade-in 300ms var(--ease-in) calc(min(var(--i, 0), 10) * 20ms) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gfx[data-state="in"] .panel::before, .gfx[data-state="in"] .panel::after,
+  .gfx[data-state="leave"] .panel::before { animation: none !important; visibility: hidden !important; }
+}

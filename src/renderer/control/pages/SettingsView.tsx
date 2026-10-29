@@ -1,24 +1,16 @@
-/**
- * Settings View Page
- * Comprehensive application settings management
- */
-
-import { useState, useEffect } from 'react';
+import { setAppLanguage, t as tr } from "../i18n";
+import { useEffect, useState } from "react";
 import {
-  Settings,
-  Save,
-  RotateCcw,
-  AlertCircle,
-  CheckCircle,
-  Server,
   Database,
-  Monitor,
+  HardDrive,
+  Keyboard,
+  RotateCcw,
+  Save,
+  Settings2,
   Sliders,
-  Info
-} from 'lucide-react';
-import { NDIOutputPanel } from '../components/NDIOutputPanel';
-import { useToast } from '../contexts/ToastContext';
-import { DataSourceManager } from '../components/DataSourceManager';
+} from "lucide-react";
+import { DataSourceManager } from "../components/DataSourceManager";
+import { KeyboardShortcutsList } from "../components/KeyboardShortcuts";
 
 interface AppConfig {
   general: {
@@ -27,764 +19,503 @@ interface AppConfig {
     wsPort: number;
     dataroot: string;
     logfolder: string;
-    loglevel: 'error' | 'warn' | 'info' | 'verbose' | 'debug';
+    loglevel: "error" | "warn" | "info" | "verbose" | "debug";
     langfile: string;
     launchBrowser: boolean;
-    resolution: 'HD' | '4K' | 'AUTO';
+    resolution: "HD" | "4K" | "AUTO";
   };
   output: {
     ndi: {
       enabled: boolean;
       name: string;
       fps: number;
-      colorFormat: 'BGRA' | 'RGBA';
+      colorFormat: "BGRA" | "RGBA";
     };
-    web: {
-      enabled: boolean;
-      cors: boolean;
-    };
+    web: { enabled: boolean; cors: boolean };
   };
 }
 
-type TabId = 'general' | 'output' | 'data' | 'advanced';
+type TabId = "general" | "outputs" | "controls" | "sources" | "storage";
+
+const tabs: Array<{
+  id: TabId;
+  label: string;
+  detail: string;
+  icon: typeof Sliders;
+}> = [
+  {
+    id: "general",
+    label: "General",
+    detail: "Display and startup",
+    icon: Sliders,
+  },
+  {
+    id: "outputs",
+    label: "Output defaults",
+    detail: "Web and NDI",
+    icon: Settings2,
+  },
+  {
+    id: "controls",
+    label: "Controls",
+    detail: "Keyboard shortcuts",
+    icon: Keyboard,
+  },
+  {
+    id: "sources",
+    label: "Data sources",
+    detail: "Timing connections",
+    icon: Database,
+  },
+  {
+    id: "storage",
+    label: "Storage",
+    detail: "Folders and diagnostics",
+    icon: HardDrive,
+  },
+];
 
 export function SettingsView() {
-  const toast = useToast();
-  const [activeTab, setActiveTab] = useState<TabId>('general');
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [editedConfig, setEditedConfig] = useState<AppConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning'; text: string } | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  const [tab, setTab] = useState<TabId>(
+    tabs.some(({ id }) => id === requestedTab)
+      ? (requestedTab as TabId)
+      : "general",
+  );
+  const [saved, setSaved] = useState<AppConfig | null>(null);
+  const [draft, setDraft] = useState<AppConfig | null>(null);
   const [paths, setPaths] = useState<{
     configPath: string;
     dataroot: string;
     logfolder: string;
     templatesDir: string;
   } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<{
+    kind: "success" | "error" | "warning";
+    text: string;
+  } | null>(null);
 
-  // Load configuration on mount
-  useEffect(() => {
-    loadConfig();
-    loadPaths();
-  }, []);
-
-  // Track changes
-  useEffect(() => {
-    if (config && editedConfig) {
-      setHasChanges(JSON.stringify(config) !== JSON.stringify(editedConfig));
-    }
-  }, [config, editedConfig]);
-
-  const loadConfig = async () => {
+  const load = async () => {
     setLoading(true);
+    setMessage(null);
     try {
-      const response = await window.electronAPI.invoke('settings:get');
-      if (response.success) {
-        setConfig(response.data);
-        setEditedConfig(response.data);
-      } else {
-        setMessage({ type: 'error', text: `Failed to load settings: ${response.error}` });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: `Error loading settings: ${error}` });
+      const [settingsResult, pathsResult] = await Promise.all([
+        window.electronAPI.invoke("settings:get"),
+        window.electronAPI.invoke("settings:getPaths"),
+      ]);
+      if (!settingsResult.success)
+        throw new Error(settingsResult.error || "Unable to load settings.");
+      setSaved(settingsResult.data);
+      setDraft(settingsResult.data);
+      if (pathsResult.success) setPaths(pathsResult.data);
+    } catch (cause) {
+      setMessage({
+        kind: "error",
+        text: `${cause instanceof Error ? cause.message : "Unable to load settings."} Restart the app and try again.`,
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPaths = async () => {
-    try {
-      const response = await window.electronAPI.invoke('settings:getPaths');
-      if (response.success) {
-        setPaths(response.data);
-      } else {
-        toast.error(`Failed to load paths: ${response.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to load paths: ${errorMessage}`);
-    }
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const changed =
+    !!saved && !!draft && JSON.stringify(saved) !== JSON.stringify(draft);
+  const update = (path: string, value: unknown) => {
+    if (!draft) return;
+    const next = structuredClone(draft) as Record<string, any>;
+    const parts = path.split(".");
+    let target = next;
+    parts.slice(0, -1).forEach((part) => {
+      target = target[part];
+    });
+    target[parts[parts.length - 1]] = value;
+    setDraft(next as AppConfig);
   };
-
-  const handleSave = async () => {
-    if (!editedConfig) return;
-
+  const save = async () => {
+    if (!draft) return;
     setSaving(true);
     setMessage(null);
-
     try {
-      const response = await window.electronAPI.invoke('settings:update', editedConfig);
-
-      if (response.success) {
-        setConfig(editedConfig);
-        setHasChanges(false);
-
-        if (response.data?.requiresRestart) {
-          setMessage({
-            type: 'warning',
-            text: 'Settings saved successfully! Please restart the application for changes to take effect.'
-          });
-        } else {
-          setMessage({
-            type: 'success',
-            text: 'Settings saved successfully!'
-          });
-
-          // Auto-hide success message after 3 seconds
-          setTimeout(() => setMessage(null), 3000);
-        }
-      } else {
-        setMessage({ type: 'error', text: `Failed to save settings: ${response.error}` });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: `Error saving settings: ${error}` });
+      const result = await window.electronAPI.invoke("settings:update", draft);
+      if (!result.success)
+        throw new Error(result.error || "Unable to save settings.");
+      setSaved(draft);
+      setAppLanguage(draft.general.langfile);
+      setMessage({
+        kind: result.data?.requiresRestart ? "warning" : "success",
+        text: result.data?.requiresRestart
+          ? "Settings saved. Restart Split Control to apply these changes."
+          : "Settings saved.",
+      });
+    } catch (cause) {
+      setMessage({
+        kind: "error",
+        text: `${cause instanceof Error ? cause.message : "Unable to save settings."} Check the values and try again.`,
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleReset = () => {
-    if (config) {
-      setEditedConfig(config);
-      setHasChanges(false);
-      setMessage(null);
-    }
-  };
-
-  const updateConfig = (path: string, value: any) => {
-    if (!editedConfig) return;
-
-    // Deep clone the config to ensure React detects the change
-    const newConfig = JSON.parse(JSON.stringify(editedConfig));
-    const parts = path.split('.');
-
-    let current: any = newConfig;
-    for (let i = 0; i < parts.length - 1; i++) {
-      current = current[parts[i]];
-    }
-    current[parts[parts.length - 1]] = value;
-
-    setEditedConfig(newConfig);
-  };
-
-  if (loading) {
+  if (loading)
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>
-          <Settings size={48} style={{ opacity: 0.3 }} />
-          <p>Loading settings...</p>
-        </div>
+      <div className="screen-state" role="status">
+        <p>{tr("Loading settings…")}</p>
       </div>
     );
-  }
-
-  if (!editedConfig) {
+  if (!draft)
     return (
-      <div style={styles.container}>
-        <div style={styles.loading}>
-          <AlertCircle size={48} style={{ color: '#ef4444' }} />
-          <p>Failed to load settings</p>
-        </div>
+      <div className="screen-state studio-panel">
+        <h1>{tr("Settings unavailable")}</h1>
+        <p>{message?.text || "Restart the app and try again."}</p>
+        <button className="studio-button" onClick={() => void load()}>
+           {tr("Reload settings")} </button>
       </div>
     );
-  }
 
   return (
-    <div style={styles.container}>
-      {/* Header */}
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
-          <Settings size={24} />
-          <h1 style={styles.title}>Application Settings</h1>
+    <div className="settings-screen">
+      <header className="utility-heading settings-heading">
+        <div>
+          <p className="eyebrow">{tr("Application")}</p>
+          <h1>{tr("Settings")}</h1>
+          <p>{tr("Defaults that apply across every event.")}</p>
         </div>
-        <div style={styles.headerRight}>
-          {hasChanges && (
-            <>
-              <button
-                onClick={handleReset}
-                style={styles.resetButton}
-                disabled={saving}
-              >
-                <RotateCcw size={16} />
-                Reset
-              </button>
-              <button
-                onClick={handleSave}
-                style={styles.saveButton}
-                disabled={saving}
-              >
-                <Save size={16} />
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </>
+        <div className="row wrap">
+          {changed && (
+            <button
+              className="studio-button"
+              disabled={saving}
+              onClick={() => {
+                setDraft(saved);
+                setMessage(null);
+              }}
+            >
+              <RotateCcw size={16} aria-hidden="true" />
+               {tr("Discard changes")} </button>
           )}
+          <button
+            className="studio-button primary"
+            disabled={!changed || saving}
+            onClick={() => void save()}
+          >
+            <Save size={16} aria-hidden="true" />
+            {saving ? tr("Saving…") : tr("Save settings")}
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Message Banner */}
       {message && (
-        <div style={{
-          ...styles.message,
-          ...(message.type === 'success' ? styles.messageSuccess : {}),
-          ...(message.type === 'error' ? styles.messageError : {}),
-          ...(message.type === 'warning' ? styles.messageWarning : {})
-        }}>
-          {message.type === 'success' && <CheckCircle size={20} />}
-          {message.type === 'error' && <AlertCircle size={20} />}
-          {message.type === 'warning' && <Info size={20} />}
-          <span>{message.text}</span>
+        <div
+          className={`settings-message ${message.kind}`}
+          role={message.kind === "error" ? "alert" : "status"}
+        >
+          {tr(message.text)}
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={styles.tabs}>
-        <button
-          onClick={() => setActiveTab('general')}
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'general' ? styles.tabActive : {})
-          }}
-        >
-          <Sliders size={18} />
-          General
-        </button>
-        <button
-          onClick={() => setActiveTab('output')}
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'output' ? styles.tabActive : {})
-          }}
-        >
-          <Monitor size={18} />
-          Output
-        </button>
-        <button
-          onClick={() => setActiveTab('data')}
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'data' ? styles.tabActive : {})
-          }}
-        >
-          <Database size={18} />
-          Data
-        </button>
-        <button
-          onClick={() => setActiveTab('advanced')}
-          style={{
-            ...styles.tab,
-            ...(activeTab === 'advanced' ? styles.tabActive : {})
-          }}
-        >
-          <Server size={18} />
-          Advanced
-        </button>
-      </div>
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label={tr("Settings sections")}>
+          {tabs.map(({ id, label, detail, icon: Icon }) => (
+            <button
+              key={id}
+              aria-current={tab === id ? "page" : undefined}
+              onClick={() => setTab(id)}
+            >
+              <Icon size={17} aria-hidden="true" />
+              <span>
+                {tr(label)}
+                <small>{tr(detail)}</small>
+              </span>
+            </button>
+          ))}
+        </nav>
 
-      {/* Tab Content */}
-      <div style={styles.content}>
-        {activeTab === 'general' && renderGeneralTab()}
-        {activeTab === 'output' && renderOutputTab()}
-        {activeTab === 'data' && renderDataTab()}
-        {activeTab === 'advanced' && renderAdvancedTab()}
+        <section className="studio-panel settings-content">
+          {tab === "general" && (
+            <SettingsSection
+              title={tr("General")}
+              intro={tr("Choose how Split Control starts and renders graphics.")}
+            >
+              <div className="field-grid">
+                <Field label={tr("Application language")}>
+                  <select value={draft.general.langfile.startsWith('sv') ? 'sv.json' : /^(nb|no)/.test(draft.general.langfile) ? 'nb.json' : 'en.json'}
+                    onChange={event => update('general.langfile', event.target.value)}>
+                    <option value="en.json">{tr("English")}</option>
+                    <option value="sv.json">Svenska</option>
+                    <option value="nb.json">Norsk bokmål</option>
+                  </select>
+                </Field>
+                <Field
+                  label={tr("Application name")}
+                  hint={tr("Shown to other devices on the network.")}
+                >
+                  <input
+                    value={draft.general.hostname}
+                    onChange={(event) =>
+                      update("general.hostname", event.target.value)
+                    }
+                  />
+                </Field>
+                <Field
+                  label={tr("Graphics resolution")}
+                  hint={tr("Requires an app restart.")}
+                >
+                  <select
+                    value={draft.general.resolution}
+                    onChange={(event) =>
+                      update("general.resolution", event.target.value)
+                    }
+                  >
+                    <option value="HD">HD · 1920 × 1080</option>
+                    <option value="4K">4K · 3840 × 2160</option>
+                    <option value="AUTO">{tr("Match graphics display")}</option>
+                  </select>
+                </Field>
+                <Field
+                  label={tr("Log detail")}
+                  hint={tr("Use Debug only while investigating a problem.")}
+                >
+                  <select
+                    value={draft.general.loglevel}
+                    onChange={(event) =>
+                      update("general.loglevel", event.target.value)
+                    }
+                  >
+                    <option value="error">{tr("Errors only")}</option>
+                    <option value="warn">{tr("Warnings")}</option>
+                    <option value="info">Standard</option>
+                    <option value="verbose">{tr("Verbose")}</option>
+                    <option value="debug">Debug</option>
+                  </select>
+                </Field>
+              </div>
+              <label className="inline-label">
+                <input
+                  type="checkbox"
+                  checked={draft.general.launchBrowser}
+                  onChange={(event) =>
+                    update("general.launchBrowser", event.target.checked)
+                  }
+                />
+                 {tr("Open the web interface when Split Control starts")} </label>
+              <details className="settings-disclosure">
+                <summary>{tr("Network ports")}</summary>
+                <div className="field-grid">
+                  <Field
+                    label={tr("Web server port")}
+                    hint={tr("1024–65535 · requires restart")}
+                  >
+                    <input
+                      type="number"
+                      min="1024"
+                      max="65535"
+                      value={draft.general.port}
+                      onChange={(event) =>
+                        update("general.port", Number(event.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={tr("WebSocket port")}
+                    hint={tr("1024–65535 · requires restart")}
+                  >
+                    <input
+                      type="number"
+                      min="1024"
+                      max="65535"
+                      value={draft.general.wsPort}
+                      onChange={(event) =>
+                        update("general.wsPort", Number(event.target.value))
+                      }
+                    />
+                  </Field>
+                </div>
+              </details>
+            </SettingsSection>
+          )}
+
+          {tab === "outputs" && (
+            <SettingsSection
+              title={tr("Output defaults")}
+              intro={tr("These defaults are available in each event’s Output step.")}
+            >
+              <div className="settings-subsection">
+                <h3>{tr("Web output")}</h3>
+                <label className="inline-label">
+                  <input
+                    type="checkbox"
+                    checked={draft.output.web.enabled}
+                    onChange={(event) =>
+                      update("output.web.enabled", event.target.checked)
+                    }
+                  />
+                   {tr("Enable browser output")} </label>
+                <label className="inline-label">
+                  <input
+                    type="checkbox"
+                    checked={draft.output.web.cors}
+                    onChange={(event) =>
+                      update("output.web.cors", event.target.checked)
+                    }
+                  />
+                   {tr("Allow browser sources from other origins")} </label>
+              </div>
+              <div className="settings-subsection">
+                <h3>{tr("NDI output")}</h3>
+                <label className="inline-label">
+                  <input
+                    type="checkbox"
+                    checked={draft.output.ndi.enabled}
+                    onChange={(event) =>
+                      update("output.ndi.enabled", event.target.checked)
+                    }
+                  />
+                   {tr("Enable NDI when available")} </label>
+                <div className="field-grid">
+                  <Field label={tr("Source name")}>
+                    <input
+                      value={draft.output.ndi.name}
+                      onChange={(event) =>
+                        update("output.ndi.name", event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field label={tr("Frame rate")}>
+                    <select
+                      value={draft.output.ndi.fps}
+                      onChange={(event) =>
+                        update("output.ndi.fps", Number(event.target.value))
+                      }
+                    >
+                      {[25, 30, 50, 60].map((fps) => (
+                        <option key={fps} value={fps}>
+                          {fps} fps
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={tr("Color format")}>
+                    <select
+                      value={draft.output.ndi.colorFormat}
+                      onChange={(event) =>
+                        update("output.ndi.colorFormat", event.target.value)
+                      }
+                    >
+                      <option value="BGRA">BGRA</option>
+                      <option value="RGBA">RGBA</option>
+                    </select>
+                  </Field>
+                </div>
+              </div>
+            </SettingsSection>
+          )}
+
+          {tab === "sources" && (
+            <SettingsSection
+              title={tr("Data sources")}
+              intro={tr("Manage timing systems that can be connected from an event.")}
+            >
+              <DataSourceManager />
+            </SettingsSection>
+          )}
+
+          {tab === "controls" && (
+            <SettingsSection
+              title={tr("Controls")}
+              intro={tr("Keys for the Live desk. You can also open this list from Plan or Live.")}
+            >
+              <KeyboardShortcutsList />
+            </SettingsSection>
+          )}
+
+          {tab === "storage" && (
+            <SettingsSection
+              title={tr("Storage")}
+              intro={tr("Choose where Split Control keeps projects and logs.")}
+            >
+              <Field
+                label={tr("Event data folder")}
+                hint={`Current: ${paths?.dataroot || "Unavailable"} · requires restart`}
+              >
+                <input
+                  value={draft.general.dataroot}
+                  onChange={(event) =>
+                    update("general.dataroot", event.target.value)
+                  }
+                />
+              </Field>
+              <Field
+                label={tr("Log folder")}
+                hint={`Current: ${paths?.logfolder || "Unavailable"} · requires restart`}
+              >
+                <input
+                  value={draft.general.logfolder}
+                  onChange={(event) =>
+                    update("general.logfolder", event.target.value)
+                  }
+                />
+              </Field>
+              <details className="settings-disclosure">
+                <summary>{tr("Advanced files")}</summary>
+                <div className="studio-form">
+
+                  <Field label={tr("Graphics library")}>
+                    <input readOnly value={paths?.templatesDir || ""} />
+                  </Field>
+                  <Field label={tr("Configuration file")}>
+                    <input readOnly value={paths?.configPath || ""} />
+                  </Field>
+                </div>
+              </details>
+            </SettingsSection>
+          )}
+        </section>
       </div>
     </div>
   );
-
-  // Tab render functions
-  function renderGeneralTab() {
-    if (!editedConfig) return null;
-
-    return (
-      <div style={styles.tabContent}>
-        <h2 style={styles.sectionTitle}>General Settings</h2>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Application Name
-            <span style={styles.restartBadge}>Requires Restart</span>
-          </label>
-          <input
-            type="text"
-            value={editedConfig.general.hostname}
-            onChange={(e) => updateConfig('general.hostname', e.target.value)}
-            style={styles.input}
-            placeholder="OL-Grafik"
-          />
-          <p style={styles.helpText}>Display name for the application</p>
-        </div>
-
-        <div style={styles.formRow}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              Web Server Port
-              <span style={styles.restartBadge}>Requires Restart</span>
-            </label>
-            <input
-              type="number"
-              value={editedConfig.general.port}
-              onChange={(e) => updateConfig('general.port', parseInt(e.target.value))}
-              style={styles.input}
-              min="1024"
-              max="65535"
-            />
-            <p style={styles.helpText}>Port for web server (1024-65535)</p>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              WebSocket Port
-              <span style={styles.restartBadge}>Requires Restart</span>
-            </label>
-            <input
-              type="number"
-              value={editedConfig.general.wsPort}
-              onChange={(e) => updateConfig('general.wsPort', parseInt(e.target.value))}
-              style={styles.input}
-              min="1024"
-              max="65535"
-            />
-            <p style={styles.helpText}>Port for WebSocket server (1024-65535)</p>
-          </div>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>
-            Graphics Resolution
-            <span style={styles.restartBadge}>Requires Restart</span>
-          </label>
-          <select
-            value={editedConfig.general.resolution}
-            onChange={(e) => updateConfig('general.resolution', e.target.value)}
-            style={styles.select}
-          >
-            <option value="HD">HD (1920x1080)</option>
-            <option value="4K">4K (3840x2160)</option>
-            <option value="AUTO">Auto (Match Display)</option>
-          </select>
-          <p style={styles.helpText}>Graphics window resolution</p>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Log Level</label>
-          <select
-            value={editedConfig.general.loglevel}
-            onChange={(e) => updateConfig('general.loglevel', e.target.value)}
-            style={styles.select}
-          >
-            <option value="error">Error</option>
-            <option value="warn">Warning</option>
-            <option value="info">Info</option>
-            <option value="verbose">Verbose</option>
-            <option value="debug">Debug</option>
-          </select>
-          <p style={styles.helpText}>Application logging level</p>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label style={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={editedConfig.general.launchBrowser}
-              onChange={(e) => updateConfig('general.launchBrowser', e.target.checked)}
-              style={styles.checkbox}
-            />
-            Launch browser on startup
-          </label>
-          <p style={styles.helpText}>Automatically open web interface when application starts</p>
-        </div>
-      </div>
-    );
-  }
-
-  function renderOutputTab() {
-    if (!editedConfig) return null;
-
-    return (
-      <div style={styles.tabContent}>
-        <h2 style={styles.sectionTitle}>Output Settings</h2>
-
-        {/* Web Server Section */}
-        <div style={styles.section}>
-          <h3 style={styles.subsectionTitle}>Web Server Output</h3>
-
-          <div style={styles.formGroup}>
-            <label style={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={editedConfig.output.web.enabled}
-                onChange={(e) => updateConfig('output.web.enabled', e.target.checked)}
-                style={styles.checkbox}
-              />
-              Enable Web Server Output
-            </label>
-            <p style={styles.helpText}>Serve graphics via HTTP for OBS, vMix, and web browsers</p>
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.checkboxLabel}>
-              <input
-                type="checkbox"
-                checked={editedConfig.output.web.cors}
-                onChange={(e) => updateConfig('output.web.cors', e.target.checked)}
-                style={styles.checkbox}
-              />
-              Enable CORS
-              <span style={styles.restartBadge}>Requires Restart</span>
-            </label>
-            <p style={styles.helpText}>Allow cross-origin requests (required for some integrations)</p>
-          </div>
-        </div>
-
-        {/* NDI Section */}
-        <div style={styles.section}>
-          <h3 style={styles.subsectionTitle}>NDI Output</h3>
-
-          {/* NDI Output Panel Component */}
-          <div style={{ marginTop: '16px' }}>
-            <NDIOutputPanel />
-          </div>
-
-          <div style={{ marginTop: '16px', padding: '12px 16px', background: '#2a2a2a', borderRadius: '6px', border: '1px solid #3a3a3a' }}>
-            <p style={{ margin: 0, fontSize: '13px', color: '#aaa', lineHeight: '1.6' }}>
-              💡 <strong style={{ color: '#ccc' }}>Tip:</strong> Use the settings button (⚙️) in the NDI Output Panel above to configure the source name and frame rate. Changes take effect immediately without restarting the application.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderDataTab() {
-    if (!editedConfig) return null;
-
-    return (
-      <div style={styles.tabContent}>
-        <h2 style={styles.sectionTitle}>Data Settings</h2>
-
-        {/* Data Sources Section */}
-        <div style={styles.section}>
-          <DataSourceManager />
-        </div>
-
-        {/* Directories Section */}
-        <div style={styles.section}>
-          <h3 style={styles.subsectionTitle}>Directories</h3>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              Data Root Directory
-              <span style={styles.restartBadge}>Requires Restart</span>
-            </label>
-            <input
-              type="text"
-              value={editedConfig.general.dataroot}
-              onChange={(e) => updateConfig('general.dataroot', e.target.value)}
-              style={styles.input}
-              placeholder="/path/to/DATAROOT"
-            />
-            <p style={styles.helpText}>Directory for projects and rundowns</p>
-            {paths && <p style={styles.pathInfo}>Current: {paths.dataroot}</p>}
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>
-              Log Folder
-              <span style={styles.restartBadge}>Requires Restart</span>
-            </label>
-            <input
-              type="text"
-              value={editedConfig.general.logfolder}
-              onChange={(e) => updateConfig('general.logfolder', e.target.value)}
-              style={styles.input}
-              placeholder="/path/to/LOG"
-            />
-            <p style={styles.helpText}>Directory for application logs</p>
-            {paths && <p style={styles.pathInfo}>Current: {paths.logfolder}</p>}
-          </div>
-
-          <div style={styles.formGroup}>
-            <label style={styles.label}>Templates Directory</label>
-            <input
-              type="text"
-              value={paths?.templatesDir || ''}
-              style={{ ...styles.input, ...styles.inputDisabled }}
-              disabled
-            />
-            <p style={styles.helpText}>Templates directory (read-only)</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderAdvancedTab() {
-    if (!editedConfig) return null;
-
-    return (
-      <div style={styles.tabContent}>
-        <h2 style={styles.sectionTitle}>Advanced Settings</h2>
-
-        <div style={styles.formGroup}>
-          <label style={styles.label}>Language File</label>
-          <input
-            type="text"
-            value={editedConfig.general.langfile}
-            onChange={(e) => updateConfig('general.langfile', e.target.value)}
-            style={styles.input}
-            placeholder="en.json"
-          />
-          <p style={styles.helpText}>Language file for localization</p>
-        </div>
-
-        {/* Configuration File Info */}
-        <div style={styles.section}>
-          <h3 style={styles.subsectionTitle}>Configuration File</h3>
-          {paths && (
-            <div style={styles.infoBox}>
-              <Info size={20} />
-              <div>
-                <p style={styles.infoText}>
-                  <strong>Location:</strong> {paths.configPath}
-                </p>
-                <p style={styles.infoText}>
-                  Settings are automatically saved to this file. You can manually edit it when the application is closed.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
 }
 
-// Styles
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
-    background: '#0a0a0a',
-    color: '#fff'
-  },
-  loading: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    gap: '1rem',
-    color: '#666'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '1.5rem 2rem',
-    borderBottom: '1px solid #333',
-    background: '#111'
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem'
-  },
-  headerRight: {
-    display: 'flex',
-    gap: '0.75rem'
-  },
-  title: {
-    margin: 0,
-    fontSize: '1.5rem',
-    fontWeight: 600
-  },
-  saveButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 1rem',
-    background: '#10b981',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: 500
-  },
-  resetButton: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.5rem 1rem',
-    background: '#374151',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: 500
-  },
-  message: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.75rem',
-    padding: '1rem 2rem',
-    borderBottom: '1px solid #333'
-  },
-  messageSuccess: {
-    background: '#064e3b',
-    color: '#10b981'
-  },
-  messageError: {
-    background: '#7f1d1d',
-    color: '#ef4444'
-  },
-  messageWarning: {
-    background: '#78350f',
-    color: '#f59e0b'
-  },
-  tabs: {
-    display: 'flex',
-    gap: '0.5rem',
-    padding: '1rem 2rem 0',
-    borderBottom: '1px solid #333'
-  },
-  tab: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    padding: '0.75rem 1.5rem',
-    background: 'transparent',
-    color: '#888',
-    border: 'none',
-    borderBottomWidth: '2px',
-    borderBottomStyle: 'solid',
-    borderBottomColor: 'transparent',
-    cursor: 'pointer',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    transition: 'all 0.2s'
-  },
-  tabActive: {
-    color: '#fff',
-    borderBottomColor: '#3b82f6'
-  },
-  content: {
-    flex: 1,
-    overflow: 'auto',
-    padding: '2rem'
-  },
-  tabContent: {
-    maxWidth: '800px',
-    margin: '0 auto'
-  },
-  sectionTitle: {
-    margin: '0 0 1.5rem 0',
-    fontSize: '1.25rem',
-    fontWeight: 600
-  },
-  section: {
-    marginTop: '2rem',
-    paddingTop: '2rem',
-    borderTop: '1px solid #333'
-  },
-  subsectionTitle: {
-    margin: '0 0 1rem 0',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#3b82f6'
-  },
-  formGroup: {
-    marginBottom: '1.5rem'
-  },
-  formRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '1rem',
-    marginBottom: '1.5rem'
-  },
-  label: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    marginBottom: '0.5rem',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    color: '#d1d5db'
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-    fontSize: '0.875rem',
-    fontWeight: 500,
-    color: '#d1d5db',
-    cursor: 'pointer'
-  },
-  input: {
-    width: '100%',
-    padding: '0.5rem 0.75rem',
-    background: '#1a1a1a',
-    color: '#fff',
-    border: '1px solid #333',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
-    outline: 'none'
-  },
-  inputDisabled: {
-    opacity: 0.5,
-    cursor: 'not-allowed'
-  },
-  select: {
-    width: '100%',
-    padding: '0.5rem 0.75rem',
-    background: '#1a1a1a',
-    color: '#fff',
-    border: '1px solid #333',
-    borderRadius: '4px',
-    fontSize: '0.875rem',
-    outline: 'none',
-    cursor: 'pointer'
-  },
-  checkbox: {
-    width: '18px',
-    height: '18px',
-    cursor: 'pointer'
-  },
-  helpText: {
-    margin: '0.25rem 0 0 0',
-    fontSize: '0.75rem',
-    color: '#888'
-  },
-  pathInfo: {
-    margin: '0.5rem 0 0 0',
-    fontSize: '0.75rem',
-    color: '#666',
-    fontFamily: 'monospace'
-  },
-  restartBadge: {
-    padding: '0.125rem 0.5rem',
-    background: '#78350f',
-    color: '#f59e0b',
-    borderRadius: '4px',
-    fontSize: '0.625rem',
-    fontWeight: 600,
-    textTransform: 'uppercase'
-  },
-  infoBox: {
-    display: 'flex',
-    gap: '1rem',
-    padding: '1rem',
-    background: '#1a1a1a',
-    border: '1px solid #333',
-    borderRadius: '4px'
-  },
-  infoText: {
-    margin: '0.5rem 0',
-    fontSize: '0.875rem',
-    color: '#d1d5db'
-  }
-};
+function SettingsSection({
+  title,
+  intro,
+  children,
+}: {
+  title: string;
+  intro: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="settings-section">
+      <div className="settings-section-heading">
+        <h2>{tr(title)}</h2>
+        <p>{intro}</p>
+      </div>
+      <div className="studio-form">{children}</div>
+    </div>
+  );
+}
 
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label>
+      {tr(label)}
+      {children}
+      {hint && <small className="field-hint">{hint}</small>}
+    </label>
+  );
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "cz-speaker",
+  "version": "1.0.0",
+  "name": "ČO – Commentators",
+  "description": "Commentator / speaker identification.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "commentators": {
+        "type": "string",
+        "title": "Commentators",
+        "description": "e.g. \"Anna Svensson & Erik Berg\""
+      },
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Default: Commentators"
+      }
+    },
+    "required": [
+      "commentators"
+    ]
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "cz",
+  "v_olgrafik_kind": "speaker",
+  "v_olgrafik_zone": "lower"
+}

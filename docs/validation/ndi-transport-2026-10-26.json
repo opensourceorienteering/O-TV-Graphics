@@ -1,0 +1,83 @@
+{
+  "version": "NDI SDK APPLE 12:49:17 Apr 13 2026 6.3.2.0",
+  "durationSeconds": 120,
+  "width": 1920,
+  "height": 1080,
+  "targetFps": 50,
+  "sent": 6001,
+  "received": 6001,
+  "receiveTimeouts": 2,
+  "invalidFrames": 0,
+  "alphaSamples": [
+    [
+      0,
+      128,
+      255
+    ],
+    [
+      0,
+      128,
+      255
+    ],
+    [
+      0,
+      128,
+      255
+    ]
+  ],
+  "sendErrors": 0,
+  "memorySamples": [
+    {
+      "seconds": 9,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 19,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 29,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 39,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 49,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 59,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 69,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 79,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 89,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 99,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 109,
+      "rssMiB": 126
+    },
+    {
+      "seconds": 119,
+      "rssMiB": 126
+    }
+  ],
+  "elapsedSeconds": 120.007049708,
+  "sentFps": 50.005395638019394,
+  "receivedFps": 50.005395638019394,
+  "passed": true
+}

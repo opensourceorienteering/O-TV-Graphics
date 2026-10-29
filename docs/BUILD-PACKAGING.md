@@ -1,267 +1,137 @@
-# Build and Packaging Guide
+# Build & Packaging Guide
 
 ## Overview
 
-OL-Grafik is an Electron application that includes native Node.js modules (specifically `grandiose` for NDI support). This guide explains how to properly build and package the application to ensure native modules work correctly in the packaged application.
+Split Control is an Electron application with one native module: [`@stagetimerio/grandiose`](https://github.com/stagetimerio/grandiose), the NDI bindings. It is a Node-API addon, so the binary built by `npm install` is ABI-stable and loads in Electron without a rebuild. The install script also bundles the NDI 6 runtime library next to the addon.
 
-## The Native Module Challenge
+See the [NDI Setup Guide](NDI-SETUP.md) for NDI-specific details.
 
-### The Problem
+## Prerequisites
 
-Native Node.js modules (like `grandiose`) are compiled C++ addons that must match:
-1. **Node.js version** - The exact Node.js version's ABI (Application Binary Interface)
-2. **Architecture** - The CPU architecture (x64, x86, ARM, etc.)
-3. **Platform** - The operating system (Windows, macOS, Linux)
+1. **Node.js 22 or newer.** Node.js 24 LTS is recommended.
+2. **npm 10 or newer.** With npm 11+, the grandiose build script must be approved in `allowScripts`. The repository already approves it.
+3. **Build tools**, needed once to compile the addon:
+   - **Windows:** Visual Studio Build Tools with the "Desktop development with C++" workload
+   - **macOS:** Xcode Command Line Tools (`xcode-select --install`)
+   - **Linux:** `build-essential`
 
-When you run `npm install` during development, native modules are compiled for your **system's Node.js version**. However, Electron embeds its own Node.js runtime, which may be a different version.
-
-**Example:**
-- Your system: Node.js 20.x
-- Electron 28.3.3: Node.js 18.18.2
-
-If you package the app without rebuilding native modules, you'll get errors like:
-- Windows: "grandiose.node is not a valid Win32 application"
-- macOS/Linux: "Module version mismatch" or similar errors
-
-### The Solution
-
-We use `@electron/rebuild` to recompile native modules for the exact Node.js version embedded in Electron **before** packaging the application.
-
-## Build Configuration
-
-### electron-builder.json
-
-The `electron-builder.json` configuration includes these critical settings:
-
-```json
-{
-  "asarUnpack": [
-    "node_modules/grandiose/**/*"
-  ],
-  "npmRebuild": true,
-  "buildDependenciesFromSource": false,
-  "nodeGypRebuild": false
-}
-```
-
-**Explanation:**
-- `asarUnpack`: Extracts `grandiose` from the ASAR archive so the native module can be loaded
-- `npmRebuild`: Tells electron-builder to rebuild native modules
-- `buildDependenciesFromSource`: We don't need to rebuild from source (we use prebuilt binaries when available)
-- `nodeGypRebuild`: We use `@electron/rebuild` instead of node-gyp directly
-
-### package.json Scripts
-
-```json
-{
-  "scripts": {
-    "build": "tsc && vite build && npm run rebuild:electron && electron-builder",
-    "electron:build": "vite build && npm run rebuild:electron && electron-builder",
-    "rebuild:electron": "electron-rebuild -f -w grandiose"
-  }
-}
-```
-
-**Explanation:**
-- `rebuild:electron`: Rebuilds only the `grandiose` module for Electron's Node.js version
-  - `-f`: Force rebuild even if already built
-  - `-w grandiose`: Only rebuild the `grandiose` module (faster than rebuilding all modules)
-- `build` and `electron:build`: Run the rebuild step **before** electron-builder packages the app
-
-## Building the Application
-
-### Prerequisites
-
-1. **Node.js**: Version 18.x, 19.x, 20.x, or 21.x (as specified in package.json)
-2. **npm**: Version 9.0.0 or higher
-3. **Build tools**:
-   - **Windows**: Visual Studio Build Tools or Visual Studio with C++ workload
-   - **macOS**: Xcode Command Line Tools (`xcode-select --install`)
-   - **Linux**: `build-essential` package (`sudo apt-get install build-essential`)
-
-### Development Build
-
-For development (not packaged):
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-The `postinstall` script will verify grandiose installation and show warnings if NDI Runtime is not available.
+The `postinstall` script reports whether NDI is ready. Run it again at any time with `node scripts/verify-grandiose.js`.
 
-### Production Build
-
-To create a packaged application:
+## Production build
 
 ```bash
-# Install dependencies
 npm install
-
-# Build and package
 npm run build
 ```
 
 This will:
-1. Compile TypeScript (`tsc`)
-2. Build the renderer process with Vite (`vite build`)
-3. Rebuild native modules for Electron (`npm run rebuild:electron`)
-4. Package the application with electron-builder (`electron-builder`)
 
-The packaged application will be in the `release/` directory.
+1. Type-check (`tsc`).
+2. Build the renderer, main and preload bundles with Vite 8, which uses Rolldown.
+3. Run the `beforePack` hook (`scripts/rebuild-native.js`), which verifies `grandiose.node` and the NDI library.
+4. Package with electron-builder into `release/<version>/`.
 
-### Platform-Specific Builds
-
-To build for a specific platform:
+### Platform-specific builds
 
 ```bash
-# Windows
 npm run build -- --win
-
-# macOS
 npm run build -- --mac
-
-# Linux
 npm run build -- --linux
 ```
 
+Native addons can't be cross-compiled. Build each platform on that platform. If you package for another platform, the hook prints a warning and NDI won't work in that package.
+
+## Packaging configuration
+
+`electron-builder.json` ships the addon outside the asar archive:
+
+```json
+"files": [
+  "dist", "dist-electron", "templates",
+  "node_modules/@stagetimerio/grandiose/package.json",
+  "node_modules/@stagetimerio/grandiose/dist/**/*"
+],
+"asarUnpack": ["node_modules/@stagetimerio/grandiose/dist/**/*"]
+```
+
+Everything else in the main process is bundled by Vite. The NDI package is marked external in `vite.config.ts`.
+
 ## Troubleshooting
 
-### "grandiose.node is not a valid Win32 application"
+| Symptom | Fix |
+|---|---|
+| `grandiose.node not found` during packaging | Run `npm rebuild @stagetimerio/grandiose`, then build again. |
+| npm warns that install scripts aren't covered by allowScripts | Run `npm install-scripts approve @stagetimerio/grandiose` and then `npm rebuild @stagetimerio/grandiose`. |
+| `electron .` behaves like plain Node in a terminal inside VS Code | VS Code sets `ELECTRON_RUN_AS_NODE=1`. Unset it: `env -u ELECTRON_RUN_AS_NODE npm run dev`. |
+| Dev window shows another project's page | Another Vite server is already on port 5173 (often on IPv6 `::1`). Stop it, or open `http://127.0.0.1:5173/...` directly. |
+| Build fails on Windows, macOS or Linux | Install the build tools listed above. |
 
-**Cause:** Native module was compiled for the wrong Node.js version or architecture.
-
-**Solution:**
-1. Make sure you ran `npm run rebuild:electron` before packaging
-2. Check that the build script includes the rebuild step
-3. Verify Electron version matches the configuration
-
-### "Module version mismatch"
-
-**Cause:** Similar to above - native module ABI doesn't match Electron's Node.js version.
-
-**Solution:**
-1. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
-2. Run `npm run rebuild:electron` manually
-3. Rebuild the package
-
-### Build fails on Windows
-
-**Cause:** Missing Visual Studio Build Tools.
-
-**Solution:**
-1. Install Visual Studio Build Tools: https://visualstudio.microsoft.com/downloads/
-2. Select "Desktop development with C++" workload
-3. Restart your terminal and try again
-
-### Build fails on macOS
-
-**Cause:** Missing Xcode Command Line Tools.
-
-**Solution:**
-```bash
-xcode-select --install
-```
-
-### Build fails on Linux
-
-**Cause:** Missing build tools.
-
-**Solution:**
-```bash
-sudo apt-get update
-sudo apt-get install build-essential
-```
-
-## NDI Support
-
-### Optional Dependency
-
-NDI support (via `grandiose`) is **optional**. The application will:
-- ✅ Start normally even if NDI Runtime is not installed
-- ⚠️ Show a warning dialog on startup if NDI is unavailable
-- ❌ Disable NDI output features (but all other features work)
-
-### Installing NDI Runtime
-
-Users who want NDI output should:
-1. Download NDI Runtime from https://ndi.link/NDIRedistV5
-2. Install NDI Runtime
-3. Restart OL-Grafik
-
-The application will automatically detect NDI Runtime on next startup.
-
-### Verifying NDI Installation
-
-During development, you can verify grandiose installation:
-
-```bash
-node scripts/verify-grandiose.js
-```
-
-This will show:
-- ✅ If grandiose is properly installed
-- ⚠️ If grandiose is installed but NDI Runtime is missing
-- ❌ If grandiose failed to install
-
-## CI/CD Considerations
-
-When building in CI/CD pipelines:
-
-1. **Install build tools** in your CI environment
-2. **Use the same Node.js version** across all build steps
-3. **Run the full build script** (`npm run build`) - don't skip the rebuild step
-4. **Cache `node_modules` carefully** - native modules may need rebuilding even with cache
-
-### Example GitHub Actions Workflow
+## CI example (GitHub Actions)
 
 ```yaml
 name: Build
-
 on: [push]
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
-        node-version: [20.x]
-
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build application
-        run: npm run build
-      
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+          node-version: 24
+      - run: npm ci
+      - run: npm test -- --run
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.os }}
           path: release/
 ```
 
-## Version Information
+## Version information
 
-- **Electron**: 28.3.3
-- **Embedded Node.js**: 18.18.2
-- **Native Modules**: grandiose (NDI SDK wrapper)
+| Component | Version |
+|---|---|
+| Electron | 44.x (bundles Node.js 24) |
+| NDI SDK | 6.3 (bundled by @stagetimerio/grandiose) |
+| Vite | 8 |
+| TypeScript | 6.0 |
 
-When upgrading Electron, verify the embedded Node.js version and test native module compatibility.
+When you upgrade Electron, keep its bundled Node.js at 22 or newer. `src/main/utils/version-check.ts` refuses to start on anything older.
 
-## References
 
-- [Electron Documentation](https://www.electronjs.org/docs)
-- [electron-builder Documentation](https://www.electron.build/)
-- [@electron/rebuild](https://github.com/electron/rebuild)
-- [NDI SDK](https://ndi.tv/)
-- [grandiose](https://github.com/Streampunk/grandiose)
+## Club logos (before a release)
 
+Club logos ship with the app in `club-logos/<eventor host>/` (`index.json` + `logos/`), so users
+never fetch them from Eventor and logos only change with a new build. Fetching them in bulk has
+been cleared with SOFT; only maintainers do it, before a release.
+
+```bash
+EVENTOR_API_KEY=<key> npm run logos:fetch                      # Swedish Eventor, 48 px logos
+EVENTOR_NO_API_KEY=<key> npm run logos:fetch:no                 # Norwegian Eventor
+EVENTOR_AU_API_KEY=<key> npm run logos:fetch:au                 # Australian Eventor
+npm run logos:fetch -- --eventor https://example-eventor.test  # another Eventor
+npm run logos:fetch -- --limit 20                              # try a few first
+npm run logos:fetch -- --force                                 # fetch all again
+```
+
+Keys may also be stored as `eventor.apiKeys.se`, `eventor.apiKeys.no` and
+`eventor.apiKeys.au` in the local `config.json`. The older `eventor.apiKey` remains the
+Swedish-key fallback.
+
+- The club list comes from the Eventor API.
+- Eventor only serves logo images to web browsers (a Cloudflare browser check), so the script
+  opens a normal Chromium window on Eventor and fetches the logos through it, one at a time with
+  a short pause (`--delay`, default 250 ms). If Eventor shows a check, complete it in the window.
+- Re-running only fetches missing logos. 48 × 48 px (`LargeIcon`) is the largest size Eventor serves.
+- Commit `club-logos/` so every build includes the same logos. `electron-builder.json` packages it.

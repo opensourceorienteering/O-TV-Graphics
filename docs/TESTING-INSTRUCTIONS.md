@@ -39,7 +39,7 @@ npm run dev
 
 ### Step 3: Open Electron DevTools
 
-1. In the OL-Grafik application, open the Developer menu
+1. In the Split Control application, open the Developer menu
 2. Select "Toggle Developer Tools" or press Cmd+Option+I
 3. Go to the **Console** tab
 4. Clear the console

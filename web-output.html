@@ -15,6 +15,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+        background: transparent;
       }
 
       body {
@@ -22,11 +23,17 @@
         font-family: Arial, sans-serif;
       }
 
+      html.alpha-preview,
+      body.alpha-preview {
+        background: repeating-conic-gradient(#191d22 0% 25%, #252b32 0% 50%) 50% / 24px 24px;
+      }
+
       #graphics-container {
         width: 100%;
         height: 100%;
         position: relative;
         overflow: hidden;
+        background: transparent;
       }
 
       /* Debug overlay (only visible when debug=true in URL) */

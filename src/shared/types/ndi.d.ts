@@ -1,10 +1,10 @@
 /**
  * NDI Type Definitions
- * Extended type definitions for grandiose NDI library
+ * Extended type definitions for the @stagetimerio/grandiose NDI library
  */
 
 // Re-export all grandiose types
-export * from 'grandiose';
+export * from '@stagetimerio/grandiose';
 
 /**
  * NDI availability status

@@ -6,7 +6,7 @@
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as path from 'path';
-import { OGrafManifest, OGrafTemplateInfo } from '../../shared/types/ograf';
+import { OGrafManifest, OGrafTemplateInfo, TemplateSetInfo, GraphicZone, CUSTOM_TEMPLATE_SET } from '../../shared/types/ograf';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
 import { validateAndCastManifest, ValidationError } from './OGrafValidator';
 import { logger } from '../utils/logger';
@@ -45,6 +45,8 @@ interface TemplateCacheEntry {
 export class OGrafManager {
   private templatesDir: string;
   private cache: Map<string, TemplateCacheEntry>;
+  private sets: Map<string, TemplateSetInfo> = new Map();
+  private setOfManifest: Map<string, string> = new Map();
 
   constructor(templatesDir: string) {
     this.templatesDir = templatesDir;
@@ -86,36 +88,63 @@ export class OGrafManager {
     const errors: TemplateError[] = [];
 
     try {
-      // Read templates directory
+      // Graphics live in template sets (templates/sets/<set>/<graphic>/); graphics directly in
+      // templates/ form the "custom" set.
+      this.sets.clear();
+      const candidates: Array<{ dir: string; name: string; setId: string }> = [];
       const entries = await fs.readdir(this.templatesDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.name === 'sets' || entry.name.startsWith('_')) continue;
+        candidates.push({ dir: path.join(this.templatesDir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET });
+      }
+      const setsDir = path.join(this.templatesDir, 'sets');
+      if (fsSync.existsSync(setsDir)) {
+        for (const setEntry of await fs.readdir(setsDir, { withFileTypes: true })) {
+          if (!setEntry.isDirectory() || setEntry.name.startsWith('_')) continue;
+          const setDir = path.join(setsDir, setEntry.name);
+          let meta: Partial<TemplateSetInfo> = {};
+          try {
+            meta = JSON.parse(await fs.readFile(path.join(setDir, 'set.json'), 'utf-8'));
+          } catch {
+            logger.warn('Template set without a readable set.json', { set: setEntry.name });
+          }
+          this.sets.set(setEntry.name, {
+            id: setEntry.name,
+            name: meta.name || setEntry.name,
+            description: meta.description,
+            author: meta.author,
+            colors: meta.colors,
+            fonts: meta.fonts,
+            templateCount: 0
+          });
+          for (const g of await fs.readdir(setDir, { withFileTypes: true })) {
+            if (!g.isDirectory() || g.name === 'fonts' || g.name.startsWith('_')) continue;
+            candidates.push({ dir: path.join(setDir, g.name), name: g.name, setId: setEntry.name });
+          }
+        }
+      }
 
-      // Filter directories and check for manifest files in parallel
-      // Prioritize .ograf.json files (new spec requirement as of 2025-07-13)
+      // Check for manifest files in parallel; .ograf.json first (spec), manifest.json as fallback
       const templateDirs = await Promise.all(
-        entries
-          .filter(entry => entry.isDirectory())
-          .map(async (entry) => {
-            const templateDir = path.join(this.templatesDir, entry.name);
-
-            // First, try to find .ograf.json file (new spec requirement)
-            const ografManifestPath = path.join(templateDir, `${entry.name}.ograf.json`);
+        candidates.map(async ({ dir: templateDir, name, setId }) => {
+          const ografManifestPath = path.join(templateDir, `${name}.ograf.json`);
+          try {
+            await fs.access(ografManifestPath);
+            this.setOfManifest.set(ografManifestPath, setId);
+            return ografManifestPath;
+          } catch {
+            const legacyManifestPath = path.join(templateDir, 'manifest.json');
             try {
-              await fs.access(ografManifestPath);
-              logger.debug('Found .ograf.json manifest', { dir: entry.name, file: `${entry.name}.ograf.json` });
-              return ografManifestPath;
+              await fs.access(legacyManifestPath);
+              logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
+              this.setOfManifest.set(legacyManifestPath, setId);
+              return legacyManifestPath;
             } catch {
-              // Fall back to manifest.json for backward compatibility
-              const legacyManifestPath = path.join(templateDir, 'manifest.json');
-              try {
-                await fs.access(legacyManifestPath);
-                logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: entry.name });
-                return legacyManifestPath;
-              } catch {
-                logger.debug('Skipping directory without manifest', { dir: entry.name });
-                return null;
-              }
+              logger.debug('Skipping directory without manifest', { dir: name });
+              return null;
             }
-          })
+          }
+        })
       );
 
       // Filter out null values (directories without manifest)
@@ -154,6 +183,19 @@ export class OGrafManager {
           });
         }
       });
+
+      for (const entry of this.cache.values()) {
+        const set = this.sets.get(entry.templateInfo.setId);
+        if (set) set.templateCount++;
+      }
+      if ([...this.cache.values()].some(e => e.templateInfo.setId === CUSTOM_TEMPLATE_SET)) {
+        this.sets.set(CUSTOM_TEMPLATE_SET, {
+          id: CUSTOM_TEMPLATE_SET,
+          name: 'Other graphics',
+          description: 'Graphics placed directly in the templates folder, outside any set',
+          templateCount: [...this.cache.values()].filter(e => e.templateInfo.setId === CUSTOM_TEMPLATE_SET).length
+        });
+      }
 
       logger.info('Template discovery complete', {
         found: templatesFound,
@@ -228,6 +270,14 @@ export class OGrafManager {
         return {
           success: false,
           error: `Main file not found: ${manifest.main}`
+        };
+      }
+
+      const existing = this.cache.get(manifest.id);
+      if (existing && existing.manifestPath !== manifestPath) {
+        return {
+          success: false,
+          error: `Duplicate graphic id "${manifest.id}" (already used by ${path.relative(this.templatesDir, existing.manifestPath)})`
         };
       }
 
@@ -310,9 +360,12 @@ export class OGrafManager {
                     (manifest as any).v_spx_uicolor ||
                     0; // Default to gray
 
-    // Get the directory name (e.g., "runner-spotlight" from "/path/to/templates/runner-spotlight/manifest.json")
+    // URL path below templates/ ("sets/iof/iof-results", or "my-graphic" outside sets)
     const templateDir = path.dirname(manifestPath);
-    const directoryName = path.basename(templateDir);
+    const directoryName = path.relative(this.templatesDir, templateDir).split(path.sep).join('/');
+    const setId = this.setOfManifest.get(manifestPath) ?? CUSTOM_TEMPLATE_SET;
+    const zoneValue = (manifest as any).v_olgrafik_zone;
+    const zone: GraphicZone | undefined = ['main', 'lower', 'side', 'corner', 'full'].includes(zoneValue) ? zoneValue : undefined;
 
     // Load datasource configuration (if exists)
     const dataSourceConfig = await this.loadDataSourceConfig(templateDir, manifest.id);
@@ -324,8 +377,10 @@ export class OGrafManager {
       description: manifest.description || manifest.name,
       uicolor,
       webplayout: templateDir,
-      directoryName, // Add directory name for URL construction
-      dataSourceConfig // Add datasource config (null if not found)
+      directoryName, // URL path below templates/
+      dataSourceConfig, // Add datasource config (null if not found)
+      setId,
+      zone
     };
   }
 
@@ -334,6 +389,12 @@ export class OGrafManager {
    */
   getAllTemplates(): OGrafTemplateInfo[] {
     return Array.from(this.cache.values()).map(entry => entry.templateInfo);
+  }
+
+  /** Template sets found by the last discovery, sorted by name ("Other graphics" last) */
+  getTemplateSets(): TemplateSetInfo[] {
+    return [...this.sets.values()].sort((a, b) =>
+      (a.id === CUSTOM_TEMPLATE_SET ? 1 : 0) - (b.id === CUSTOM_TEMPLATE_SET ? 1 : 0) || a.name.localeCompare(b.name));
   }
 
   /**

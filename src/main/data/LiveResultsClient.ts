@@ -6,8 +6,10 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import crypto from 'crypto';
 import { getLogger } from '../utils/logger';
+import { LiveResultsPushChannel, DEFAULT_PUSH_URL, WebSocketFactory } from './LiveResultsPush';
 import {
   LiveResultsCompetition,
+  LiveResultsCompetitionInfo,
   LiveResultsClass,
   LiveResultsClassResult,
   LiveResultsPassing,
@@ -16,12 +18,120 @@ import {
 
 const logger = getLogger();
 
+/** REST API /classresults response (subset we use) */
+interface RestClassResult {
+  className: string;
+  splitControls?: { code: number; name: string }[];
+  results?: (Omit<LiveResultsClassResult['results'][number], 'result' | 'timeplus'> & {
+    result?: number | string | null;
+    timeplus?: number | string | null;
+  })[];
+  [extra: string]: unknown;
+}
+
+/** REST API /passings row */
+interface RestPassing {
+  class: string;
+  control: number;
+  controlName: string | null;
+  place: number;
+  bib: string;
+  name: string;
+  club: string;
+  time: number;      // running time, hundredths
+  timeplus: number;  // hundredths behind at this control
+  wallClock: number; // hundredths since local midnight
+  changed: number;   // UNIX seconds
+}
+
+/**
+ * Which LiveResults API to talk to.
+ * - 'legacy': liveresultat.orientering.se/api.php?method=... (hash based, 15 s server cache)
+ * - 'rest':   api.orienteering.services REST API (ETag/If-None-Match, ~5 s CDN cache, poll >= 10 s)
+ *             Docs: https://liveresultat.orientering.se/beta/docs
+ * - 'auto':   'rest' when the base URL host is api.orienteering.services, otherwise 'legacy'
+ */
+export type LiveResultsApiFlavor = 'legacy' | 'rest' | 'auto';
+
+/**
+ * A non-HTTP source of LiveResults-shaped data (e.g. a MeOS MOP database).
+ * When a backend is given, the client keeps its caching, change detection and polling,
+ * and only the fetching is delegated.
+ */
+export interface LiveResultsBackend {
+  readonly name: string;
+  /** Minimum poll interval for this backend (ms) */
+  readonly minPollIntervalMs: number;
+  fetchCompetitions(): Promise<LiveResultsCompetition[]>;
+  fetchCompetitionInfo(competitionId: number): Promise<LiveResultsCompetitionInfo>;
+  fetchClasses(competitionId: number): Promise<LiveResultsClass[]>;
+  fetchClassResults(competitionId: number, className: string): Promise<LiveResultsClassResult>;
+  fetchLastPassings?(competitionId: number, count: number): Promise<LiveResultsPassing[]>;
+}
+
 export interface LiveResultsClientOptions {
   baseUrl: string;
-  cacheInterval?: number; // milliseconds (minimum 15000)
+  cacheInterval?: number; // milliseconds (minimum 15000 legacy, 10000 REST)
   timeout?: number; // milliseconds
   retryAttempts?: number;
   retryDelay?: number; // milliseconds
+  api?: LiveResultsApiFlavor;
+  /**
+   * Lower poll floor in ms. Only honoured for local simulators (localhost / 127.0.0.1);
+   * the public APIs always keep their documented minimum (10 s REST, 15 s legacy).
+   */
+  localPollFloorMs?: number;
+  /** Fetch from this backend instead of HTTP (baseUrl is then only a label) */
+  backend?: LiveResultsBackend;
+  /**
+   * REST only: listen on the Liveresultat push channel and refetch a class as soon as it
+   * changes (default true). Polling keeps running as the fallback.
+   */
+  push?: boolean;
+  /** Push channel URL (default wss://ws.orienteering.services) */
+  pushUrl?: string;
+  /** For tests: how push sockets are created */
+  webSocketFactory?: WebSocketFactory;
+}
+
+/** Minimum poll interval per API, as documented by each API */
+const MIN_INTERVAL_MS = { legacy: 15000, rest: 10000 } as const;
+
+/**
+ * Resolve 'auto' to a concrete API flavor from the base URL
+ */
+export function resolveApiFlavor(baseUrl: string, api: LiveResultsApiFlavor = 'auto'): 'legacy' | 'rest' {
+  if (api !== 'auto') return api;
+  try {
+    return new URL(baseUrl).hostname === 'api.orienteering.services' ? 'rest' : 'legacy';
+  } catch {
+    return 'legacy';
+  }
+}
+
+function isLocalUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
+  } catch {
+    return false;
+  }
+}
+
+/** Format hundredths of a second as m:ss or h:mm:ss (legacy getlastpassings style) */
+function formatRunningTime(hundredths: number): string {
+  const total = Math.floor(hundredths / 100);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = String(total % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
+}
+
+/** Format hundredths of a second since midnight as HH:MM:SS (wall clock) */
+function formatWallClock(hundredths: number): string {
+  const total = Math.floor(hundredths / 100) % 86400;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 }
 
 export interface CachedResponse<T> {
@@ -37,6 +147,8 @@ export interface PollingConfig {
   interval: number;
   onUpdate: (data: any) => void;
   onError?: (error: Error) => void;
+  /** Every successful poll, including unchanged/304 responses. */
+  onPoll?: (changed: boolean, interval: number) => void;
 }
 
 /**
@@ -47,12 +159,36 @@ export class LiveResultsClient {
   private client: AxiosInstance;
   private cache: LiveResultsCache;
   private pollingTimers: Map<string, NodeJS.Timeout>;
-  private options: Required<LiveResultsClientOptions>;
+  private options: Required<Omit<LiveResultsClientOptions, 'api' | 'localPollFloorMs' | 'backend' | 'push' | 'pushUrl' | 'webSocketFactory'>>;
+  private readonly pushEnabled: boolean;
+  private readonly pushUrl: string;
+  private readonly webSocketFactory?: WebSocketFactory;
+  /** One push socket per competition with the classes being polled */
+  private pushChannels: Map<number, { channel: LiveResultsPushChannel; classes: Map<string, number> }> = new Map();
+  /** Immediate refetch hooks of running polls, by pollId */
+  private pollTriggers: Map<string, (pushVer?: number) => void> = new Map();
+  private readonly api: 'legacy' | 'rest';
+  private readonly backend?: LiveResultsBackend;
+  /** REST only: last ETag and body per request path, for If-None-Match / 304 */
+  private etagCache: Map<string, { etag: string; body: unknown }> = new Map();
+  /** Per-competition info (date, timezone, timediff), refreshed at most every minute */
+  private competitionInfoCache: Map<number, { data: LiveResultsCompetitionInfo; fetchedAt: number }> = new Map();
+  /** Measured server clock offset (server - local), REST only */
+  private clockOffset: { offsetMs: number; measuredAt: number } | null = null;
 
   constructor(options: LiveResultsClientOptions) {
+    this.api = resolveApiFlavor(options.baseUrl, options.api);
+    this.backend = options.backend;
+    this.pushEnabled = !this.backend && this.api === 'rest' && options.push !== false;
+    this.pushUrl = options.pushUrl || DEFAULT_PUSH_URL;
+    this.webSocketFactory = options.webSocketFactory;
+    let minInterval: number = this.backend ? this.backend.minPollIntervalMs : MIN_INTERVAL_MS[this.api];
+    if (options.localPollFloorMs !== undefined && isLocalUrl(options.baseUrl)) {
+      minInterval = Math.max(100, options.localPollFloorMs);
+    }
     this.options = {
-      baseUrl: options.baseUrl,
-      cacheInterval: Math.max(options.cacheInterval || 15000, 15000), // Minimum 15s
+      baseUrl: options.baseUrl.replace(/\/+$/, ''),
+      cacheInterval: Math.max(options.cacheInterval || minInterval, minInterval),
       timeout: options.timeout || 10000,
       retryAttempts: options.retryAttempts || 3,
       retryDelay: options.retryDelay || 1000
@@ -63,7 +199,7 @@ export class LiveResultsClient {
       timeout: this.options.timeout,
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'TV-Grafik/1.0.0'
+        'User-Agent': 'SplitControl/1.1.0'
       }
     });
 
@@ -78,8 +214,63 @@ export class LiveResultsClient {
 
     logger.info('LiveResults API client initialized', {
       baseUrl: this.options.baseUrl,
+      api: this.api,
       cacheInterval: this.options.cacheInterval
     });
+  }
+
+  /** Which API this client talks to */
+  getApiFlavor(): 'legacy' | 'rest' | 'backend' {
+    return this.backend ? 'backend' : this.api;
+  }
+
+  /**
+   * REST API GET with ETag handling.
+   * Sends If-None-Match when we have an ETag for the path; on 304 returns the cached body.
+   * Retries 5xx and network errors like request().
+   */
+  private async restGet<T>(
+    path: string,
+    params?: Record<string, string | number>,
+    uncachedParams?: Record<string, string | number>
+  ): Promise<T> {
+    const query = params ? '?' + new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)])).toString() : '';
+    const key = path + query;
+    // Params that must reach the server but not split the ETag cache (e.g. push=<ver>)
+    const extra = uncachedParams
+      ? (query ? '&' : '?') + new URLSearchParams(Object.entries(uncachedParams).map(([k, v]) => [k, String(v)])).toString()
+      : '';
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.options.retryAttempts; attempt++) {
+      try {
+        const cached = this.etagCache.get(key);
+        const response = await this.client.get(key + extra, {
+          headers: cached ? { 'If-None-Match': cached.etag } : undefined,
+          validateStatus: status => (status >= 200 && status < 300) || status === 304
+        });
+
+        if (response.status === 304 && cached) {
+          logger.debug('LiveResults REST not modified', { path: key });
+          return cached.body as T;
+        }
+
+        const etag = response.headers['etag'];
+        if (typeof etag === 'string' && etag.length > 0) {
+          this.etagCache.set(key, { etag, body: response.data });
+        }
+        return response.data as T;
+      } catch (error) {
+        lastError = error as Error;
+        const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+        logger.warn('LiveResults REST request failed', { path: key, attempt, status, message: lastError.message });
+        if (status && status < 500) break; // 4xx: don't retry
+        if (attempt < this.options.retryAttempts) {
+          await new Promise(resolve => setTimeout(resolve, this.options.retryDelay));
+        }
+      }
+    }
+    throw lastError || new Error('Request failed');
   }
 
   /**
@@ -119,6 +310,7 @@ export class LiveResultsClient {
     // Remove ALL control characters (0-31) including tab, newline, carriage return
     // These are only valid as whitespace OUTSIDE of JSON strings
     // Inside string values, they must be escaped or removed
+    // eslint-disable-next-line no-control-regex -- stripping raw control characters is the point
     sanitized = sanitized.replace(/[\x00-\x1F]/g, (match, offset) => {
       const charCode = match.charCodeAt(0);
 
@@ -250,9 +442,13 @@ export class LiveResultsClient {
   async getCompetitions(): Promise<CachedResponse<LiveResultsCompetition[]>> {
     logger.debug('LiveResultsClient: Fetching competitions...');
 
-    const response = await this.request<{ competitions: LiveResultsCompetition[] }>('/api.php', {
-      method: 'getcompetitions'
-    });
+    const response = this.backend
+      ? { competitions: await this.backend.fetchCompetitions() }
+      : this.api === 'rest'
+      ? await this.restGet<{ competitions: LiveResultsCompetition[] }>('/competitions')
+      : await this.request<{ competitions: LiveResultsCompetition[] }>('/api.php', {
+          method: 'getcompetitions'
+        });
 
     logger.debug('LiveResultsClient: Raw API response', {
       hasCompetitions: !!response.competitions,
@@ -285,16 +481,84 @@ export class LiveResultsClient {
   }
 
   /**
+   * Fetch info for one competition: name, date, timediff and (REST) IANA timezone.
+   * Much lighter than getCompetitions(), which returns every competition.
+   */
+  async getCompetitionInfo(competitionId: number, maxAgeMs = 60_000): Promise<LiveResultsCompetitionInfo> {
+    const cached = this.competitionInfoCache.get(competitionId);
+    if (cached && Date.now() - cached.fetchedAt < maxAgeMs) return cached.data;
+
+    const raw: Record<string, any> = this.backend
+      ? await this.backend.fetchCompetitionInfo(competitionId)
+      : this.api === 'rest'
+      ? await this.restGet<Record<string, any>>(`/competitions/${competitionId}`)
+      : await this.request<Record<string, any>>('/api.php', { method: 'getcompetitioninfo', comp: competitionId });
+
+    const data: LiveResultsCompetitionInfo = {
+      id: Number(raw.id ?? competitionId),
+      name: raw.name ?? '',
+      organizer: raw.organizer ?? '',
+      date: raw.date ?? '',
+      timediff: Number(raw.timediff ?? 0) || 0,
+      timezone: typeof raw.timezone === 'string' && raw.timezone ? raw.timezone : undefined,
+      multiDayStage: raw.multiDayStage ?? raw.multidaystage,
+      multiDayFirstDay: raw.multiDayFirstDay ?? raw.multidayfirstday
+    };
+    this.competitionInfoCache.set(competitionId, { data, fetchedAt: Date.now() });
+    return data;
+  }
+
+  /**
+   * Offset in ms to add to Date.now() to get Liveresultat server time.
+   * REST: measured against GET /time (not cached by the CDN), re-measured every 5 minutes.
+   * Legacy: no time endpoint, so 0 (local clock is trusted).
+   */
+  async getServerClockOffsetMs(maxAgeMs = 5 * 60_000): Promise<number> {
+    if (this.backend || this.api !== 'rest') return 0;
+    if (this.clockOffset && Date.now() - this.clockOffset.measuredAt < maxAgeMs) {
+      return this.clockOffset.offsetMs;
+    }
+    try {
+      const t0 = Date.now();
+      const response = await this.client.get<{ serverTime: number }>('/time', {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const t1 = Date.now();
+      const serverTime = Number(response.data?.serverTime);
+      if (Number.isFinite(serverTime)) {
+        const offsetMs = Math.round(serverTime - (t0 + t1) / 2);
+        this.clockOffset = { offsetMs, measuredAt: t1 };
+        if (Math.abs(offsetMs) > 2000) {
+          logger.warn('Local clock differs from Liveresultat server time', { offsetMs });
+        }
+        return offsetMs;
+      }
+    } catch (error) {
+      logger.warn('Could not measure server clock offset', { error: (error as Error).message });
+    }
+    return this.clockOffset?.offsetMs ?? 0;
+  }
+
+  /**
    * Fetch classes for a competition
    */
   async getClasses(competitionId: number): Promise<CachedResponse<LiveResultsClass[]>> {
-    const response = await this.request<{ status: string; classes: LiveResultsClass[]; hash?: string }>('/api.php', {
-      method: 'getclasses',
-      comp: competitionId
-    });
-
-    // Extract classes array from response object
-    const data = response.classes || [];
+    let data: LiveResultsClass[];
+    if (this.backend) {
+      data = await this.backend.fetchClasses(competitionId);
+    } else if (this.api === 'rest') {
+      // REST returns plain class names. An unknown competition answers 200 {"classes":[]},
+      // so an empty list is not proof that the competition exists.
+      const response = await this.restGet<{ classes: string[] }>(`/competitions/${competitionId}/classes`);
+      data = (response.classes || []).map(className => ({ className }));
+    } else {
+      const response = await this.request<{ status: string; classes: LiveResultsClass[]; hash?: string }>('/api.php', {
+        method: 'getclasses',
+        comp: competitionId
+      });
+      // Extract classes array from response object
+      data = response.classes || [];
+    }
 
     const hash = this.calculateHash(data);
     const cached = this.cache.classes?.[competitionId];
@@ -320,14 +584,33 @@ export class LiveResultsClient {
    */
   async getClassResults(
     competitionId: number,
-    className: string
+    className: string,
+    opts: { pushVer?: number; maxAgeMs?: number } = {}
   ): Promise<CachedResponse<LiveResultsClassResult>> {
-    const data = await this.request<LiveResultsClassResult>('/api.php', {
-      method: 'getclassresults',
-      comp: competitionId,
-      class: className,
-      unformattedTimes: 'true'
-    });
+    // Reuse a very recent fetch (e.g. the poll that just detected the change) instead of
+    // downloading the same class again for every graphic that maps it.
+    if (opts.maxAgeMs && !opts.pushVer) {
+      const recent = this.cache.classResults?.[`${competitionId}_${className}`];
+      if (recent && Date.now() - recent.timestamp <= opts.maxAgeMs) {
+        return { data: recent.data, hash: recent.hash, timestamp: recent.timestamp, changed: false };
+      }
+    }
+    const data = this.backend
+      ? await this.backend.fetchClassResults(competitionId, className)
+      : this.api === 'rest'
+      ? this.mapRestClassResult(
+          await this.restGet<RestClassResult>(
+            `/competitions/${competitionId}/classresults`,
+            { class: className },
+            opts.pushVer ? { push: opts.pushVer } : undefined
+          )
+        )
+      : await this.request<LiveResultsClassResult>('/api.php', {
+          method: 'getclassresults',
+          comp: competitionId,
+          class: className,
+          unformattedTimes: 'true'
+        });
 
     // Log detailed information about the API response
     logger.debug('API response received', {
@@ -340,7 +623,7 @@ export class LiveResultsClient {
     // Log first runner's splits structure
     if (data.results && data.results.length > 0) {
       const firstRunner = data.results[0];
-      logger.info('First runner splits structure', {
+      logger.debug('First runner splits structure', {
         runnerName: firstRunner.name,
         hasSplits: !!firstRunner.splits,
         splitsType: typeof firstRunner.splits,
@@ -351,7 +634,7 @@ export class LiveResultsClient {
       // Log a few runners to see the pattern
       for (let i = 0; i < Math.min(3, data.results.length); i++) {
         const runner = data.results[i];
-        logger.info(`Runner ${i + 1} splits sample`, {
+        logger.debug(`Runner ${i + 1} splits sample`, {
           name: runner.name,
           hasSplits: !!runner.splits,
           splitsKeys: runner.splits ? Object.keys(runner.splits).slice(0, 10) : 'NO SPLITS'
@@ -395,14 +678,34 @@ export class LiveResultsClient {
     competitionId: number,
     count: number = 20
   ): Promise<CachedResponse<LiveResultsPassing[]>> {
-    const response = await this.request<{ status: string; passings: LiveResultsPassing[]; hash?: string }>('/api.php', {
-      method: 'getlastpassings',
-      comp: competitionId,
-      count
-    });
-
-    // Extract passings array from response object
-    const data = response.passings || [];
+    let data: LiveResultsPassing[];
+    if (this.backend) {
+      data = this.backend.fetchLastPassings ? await this.backend.fetchLastPassings(competitionId, count) : [];
+    } else if (this.api === 'rest') {
+      // REST always returns the latest 50, newest first
+      const response = await this.restGet<{ passings: RestPassing[] }>(`/competitions/${competitionId}/passings`);
+      data = (response.passings || []).slice(0, count).map(p => ({
+        passtime: formatWallClock(p.wallClock),
+        runnerName: p.name,
+        club: p.club,
+        class: p.class,
+        control: String(p.control),
+        controlName: p.controlName ?? (p.control === 1000 ? 'Finish' : String(p.control)),
+        time: formatRunningTime(p.time),
+        place: p.place,
+        bib: p.bib,
+        timeplus: p.timeplus,
+        changed: p.changed
+      }));
+    } else {
+      const response = await this.request<{ status: string; passings: LiveResultsPassing[]; hash?: string }>('/api.php', {
+        method: 'getlastpassings',
+        comp: competitionId,
+        count
+      });
+      // Extract passings array from response object
+      data = response.passings || [];
+    }
 
     const hash = this.calculateHash(data);
     const cached = this.cache.lastPassings?.[competitionId];
@@ -424,6 +727,26 @@ export class LiveResultsClient {
   }
 
   /**
+   * Map a REST class result onto the legacy getclassresults shape the transformer expects:
+   * camelCase splitControls -> splitcontrols, numeric result/timeplus -> strings.
+   * Extra REST fields (bib, changed, isMassStart, relayLeg...) are passed through.
+   */
+  private mapRestClassResult(rest: RestClassResult): LiveResultsClassResult {
+    const { splitControls, results, ...rest_ } = rest;
+    return {
+      ...rest_,
+      className: rest.className,
+      splitcontrols: splitControls ?? [],
+      hash: '',
+      results: (results ?? []).map(r => ({
+        ...r,
+        result: r.result === undefined || r.result === null ? '' : String(r.result),
+        timeplus: r.timeplus === undefined || r.timeplus === null ? '' : String(r.timeplus)
+      }))
+    } as LiveResultsClassResult;
+  }
+
+  /**
    * Start polling for class results
    */
   startPolling(config: PollingConfig): string {
@@ -438,16 +761,28 @@ export class LiveResultsClient {
 
     logger.info('Starting polling', { pollId, interval });
 
-    const poll = async () => {
+    // Never overlap polls: during an outage a request (with retries) can outlast the interval,
+    // and stacking more requests on a struggling API only makes things worse.
+    let inFlight = false;
+    let queuedPushVer: number | undefined;
+    const poll = async (pushVer?: number) => {
+      if (inFlight) {
+        // A push hint during a running poll is replayed right after it
+        if (pushVer) queuedPushVer = pushVer;
+        else logger.debug('Previous poll still running, skipping this tick', { pollId });
+        return;
+      }
+      inFlight = true;
       try {
         let result: CachedResponse<any>;
 
         if (config.className) {
-          result = await this.getClassResults(config.competitionId, config.className);
+          result = await this.getClassResults(config.competitionId, config.className, { pushVer });
         } else {
           result = await this.getLastPassings(config.competitionId);
         }
 
+        config.onPoll?.(result.changed, interval);
         if (result.changed) {
           logger.debug('Polling detected change', { pollId });
           config.onUpdate(result.data);
@@ -457,17 +792,76 @@ export class LiveResultsClient {
         if (config.onError) {
           config.onError(error as Error);
         }
+      } finally {
+        inFlight = false;
+        if (queuedPushVer !== undefined && this.pollingTimers.has(pollId)) {
+          const ver = queuedPushVer;
+          queuedPushVer = undefined;
+          void poll(ver);
+        }
       }
     };
 
-    // Initial poll
-    poll();
-
-    // Set up interval
-    const timer = setInterval(poll, interval);
+    // Set up interval (before the first poll, so a queued push replay sees the poll as running)
+    const timer = setInterval(() => void poll(), interval);
     this.pollingTimers.set(pollId, timer);
+    this.pollTriggers.set(pollId, (ver?: number) => void poll(ver));
+
+    // Initial poll
+    void poll();
+
+    if (this.pushEnabled && config.className) {
+      this.subscribePush(config.competitionId, config.className);
+    }
 
     return pollId;
+  }
+
+  /** Is the push channel for this competition connected? (diagnostics) */
+  isPushConnected(competitionId: number): boolean {
+    return this.pushChannels.get(competitionId)?.channel.isConnected() ?? false;
+  }
+
+  private subscribePush(competitionId: number, className: string): void {
+    let entry = this.pushChannels.get(competitionId);
+    if (!entry) {
+      const channel = new LiveResultsPushChannel(
+        this.pushUrl,
+        competitionId,
+        (tabs, ver) => {
+          for (const tab of tabs) {
+            const trigger = this.pollTriggers.get(`${competitionId}_${tab}`);
+            if (trigger) {
+              logger.debug('Push: class changed, refetching now', { competitionId, className: tab, ver });
+              trigger(ver);
+            }
+          }
+        },
+        this.webSocketFactory
+      );
+      entry = { channel, classes: new Map() };
+      this.pushChannels.set(competitionId, entry);
+    }
+    entry.classes.set(className, (entry.classes.get(className) ?? 0) + 1);
+    entry.channel.setTabs([...entry.classes.keys()]);
+  }
+
+  private unsubscribePush(pollId: string): void {
+    const m = /^(\d+)_(.*)$/.exec(pollId);
+    if (!m) return;
+    const competitionId = Number(m[1]);
+    const className = m[2];
+    const entry = this.pushChannels.get(competitionId);
+    if (!entry || !entry.classes.has(className)) return;
+    const n = (entry.classes.get(className) ?? 1) - 1;
+    if (n > 0) entry.classes.set(className, n);
+    else entry.classes.delete(className);
+    if (entry.classes.size === 0) {
+      entry.channel.close();
+      this.pushChannels.delete(competitionId);
+    } else {
+      entry.channel.setTabs([...entry.classes.keys()]);
+    }
   }
 
   /**
@@ -478,6 +872,8 @@ export class LiveResultsClient {
     if (timer) {
       clearInterval(timer);
       this.pollingTimers.delete(pollId);
+      this.pollTriggers.delete(pollId);
+      this.unsubscribePush(pollId);
       logger.info('Stopped polling', { pollId });
     }
   }
@@ -491,6 +887,9 @@ export class LiveResultsClient {
       clearInterval(timer);
     });
     this.pollingTimers.clear();
+    this.pollTriggers.clear();
+    for (const { channel } of this.pushChannels.values()) channel.close();
+    this.pushChannels.clear();
   }
 
   /**
@@ -520,6 +919,8 @@ export class LiveResultsClient {
       classResults: {},
       lastPassings: {}
     };
+    this.etagCache.clear();
+    this.competitionInfoCache.clear();
     logger.info('Cache cleared');
   }
 

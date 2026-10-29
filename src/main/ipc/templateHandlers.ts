@@ -46,6 +46,15 @@ export function registerTemplateHandlers(): void {
     }
   });
 
+  /** Template sets (a project uses one set; graphics of other sets are not offered) */
+  ipcMain.handle('templates:getSets', async () => {
+    try {
+      return { success: true, sets: getTemplateManager().getTemplateSets() };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
   /**
    * Get template by ID
    */

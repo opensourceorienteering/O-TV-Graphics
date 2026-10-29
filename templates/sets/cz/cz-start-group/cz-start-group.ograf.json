@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "cz-start-group",
+  "version": "1.0.0",
+  "name": "ČO – Next starters",
+  "description": "The next start minute of a class and who starts in it, with a countdown. Moves on to the next group by itself.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "rows": {
+        "type": "number",
+        "title": "Rows",
+        "description": "Most runners to show",
+        "default": 6
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "cz",
+  "v_olgrafik_kind": "start-group",
+  "v_olgrafik_zone": "lower"
+}

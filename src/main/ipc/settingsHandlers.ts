@@ -7,6 +7,7 @@ import { ipcMain } from 'electron';
 import { getLogger } from '../utils/logger';
 import { getConfig, saveConfig, AppConfig } from '../utils/config';
 import path from 'path';
+import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 
 const logger = getLogger();
 
@@ -77,23 +78,10 @@ function validateConfig(updates: Partial<AppConfig>): { valid: boolean; errors: 
 /**
  * Check if settings require application restart
  */
-function requiresRestart(updates: Partial<AppConfig>): boolean {
-  // Check if any restart-required field was updated
-  if (updates.general) {
-    if (updates.general.port !== undefined ||
-        updates.general.wsPort !== undefined ||
-        updates.general.dataroot !== undefined ||
-        updates.general.logfolder !== undefined ||
-        updates.general.resolution !== undefined) {
-      return true;
-    }
-  }
-
-  if (updates.output?.web?.cors !== undefined) {
-    return true;
-  }
-
-  return false;
+function requiresRestart(current: AppConfig, updates: Partial<AppConfig>): boolean {
+  const fields = ['port', 'wsPort', 'dataroot', 'logfolder', 'resolution'] as const;
+  return fields.some(key => updates.general?.[key] !== undefined && updates.general[key] !== current.general[key]) ||
+    (updates.output?.web?.cors !== undefined && updates.output.web.cors !== current.output.web.cors);
 }
 
 /**
@@ -103,7 +91,10 @@ function mergeConfig(current: AppConfig, updates: Partial<AppConfig>): AppConfig
   return {
     general: { ...current.general, ...updates.general },
     liveresults: current.liveresults, // Keep existing liveresults for backward compatibility (read-only)
-    dataSources: updates.dataSources !== undefined ? updates.dataSources : current.dataSources,
+    dataSources: mergeBuiltInDataSources(
+      updates.dataSources !== undefined ? updates.dataSources : current.dataSources,
+    ),
+    eventor: updates.eventor !== undefined ? updates.eventor : current.eventor,
     output: {
       ndi: { ...current.output.ndi, ...updates.output?.ndi },
       web: { ...current.output.web, ...updates.output?.web }
@@ -165,7 +156,7 @@ export function registerSettingsHandlers() {
       await saveConfig(newConfig);
 
       // Check if restart is required
-      const needsRestart = requiresRestart(updates);
+      const needsRestart = requiresRestart(currentConfig, updates);
 
       logger.info('Configuration updated', {
         requiresRestart: needsRestart,

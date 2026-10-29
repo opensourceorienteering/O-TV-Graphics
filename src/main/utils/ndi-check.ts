@@ -40,7 +40,7 @@ export function checkNDIAvailability(): NDIAvailability {
     //
     // In packaged apps, grandiose should be in app.asar.unpacked/node_modules/grandiose
     // Electron automatically handles this when asarUnpack is configured correctly
-    grandioseModule = require('grandiose');
+    grandioseModule = require('@stagetimerio/grandiose');
 
     logger.info('Grandiose package loaded successfully');
 
@@ -61,7 +61,7 @@ export function checkNDIAvailability(): NDIAvailability {
 
         ndiAvailability = {
           available: false,
-          error: 'NDI Runtime not detected. Please install NDI Runtime from https://ndi.link/NDIRedistV5',
+          error: 'NDI Runtime not detected. Please install NDI Runtime from https://ndi.video/tools/',
           version: undefined
         };
       }
@@ -86,12 +86,12 @@ export function checkNDIAvailability(): NDIAvailability {
       userFriendlyError = 'Grandiose package not installed. Run "npm install" to install dependencies.';
       logger.error('Grandiose package not found - installation may have failed', { error: errorMessage });
     } else if (errorMessage.includes('was compiled against a different Node.js version')) {
-      userFriendlyError = 'Grandiose was compiled for a different Node.js version. Run "npm rebuild grandiose" to recompile.';
+      userFriendlyError = 'Grandiose was compiled for a different Node.js version. Run "npm rebuild @stagetimerio/grandiose" to recompile.';
       logger.error('Grandiose version mismatch', { error: errorMessage });
     } else if (errorMessage.includes('The specified module could not be found') ||
                errorMessage.includes('libndi') ||
                errorMessage.includes('Processing.NDI.Lib')) {
-      userFriendlyError = 'NDI Runtime not found. Please install NDI Runtime from https://ndi.link/NDIRedistV5';
+      userFriendlyError = 'NDI Runtime not found. Please install NDI Runtime from https://ndi.video/tools/';
       logger.warn('NDI Runtime not installed on system', { error: errorMessage });
     } else {
       logger.warn('NDI SDK not available', { error: errorMessage });

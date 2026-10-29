@@ -10,6 +10,12 @@ import fs from 'fs';
 import { Server as HTTPServer } from 'http';
 import { marked } from 'marked';
 import { getLogger } from '../utils/logger';
+import { createOGrafServerApiRouter } from './OGrafServerApi';
+import { getTemplateManager } from '../templates/OGrafManager';
+import { getClubLogoService } from '../data/ClubLogoService';
+import { createDirectorApiRouter } from './DirectorApi';
+import { createControlApiRouter } from './ControlApi';
+import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from '../utils/config';
 
 const logger = getLogger();
@@ -30,6 +36,7 @@ export class WebServer {
     this.setupRoutes();
 
     // Set singleton instance
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- module singleton
     webServerInstance = this;
   }
 
@@ -56,6 +63,15 @@ export class WebServer {
       ? path.join(process.cwd(), 'ASSETS')
       : path.join(__dirname, '../../ASSETS');
 
+    const builtInAssetsPath = isDev
+      ? path.join(process.cwd(), 'public/assets')
+      : path.join(__dirname, '../../dist/assets');
+    this.app.use('/built-in-assets', express.static(builtInAssetsPath, {
+      maxAge: '1d',
+      dotfiles: 'deny',
+      index: false
+    }));
+
     // Serve templates with proper MIME types for ES modules
     this.app.use('/templates', express.static(templatesPath, {
       setHeaders: (res, filePath) => {
@@ -65,6 +81,22 @@ export class WebServer {
         }
       }
     }));
+
+    // Club logos: /club-logos/bundled/... (shipped with the app) and /club-logos/manual/...
+    // (added by the operator). Folders are known once the logo service has started.
+    const logoHandlers = new Map<string, express.RequestHandler>();
+    const staticFor = (folder: string) => {
+      if (!logoHandlers.has(folder)) logoHandlers.set(folder, express.static(folder, { maxAge: '1h', dotfiles: 'deny', index: false }));
+      return logoHandlers.get(folder)!;
+    };
+    this.app.use('/club-logos/bundled', (req, res, next) => {
+      const service = getClubLogoService();
+      return service ? staticFor(service.getBundledDir())(req, res, next) : res.status(404).end();
+    });
+    this.app.use('/club-logos/manual', (req, res, next) => {
+      const service = getClubLogoService();
+      return service ? staticFor(service.getManualDir())(req, res, next) : res.status(404).end();
+    });
 
     // Only serve ASSETS if the directory exists (optional feature)
     if (fs.existsSync(assetsPath)) {
@@ -186,6 +218,17 @@ export class WebServer {
       }
     });
 
+    // Director start alerts (any device on the network)
+    this.app.get('/director', (_req, res) => {
+      const htmlPath = isDev
+        ? path.join(process.cwd(), 'public/director.html')
+        : path.join(__dirname, '../../dist/director.html');
+      if (fs.existsSync(htmlPath)) res.sendFile(htmlPath);
+      else res.status(404).send('Director page not found');
+    });
+    this.app.use('/api/director', createDirectorApiRouter());
+    this.app.use('/api/control', createControlApiRouter());
+
     // Documentation viewer page
     this.app.get('/docs', (_req, res) => {
       const htmlPath = isDev
@@ -269,6 +312,27 @@ export class WebServer {
       });
     });
 
+    // EBU OGraf Server API v1: lets external OGraf controllers drive the program output.
+    // Engine and template manager are resolved per request (they start after the web server).
+    const engine = () => getPlaybackEngine();
+    this.app.use('/ograf/v1', createOGrafServerApiRouter({
+      getTemplates: () => {
+        try { return getTemplateManager().getAllTemplates(); } catch { return []; }
+      },
+      engine: {
+        listGraphicInstances: () => engine().listGraphicInstances(),
+        apiLoad: (id, data) => engine().apiLoad(id, data),
+        apiPlay: (id, p) => engine().apiPlay(id, p),
+        apiStop: (id, p) => engine().apiStop(id, p),
+        apiUpdate: (id, p) => engine().apiUpdate(id, p),
+        apiCustomAction: (id, a, p) => engine().apiCustomAction(id, a, p),
+        apiClear: (f) => engine().apiClear(f)
+      },
+      serverName: getConfig().general.hostname || 'Split Control',
+      version: process.env.npm_package_version || '1.1.0',
+      frameRate: getConfig().output.ndi?.fps
+    }));
+
     // API endpoint for graphics control (legacy - kept for compatibility)
     this.app.post('/api/graphics/:action', (req, res) => {
       const { action } = req.params;
@@ -305,7 +369,7 @@ export class WebServer {
               port: this.port,
               error: error.message
             });
-            reject(new Error(`Port ${this.port} is already in use. Please close any other instances of OL-Grafik or change the port in config.json`));
+            reject(new Error(`Port ${this.port} is already in use. Please close any other instances of Split Control or change the port in config.json`));
           } else {
             logger.error('Failed to start web server', { error });
             reject(error);

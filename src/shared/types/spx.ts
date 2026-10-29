@@ -87,6 +87,12 @@ export interface SPXTemplateInfo {
 
 export interface SPXRundownItem {
   id: string;
+  /**
+   * Style-independent graphic role, for example "results" or
+   * "runner-lower-third". The project look decides which concrete template
+   * renders this cue; the cue's fields and live-data choices remain unchanged.
+   */
+  graphicKind?: string;
   templateId: string;
   templatePath: string;
   fields: Record<string, any>;
@@ -109,6 +115,9 @@ export interface SPXRundownItem {
    */
   playbackMode?: 'stackable' | 'solo';
 
+  /** Automatically advance multi-page graphics while on air. Zero/undefined disables it. */
+  autoPageDurationSeconds?: number;
+
   /**
    * Current step number for multi-step templates
    * Tracks which step is currently on-air (1-based)
@@ -122,6 +131,8 @@ export interface SPXRundownItem {
     competitionId?: number;
     className?: string;
     autoUpdate?: boolean; // Auto-update from LiveResults
+    /** Keep polling, but do not push new data to the graphic while it is on air (operator updates it) */
+    holdOnAir?: boolean;
     lastUpdate?: number; // Timestamp of last update
     // Additional fields for template-specific data mapping
     runnerName?: string; // For lower-third templates
@@ -217,11 +228,33 @@ export interface SPXProject {
   /** Custom controls for this project */
   customControls?: SPXCustomControl[];
 
+  /**
+   * Template set (graphics package) this project uses, e.g. "iof", "cz", "classic".
+   * Only graphics from this set can be added to or played from the project's rundowns.
+   * Projects created before sets existed default to "classic".
+   */
+  templateSet?: string;
+
+  /** Folder this event belongs to (EventFolder id) */
+  folderId?: string;
+  /** Explicit links to folder defaults. Existing events remain independent until linked. */
+  folderInheritance?: Partial<Record<'look' | 'branding' | 'data' | 'info', boolean>>;
+  /** Event details shown in graphics and the overview */
+  info?: import('./event').EventInfo;
+  /** Event-level data source; written to every page (rundown) of the event */
+  dataSource?: import('./event').EventDataSource;
+  /** 'done' once the event is over (shown greyed in the overview) */
+  status?: import('./event').EventStatus;
+
   /** Default settings */
   settings?: {
     defaultLayer?: string;
     defaultOut?: string;
     autoSave?: boolean;
+    /** How graphics present runners; sent to every graphic as data.presentation */
+    presentation?: ProjectPresentation;
+    /** Settings → Templates: per-graphic defaults, live updates and visibility in Live */
+    templates?: import('../desk').DeskTemplateSettingsMap;
   };
 
   /**
@@ -236,6 +269,33 @@ export interface SPXProject {
   };
 }
 
+export interface ProjectPresentation {
+  /** Label language for shared template-set graphics; unset keeps the set defaults. */
+  language?: 'set' | 'en' | 'sv' | 'nb' | 'cs';
+  /** Up to four sponsor logos, shown on the event title card. */
+  sponsorLogos?: string[];
+  /** International event: flags instead of (or with) clubs */
+  international?: boolean;
+  /**
+   * What to show next to names:
+   *  - 'auto': national -> club; international -> flag (relays: club + flag)
+   *  - 'club' | 'flag' | 'both'
+   */
+  identity?: 'auto' | 'club' | 'flag' | 'both';
+  /** Show downloaded Eventor club logos next to clubs (default true) */
+  clubLogos?: boolean;
+  /** Logo shown in graphics' logo boxes, e.g. "/assets/iof-logo.png" (ASSETS folder) */
+  logoUrl?: string;
+  /** Playing a graphic takes graphics in clashing screen zones off air first (default true) */
+  clearClashing?: boolean;
+  /** Seconds each page remains on air. Zero/unset keeps multi-page graphics manual. */
+  autoPageDurationSeconds?: number;
+  /** Event-only overrides for the selected template set's three advertised palette colours. */
+  themeColors?: string[];
+}
+
+export const DEFAULT_TEMPLATE_SET = 'classic';
+
 /**
  * Project list item (for project browser)
  */
@@ -246,6 +306,7 @@ export interface SPXProjectListItem {
   created: number;
   modified: number;
   rundownCount?: number;
+  templateSet?: string;
 }
 
 /**

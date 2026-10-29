@@ -150,7 +150,7 @@ export class LiveResultsTransformer {
    * Get status text from status code
    */
   static getStatusText(statusCode: RunnerStatus): string {
-    return RunnerStatusText[statusCode] || 'OK';
+    return RunnerStatusText[statusCode] ?? 'OK';
   }
 
   /**
@@ -251,9 +251,11 @@ export class LiveResultsTransformer {
     }
 
     const formattedTime = statusCode === 0 ? this.formatTime(timeSeconds) : '--:--';
+    // Only runners with an OK result are placed; running, MP, DNF, DNS ... never get a number
+    const position = statusCode === 0 ? result.place || index + 1 : '';
 
     logger.info(`[transformRunner] ${result.name}: Final output`, {
-      position: result.place || index + 1,
+      position,
       time: formattedTime,
       diff,
       statusCode,
@@ -261,7 +263,7 @@ export class LiveResultsTransformer {
     });
 
     return {
-      position: result.place || index + 1,
+      position,
       name: result.name || 'Unknown',
       club: result.club || '',
       time: formattedTime,
@@ -381,12 +383,9 @@ export class LiveResultsTransformer {
         const minutes = Math.floor((startTimeSeconds % 3600) / 60);
         const seconds = Math.floor(startTimeSeconds % 60);
 
-        let startTimeFormatted = '';
-        if (hours > 0) {
-          startTimeFormatted = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        } else {
-          startTimeFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
+        const startTimeFormatted = hours > 0
+          ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+          : `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
         return {
           ...runner,
@@ -488,6 +487,9 @@ export class LiveResultsTransformer {
       firstRunnerSplitsKeys: firstRunnerSplitsObject ? Object.keys(firstRunnerSplitsObject) : 'NO SPLITS FOUND',
       firstRunnerSplitsObject: firstRunnerSplitsObject ? JSON.stringify(firstRunnerSplitsObject).substring(0, 500) : 'NO SPLITS'
     });
+
+    // Some runner has a time at this control, so it's a real radio control in the data
+    const controlKnown = availableSplitKeys.has(String(splitKey));
 
     // Find leader split time for this control
     let leaderSplitTime: number | undefined;
@@ -700,6 +702,26 @@ export class LiveResultsTransformer {
         } else {
           startTimeFormatted = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
+      }
+
+      // Standings at a control: a runner who has passed it is ranked there (status OK at the
+      // control) whatever their race status now (still running, or finished). Runners who have
+      // not reached it are not ranked; runners who are out keep their status (MP, DNF ...).
+      if (controlKnown) {
+        const passed = splitTime !== '--:--' && result.splits?.[splitKey] !== undefined;
+        const out = [1, 2, 3, 4, 5, 11].includes(Number(statusCode));
+        const atControl: RunnerStatus = passed ? 0 : out ? statusCode : statusCode === 9 ? 9 : 10;
+        return {
+          position: passed ? splitPlace : '',
+          name: result.name,
+          club: result.club,
+          time: passed ? splitTime : '--:--',
+          diff: passed ? splitDiff : '',
+          status: this.getStatusText(atControl),
+          statusCode: atControl,
+          progress: result.progress,
+          startTime: startTimeFormatted || undefined
+        };
       }
 
       return {

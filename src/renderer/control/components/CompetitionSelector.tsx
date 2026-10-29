@@ -1,10 +1,11 @@
+import { t as tr } from "../i18n";
 /**
  * Competition Selector Component
  * Allows users to select a LiveResults competition for the project
  * Enhanced with search/filter functionality
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Check, X, Search } from 'lucide-react';
 import { LiveResultsCompetition } from '../../../shared/types/liveresults';
 import { useToast } from '../contexts/ToastContext';
@@ -15,6 +16,7 @@ interface CompetitionSelectorProps {
   onClose?: () => void;
   showCloseButton?: boolean;
   sourceId?: string; // Optional data source ID (defaults to 'liveresults-default')
+  onSelectedCompetitionLoaded?: (competition: LiveResultsCompetition | null) => void;
 }
 
 export function CompetitionSelector({
@@ -22,7 +24,8 @@ export function CompetitionSelector({
   onSelect,
   onClose,
   showCloseButton = false,
-  sourceId = 'liveresults-default'
+  sourceId = 'liveresults-default',
+  onSelectedCompetitionLoaded,
 }: CompetitionSelectorProps) {
   const toast = useToast();
   const [competitions, setCompetitions] = useState<LiveResultsCompetition[]>([]);
@@ -30,13 +33,10 @@ export function CompetitionSelector({
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | undefined>(selectedCompetitionId);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  /** With a competition chosen, the list stays folded until the operator wants to change it */
+  const [browsing, setBrowsing] = useState(false);
 
-  // Load competitions on mount or when sourceId changes
-  useEffect(() => {
-    loadCompetitions();
-  }, [sourceId]);
-
-  const loadCompetitions = async () => {
+  const loadCompetitions = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -49,6 +49,9 @@ export function CompetitionSelector({
 
         if (Array.isArray(data)) {
           setCompetitions(data);
+          onSelectedCompetitionLoaded?.(
+            data.find((competition) => competition.id === selectedCompetitionId) || null,
+          );
         } else {
           setCompetitions([]);
           const errorMsg = 'Invalid data format received from server';
@@ -67,17 +70,27 @@ export function CompetitionSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [onSelectedCompetitionLoaded, selectedCompetitionId, sourceId, toast]);
+
+  // Load competitions on mount or when sourceId changes
+  useEffect(() => {
+    void loadCompetitions();
+  }, [loadCompetitions]);
 
   const handleSelect = (competition: LiveResultsCompetition) => {
     setSelectedId(competition.id);
+    setBrowsing(false);
+    setSearchQuery('');
     onSelect(competition);
   };
 
   const handleClear = () => {
     setSelectedId(undefined);
+    setBrowsing(true);
     onSelect(null);
   };
+  const selectedCompetition = competitions.find(c => c.id === selectedId);
+  const listOpen = !selectedId || browsing || !!searchQuery.trim();
 
   // Filter competitions based on search query
   const filteredCompetitions = competitions.filter(competition => {
@@ -108,24 +121,25 @@ export function CompetitionSelector({
         alignItems: 'center'
       }}>
         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold' }}>
-          Select Competition
-        </h3>
+           {tr("Select Competition")} </h3>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button
             className="btn btn-sm"
             onClick={loadCompetitions}
             disabled={loading}
-            title="Refresh competitions"
+            aria-label={tr("Refresh competitions")}
+            title={tr("Refresh competitions")}
           >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <RefreshCw size={14} className={loading ? 'spin' : ''} aria-hidden="true" />
           </button>
           {showCloseButton && onClose && (
             <button
               className="btn btn-sm"
               onClick={onClose}
-              title="Close"
+              aria-label={tr("Close competition selector")}
+              title={tr("Close")}
             >
-              <X size={14} />
+              <X size={14} aria-hidden="true" />
             </button>
           )}
         </div>
@@ -133,7 +147,9 @@ export function CompetitionSelector({
 
       {/* Search Input */}
       {!loading && competitions.length > 0 && (
-        <div style={{ position: 'relative' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          <span>{tr("Search competitions")}</span>
+          <div style={{ position: 'relative' }}>
           <Search
             size={16}
             style={{
@@ -150,14 +166,15 @@ export function CompetitionSelector({
             className="input"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search competitions..."
+            placeholder={tr("Search competitions...")}
             style={{
               width: '100%',
               paddingLeft: '2.5rem',
               fontSize: '0.875rem'
             }}
           />
-        </div>
+          </div>
+        </label>
       )}
 
       {/* Error Message */}
@@ -181,8 +198,7 @@ export function CompetitionSelector({
           textAlign: 'center',
           color: '#888'
         }}>
-          Loading competitions...
-        </div>
+           {tr("Loading competitions...")} </div>
       )}
 
       {/* Competitions List */}
@@ -195,8 +211,7 @@ export function CompetitionSelector({
           borderRadius: '4px',
           border: '1px dashed #333'
         }}>
-          No competitions available
-        </div>
+           {tr("No competitions available")} </div>
       )}
 
       {!loading && competitions.length > 0 && filteredCompetitions.length === 0 && (
@@ -208,11 +223,21 @@ export function CompetitionSelector({
           borderRadius: '4px',
           border: '1px dashed #333'
         }}>
-          No competitions match your search
+           {tr("No competitions match your search")} </div>
+      )}
+
+      {!loading && selectedCompetition && !listOpen && (
+        <div className="competition-chosen" role="status">
+          <Check size={18} aria-hidden="true" />
+          <div>
+            <strong>{selectedCompetition.name}</strong>
+            <small>{[selectedCompetition.date, selectedCompetition.organizer].filter(Boolean).join(' · ')}</small>
+          </div>
+          <button type="button" className="studio-button" onClick={() => setBrowsing(true)}>{tr("Change")}</button>
         </div>
       )}
 
-      {!loading && filteredCompetitions.length > 0 && (
+      {!loading && listOpen && filteredCompetitions.length > 0 && (
         <div style={{
           display: 'flex',
           flexDirection: 'column',
@@ -222,9 +247,11 @@ export function CompetitionSelector({
         }}>
           {/* Clear Selection Option */}
           {selectedId && (
-            <div
+            <button
+              type="button"
               onClick={handleClear}
               style={{
+                width: '100%',
                 padding: '0.75rem',
                 background: '#2a2a2a',
                 borderRadius: '4px',
@@ -237,9 +264,8 @@ export function CompetitionSelector({
                 color: '#888'
               }}
             >
-              <X size={16} />
-              Clear selection
-            </div>
+              <X size={16} aria-hidden="true" />
+               {tr("Clear selection")} </button>
           )}
 
           {/* Competition Items */}
@@ -247,16 +273,21 @@ export function CompetitionSelector({
             const isSelected = selectedId === competition.id;
 
             return (
-              <div
+              <button
+                type="button"
                 key={competition.id}
                 onClick={() => handleSelect(competition)}
+                aria-pressed={isSelected}
                 style={{
+                  width: '100%',
+                  color: 'inherit',
+                  textAlign: 'start',
                   padding: '0.75rem',
                   background: isSelected ? '#2a4a2a' : '#1a1a1a',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   border: isSelected ? '2px solid #4a9e4a' : '1px solid #333',
-                  transition: 'all 0.2s ease',
+                  transition: 'background-color 120ms ease, border-color 120ms ease',
                   position: 'relative'
                 }}
                 onMouseEnter={(e) => {
@@ -280,7 +311,7 @@ export function CompetitionSelector({
                     right: '0.5rem',
                     color: '#4a9e4a'
                   }}>
-                    <Check size={18} />
+                    <Check size={18} aria-hidden="true" />
                   </div>
                 )}
 
@@ -299,11 +330,11 @@ export function CompetitionSelector({
                     display: 'flex',
                     gap: '1rem'
                   }}>
-                    <span>📅 {competition.date}</span>
-                    <span>🏢 {competition.organizer}</span>
+                    <span>{competition.date}</span>
+                    <span>{competition.organizer}</span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>

@@ -131,7 +131,7 @@ class RelaySplitTimesFocused extends HTMLElement {
   }
 }
 
-customElements.define('relay-split-times-focused', RelaySplitTimesFocused);
+export default RelaySplitTimesFocused;
 `;
 
 // Write the file

@@ -1,0 +1,222 @@
+/*
+ * ČO theme: styling after thejoeejoee/co-stream-gfx (Český orienťák livestream graphics),
+ * used with the author's permission. Tokens, sizes (4 px grid: md 32 px, lg 48 px, xl 64 px)
+ * and motion (slide 200 ms + 128 px, clip 300 ms) follow that project.
+ * Font: Albert Sans (OFL) as a stand-in for the commercial GT Planar.
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --primary: #fe5900;
+  --secondary: #edece3;
+  --text: #272727;
+  --surface: #ffffff;
+  --on-primary: #edece3;
+  --on-secondary: #fe5900;
+  --divider: #e5e5e5;
+  --split-pos: #d32f2f;
+  --split-neg: #16a34a;
+  --split-neutral: #307ea1;
+  --radius: 6px;
+  --font: "GT Planar", GTPlanar, "Albert Sans", sans-serif;
+  --fs: 32px;
+  --margin-x: 96px;
+  --margin-y: 96px;
+  --table-top: 196px;  /* below the corner clock */
+  --table-x: 480px;
+  --lower-w: 640px;
+  --side-w: 470px;
+  --podium-x: 260px;
+  --line-0: #ef4444; --line-1: #f59e0b; --line-2: #22c55e; --line-3: #38bdf8;
+  --line-4: #818cf8; --line-5: #c084fc; --line-6: #fe5900; --line-7: #272727;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* control-circle mark (finish = double ring) */
+.hdr-mark, .ftr-mark { flex: none; width: 48px; height: 48px; border-radius: 50%; border: 4px solid var(--on-secondary); }
+.is-finish .hdr-mark, .is-finish .ftr-mark { box-shadow: inset 0 0 0 3px var(--secondary), inset 0 0 0 6px var(--on-secondary); }
+
+/* --- title bars ---------------------------------------------------------------------- */
+.hdr, .ftr {
+  padding: 24px; gap: 16px;
+  font-size: 48px; line-height: 48px; font-style: italic; font-weight: 600;
+  background: var(--secondary); color: var(--on-secondary);
+  z-index: 2;
+}
+.hdr-sub { font-style: italic; }
+.hdr-logo, .ftr-logo { height: 48px; }
+.ftr-page { font-size: 32px; font-style: normal; }
+
+/* Highlighted (orange) header on tables and info panels */
+.panel--table .hdr, .panel--side .hdr, .panel--podium .hdr {
+  background: var(--primary); color: var(--on-primary);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.panel--table .hdr-mark, .panel--side .hdr-mark { border-color: var(--on-primary); }
+.panel--table.panel--table .hdr-mark { display: block; }
+.is-finish .panel--table .hdr-mark { box-shadow: inset 0 0 0 3px var(--primary), inset 0 0 0 6px var(--on-primary); }
+/* co-stream order: label left, class right */
+.panel--table .hdr-sub { order: 1; margin-right: auto; }
+.panel--table .hdr-title { order: 2; }
+.panel--table .hdr-logo { order: 3; }
+.panel--table .ftr, .panel--side .ftr, .panel--podium .ftr { display: none; }
+.panel--side .hdr-mark { display: none; }
+.panel--side .hdr-sub { margin-left: auto; font-size: 32px; }
+
+/* --- table rows ---------------------------------------------------------------------- */
+.panel--table .rows {
+  background: rgb(255 255 255 / .95);
+  padding: 12px 24px;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.panel--table .row { gap: 24px; padding: 4px 0; min-height: 52px; color: var(--text); }
+.panel--table .row + .row::before,
+.panel--lower .row:not(.row--leader):not(.row--hl) + .row:not(.row--hl)::before,
+.panel--side .row + .row::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: var(--divider);
+}
+.c-place { color: var(--primary); min-width: 2ch; justify-content: flex-end !important; }
+.c-time { color: var(--primary); }
+.c-start { color: var(--primary); min-width: 4.4ch; }
+.c-bib { color: var(--primary); min-width: 3ch; justify-content: flex-end !important; }
+.id-club { color: var(--text); }
+.id-code { color: var(--primary); }
+.id-flag { height: 40px; }
+.row--status .c-time { color: var(--text); opacity: .7; }
+
+/* --- lower thirds (live feed) -------------------------------------------------------- */
+.panel--lower { min-width: 512px; width: auto; border-radius: var(--radius); }
+.panel--lower .hdr { display: none; }
+.panel--lower .rows { background: transparent; }
+.panel--lower .row {
+  gap: 16px; padding: 8px 16px; background: var(--surface); min-height: 64px;
+}
+.panel--lower .row:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.panel--lower .row--leader, .panel--runner .row--hl {
+  background: var(--primary); color: var(--on-primary); font-weight: 600;
+}
+.panel--lower .row--leader .c-place, .panel--lower .row--leader .c-time, .panel--lower .row--leader .id-club, .panel--lower .row--leader .id-code,
+.panel--runner .row--hl .c-place, .panel--runner .row--hl .c-time, .panel--runner .row--hl .id-club, .panel--runner .row--hl .id-code { color: var(--on-primary); }
+.panel--lower:not(.panel--runner) .row--hl:not(.row--leader) {
+  transform: scale(1.05); margin: 4px 0; border-radius: var(--radius); z-index: 1;
+}
+.panel--lower .ftr { border-radius: 0 0 var(--radius) var(--radius); }
+.ftr-sep { margin: 0 .25em; }
+.ftr-label { display: flex; gap: 0; }
+.panel--lower .ftr-label { margin-left: auto; }
+.panel--runner .row--ref { font-size: 28px; min-height: 52px; }
+.panel--runner .row--hl.is-running .c-time { font-style: italic; }
+
+/* start group: beige title with the start time, white rows */
+.panel--startgroup .hdr { display: flex; border-radius: var(--radius) var(--radius) 0 0; }
+.panel--startgroup .hdr-sub { display: none; }
+.panel--startgroup .hdr-clock { margin-left: auto; font-style: normal; font-variant-numeric: tabular-nums; }
+.panel--startgroup .ftr { display: none; }
+.panel--startgroup .row:first-child { border-radius: 0; }
+.panel--startgroup .row:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+
+/* name strap (single runner) */
+.gfx .panel--strap { width: auto; min-width: 680px; max-width: 1200px; border-radius: var(--radius); overflow: hidden; }
+.panel--strap .c-name { flex: 0 1 auto; margin-right: auto; }
+.panel--strap .row { min-height: 96px; padding: 0; gap: 0; font-size: 48px; border-radius: 0 !important; }
+.panel--strap .c-place { background: var(--primary); color: var(--on-primary); padding: 0 24px; font-weight: 600; }
+.panel--strap .c-name { padding: 0 24px; text-transform: uppercase; }
+.panel--strap .row:not(:has(.c-place)) .c-name { border-left: 8px solid var(--primary); }
+.panel--strap .c-id { padding-right: 24px; }
+.panel--strap .id-club { color: var(--primary); }
+.panel--strap .ftr { padding: 8px 16px; font-size: 32px; line-height: 32px; min-height: 48px; border-radius: 0; }
+.panel--strap .ftr-mark { display: none; }
+
+/* --- info panels (weather, course, splits) ------------------------------------------ */
+.panel--side { border-radius: var(--radius); overflow: hidden; }
+.panel--side .row { padding: 8px 16px; gap: 16px; background: var(--surface); min-height: 56px; }
+.panel--side .c-label { color: var(--primary); text-transform: lowercase; }
+.panel--side .c-value { color: var(--text); font-weight: 600; }
+.panel--splits .c-label { color: var(--text); text-transform: none; }
+.panel--splits .c-place { color: var(--text); min-width: 2.4ch; }
+.panel--splits .c-place:not(:empty)::after { content: "."; }
+.panel--splits .c-time.is-behind { color: var(--split-pos); }
+.panel--splits .c-time.is-best { color: var(--split-neg); }
+.c-change { min-width: 2.2ch; font-size: 28px; }
+.c-change.up { color: var(--split-neg); } .c-change.down { color: var(--split-pos); }
+
+/* --- podium (flowers): 2 - 1 - 3 columns ----------------------------------------------- */
+.panel--podium { border-radius: var(--radius) var(--radius) 0 0; overflow: hidden; }
+.podium { display: flex; align-items: flex-end; }
+.pod { flex: 1 1 33%; display: flex; align-items: stretch; }
+.pod .c-place { background: var(--primary); color: var(--on-primary); padding: 16px 24px; align-self: stretch; }
+.pod-names { flex: 1; display: flex; flex-direction: column; }
+.pod .row { background: var(--surface); padding: 16px; gap: 16px; justify-content: space-between; }
+.pod--1 { font-size: 48px; } .pod--1 .c-place { padding: 24px; }
+.pod--1 .row { padding: 24px; }
+.pod .id-club { color: var(--primary); }
+.panel--podium .pod .c-name {
+  font-size: clamp(30px, 1.9vw, 38px);
+  line-height: 1;
+}
+.panel--podium .pod--1 .c-name {
+  font-size: clamp(36px, 2.3vw, 46px);
+}
+.panel--podium .pod .c-id,
+.panel--podium .pod .id {
+  font-size: clamp(18px, 1.2vw, 23px);
+}
+
+/* --- clock (timer) ------------------------------------------------------------------- */
+.panel--clock {
+  background: var(--secondary); color: var(--primary); border-radius: var(--radius);
+  padding: 16px; gap: 8px; align-items: center !important; font-size: 64px; line-height: 64px;
+}
+.clk-label { font-size: 32px; font-style: italic; font-weight: 600; margin-right: 8px; }
+.clk-logo { height: 64px; }
+
+/* --- race title ---------------------------------------------------------------------- */
+.panel--title .hdr { background: var(--primary); color: var(--on-primary); font-size: 32px; line-height: 32px; padding: 12px 24px; border-radius: var(--radius) var(--radius) 0 0; }
+.panel--title .hdr-mark { display: none; }
+.title-body { flex-direction: column; }
+.title-logo { display: none; }
+.title-main {
+  font-size: 64px; line-height: 64px; color: var(--on-secondary); background: var(--secondary);
+  font-style: italic; font-weight: 600; padding: 24px; text-transform: uppercase;
+}
+.panel--title:not(:has(.hdr)) .title-main { border-radius: var(--radius) var(--radius) 0 0; }
+.title-sub {
+  height: 72px; padding: 0 16px; background: var(--surface); color: var(--text);
+  font-size: 32px; font-weight: 600; display: flex; align-items: center; justify-content: space-between;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.title-sub .sep { display: none; }
+
+/* --- position history ---------------------------------------------------------------- */
+.panel--chart { border-radius: var(--radius); overflow: hidden; }
+.panel--chart .hdr-sub { order: 1; margin-right: auto; } .panel--chart .hdr-title { order: 2; }
+.panel--chart .ftr { display: none; }
+.chart-body { background: #fff; padding: 24px 32px; }
+.chart .ax, .chart .ay { font-size: 34px; font-weight: 600; fill: #111827; }
+.chart .grid { stroke: #e5e7eb; stroke-width: 1; }
+.chart .ln path { stroke-width: 12; }
+.chart .ln circle { r: 10; }
+.chart .ln-label { font-size: 30px; }
+
+/* --- motion: slide (bars) + unclip (rows), as co-stream-gfx ------------------------------ */
+@keyframes cz-slide-in { from { opacity: 0; transform: translateX(128px); } to { opacity: 1; transform: none; } }
+@keyframes cz-slide-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-128px); } }
+@keyframes cz-clip-top { from { clip-path: inset(0 -50% 100% -50%); } to { clip-path: inset(0 -50% 0 -50%); } }
+@keyframes cz-clip-bottom { from { clip-path: inset(100% -50% 0 -50%); } to { clip-path: inset(0 -50% 0 -50%); } }
+
+.gfx[data-state="in"] :is(.hdr, .ftr) { animation: cz-slide-in 200ms ease-in-out both; }
+.gfx[data-state="in"] :is(.rows, .podium, .chart-body, .title-main, .title-sub) { animation: cz-clip-top 300ms ease-in-out 200ms both; }
+.gfx[data-state="in"] .panel--lower .rows { animation-name: cz-clip-bottom; }
+.gfx[data-state="in"] :is(.panel--clock, .panel--strap .row) { animation: cz-slide-in 200ms ease-in-out both; }
+.gfx[data-state="in"] .chart .ln path { stroke-dasharray: 1; animation: cz-draw 900ms ease-in-out calc(400ms + var(--i) * 80ms) both; }
+.gfx[data-state="in"] .chart .ln :is(circle, text) { animation: fade-in 300ms ease-in-out calc(1100ms + var(--i) * 80ms) both; }
+@keyframes cz-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.gfx[data-state="leave"] :is(.rows, .podium, .chart-body, .title-main, .title-sub) { animation: cz-clip-top 200ms ease-in-out reverse both; }
+.gfx[data-state="leave"] .panel--lower .rows { animation-name: cz-clip-bottom; }
+.gfx[data-state="leave"] :is(.hdr, .ftr, .panel--clock, .panel--strap .row) { animation: cz-slide-out 200ms ease-in-out 300ms both; }
+
+/* page change: rows clip away and back, bars stay */
+.gfx[data-state="step-out"] .rows { animation: cz-clip-top 200ms ease-in-out reverse both; }
+.gfx[data-state="step"] .rows { animation: cz-clip-top 300ms ease-in-out both; }

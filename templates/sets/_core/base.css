@@ -1,0 +1,195 @@
+/*
+ * Shared layout for all Split Control template sets. Themes @import this and then set colours,
+ * fonts, sizes and motion. Canvas: 1920x1080, scaled by the graphic to the output size.
+ * Placement follows broadcast practice: lower thirds bottom-left, info panels bottom-right,
+ * tables upper-centre, clock top-right; the centre of the picture stays clear.
+ */
+
+:host { position: absolute; inset: 0; display: block; overflow: hidden; pointer-events: none; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.gfx {
+  position: absolute; inset: 0;
+  font-family: var(--font, sans-serif);
+  color: var(--text, #222);
+  font-size: var(--fs, 30px);
+  line-height: 1.15;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.gfx[data-state="out"] { visibility: hidden; }
+
+/* --- placement ---------------------------------------------------------------------- */
+.panel { position: absolute; display: flex; flex-direction: column; }
+.gfx--results .panel,
+.gfx--start-list .panel   { top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px); }
+.gfx--podium .panel       { bottom: var(--podium-bottom, 144px); left: var(--podium-x, 260px); right: var(--podium-x, 260px); }
+.gfx--position-history .panel { top: var(--chart-top, 96px); left: 50%; transform: translateX(-50%); }
+.gfx--standings-lower-third .panel,
+.gfx--runner-lower-third .panel,
+.gfx--start-group .panel,
+.gfx--name-strap .panel,
+.gfx--runner-identity .panel,
+.gfx--runner-start .panel,
+.gfx--free-text .panel,
+.gfx--speaker .panel   { left: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--lower-w, 760px); }
+.gfx--runner-splits .panel,
+.gfx--course-info .panel,
+.gfx--weather .panel      { right: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--side-w, 440px); }
+.gfx--clock .panel        { right: var(--margin-x, 96px); top: var(--margin-y, 96px); flex-direction: row; align-items: stretch; }
+.gfx--event-title .panel  { left: var(--title-x, 320px); right: var(--title-x, 320px); bottom: var(--margin-y, 96px); }
+
+/* --- generic structure -------------------------------------------------------------- */
+.hdr, .ftr { display: flex; align-items: center; gap: 16px; position: relative; }
+.hdr-title, .ftr-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdr-sub { white-space: nowrap; }
+.hdr-logo, .ftr-logo, .clk-logo, .title-logo { display: flex; align-items: center; justify-content: center; }
+.hdr-logo img, .ftr-logo img, .clk-logo img, .title-logo img { max-height: 100%; max-width: 100%; object-fit: contain; }
+.hdr-logo--empty, .ftr-logo--empty, .clk-logo--empty, .title-logo--empty { display: none; }
+.ftr-page { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+.rows { display: flex; flex-direction: column; position: relative; }
+.row { display: flex; align-items: center; position: relative; }
+.row > span { display: flex; align-items: center; align-self: stretch; }
+.c-name { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block !important; align-self: center !important; }
+.c-place, .c-time, .c-start, .c-bib, .c-value, .c-change { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.c-place, .c-bib { justify-content: center; }
+.c-time, .c-value { justify-content: flex-end; }
+.c-label { flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block !important; align-self: center !important; }
+.row > .c-time, .row > .c-value, .row > .c-place, .row > .c-start, .row > .c-bib, .row > .c-change, .row > .c-id { flex: 0 0 auto; }
+.row--empty .c-name { opacity: .7; }
+
+.id { display: inline-flex; align-items: center; gap: 12px; white-space: nowrap; }
+.id-flag { height: 1.05em; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
+.id-logo { height: 1.3em; width: 1.3em; object-fit: contain; display: block; }
+.id-club { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+
+.c-change.up::before { content: "▲"; margin-right: 4px; font-size: .7em; }
+.c-change.down::before { content: "▼"; margin-right: 4px; font-size: .7em; }
+
+/* side panels (weather, course): one value column, as wide as the widest value */
+.panel--info .rows { display: grid; grid-template-columns: auto max-content; }
+/* the panel grows to fit long labels (up to a limit) instead of cutting them off */
+.gfx--course-info .panel, .gfx--weather .panel { width: auto; min-width: var(--side-w, 440px); max-width: 760px; }
+.panel--info .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+.panel--info .row > .c-value { justify-content: flex-end; }
+
+/* position change (optional column) */
+.row > .c-change { flex: 0 0 auto; min-width: 52px; justify-content: center; font-size: .75em; }
+.c-change.up { color: var(--gain, #00794c); } .c-change.down { color: var(--loss, #e30420); }
+
+/* podium time, extended identity (bio) */
+.pod .pod-time { font-size: .8em; }
+.row--bio .c-text { white-space: normal; }
+
+/* --- chart -------------------------------------------------------------------------- */
+.chart { display: block; overflow: visible; }
+.chart .grid { stroke: var(--chart-grid, rgba(0,0,0,.12)); stroke-width: 2; }
+.chart .ax, .chart .ay { font-size: 24px; fill: var(--chart-axis, currentColor); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.chart .ln path { fill: none; stroke-width: 6; stroke-linejoin: round; stroke-linecap: round; }
+.chart .ln circle { stroke: none; }
+.chart .ln-label { font-size: 24px; font-weight: 600; }
+.chart .ln .lead { fill: none; stroke: var(--c); stroke-width: 2; stroke-dasharray: 2 6; opacity: .7; }
+.chart .gap { font-size: 20px; text-anchor: middle; fill: var(--chart-axis, currentColor); opacity: .8; font-variant-numeric: tabular-nums; }
+.chart .ln-0 { --c: var(--line-0, #e30420); } .chart .ln-1 { --c: var(--line-1, #307ea1); }
+.chart .ln-2 { --c: var(--line-2, #00794c); } .chart .ln-3 { --c: var(--line-3, #f9b122); }
+.chart .ln-4 { --c: var(--line-4, #7b3fa0); } .chart .ln-5 { --c: var(--line-5, #e5007d); }
+.chart .ln-6 { --c: var(--line-6, #009ee3); } .chart .ln-7 { --c: var(--line-7, #63b450); }
+.chart .ln path { stroke: var(--c); } .chart .ln circle { fill: var(--c); } .chart .ln-label { fill: var(--c); }
+
+/* --- clock -------------------------------------------------------------------------- */
+.clk-time { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* --- title card --------------------------------------------------------------------- */
+.title-body { display: flex; align-items: stretch; }
+.title-text { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+/* --- motion helpers ----------------------------------------------------------------- */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* Live changes on air: the graphic never re-enters; only a changed value flashes briefly.
+   Row moves and new rows are animated by the graphic itself (transform/opacity only). */
+/* a changed place or time pulses twice, subtly */
+@keyframes value-flash { 0%, 50% { filter: brightness(1.35); } 25%, 100% { filter: none; } }
+.gfx[data-state="on"] .is-changed { animation: value-flash var(--flash-ms, 1000ms) ease-in-out both; }
+.row { will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .gfx *, .gfx *::before, .gfx *::after { animation-duration: 1ms !important; animation-delay: 0s !important; transition: none !important; }
+}
+
+/* podium columns */
+.pod > .c-place { display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.pod .row > span { align-self: center; }
+
+/*
+ * Podium names need substantially more room than table rows. Keep all three
+ * places on equal tracks, stack identity below the name, and let long names
+ * wrap instead of increasing a column's intrinsic width beyond the canvas.
+ * The higher specificity intentionally normalises the three set themes.
+ */
+.panel--podium .podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  min-width: 0;
+  align-items: end;
+}
+.panel--podium .pod {
+  display: grid;
+  grid-template-columns: clamp(52px, 4vw, 76px) minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+  overflow: hidden;
+}
+.panel--podium .pod > .c-place {
+  width: auto;
+  min-width: 0;
+  padding-inline: clamp(10px, 1.1vw, 22px);
+}
+.panel--podium .pod-names,
+.panel--podium .pod .row {
+  min-width: 0;
+  width: 100%;
+}
+.panel--podium .pod .row {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: clamp(12px, 1vw, 20px);
+}
+.panel--podium .pod .row > span {
+  align-self: auto;
+}
+.panel--podium .pod .c-name {
+  width: 100%;
+  padding: 0;
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  font-size: clamp(20px, 1.55vw, 30px);
+  line-height: 1.05;
+}
+.panel--podium .pod--1 .c-name {
+  font-size: clamp(23px, 1.75vw, 34px);
+}
+.panel--podium .pod .c-id,
+.panel--podium .pod .id {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  gap: 8px;
+  font-size: clamp(14px, 1vw, 19px);
+  overflow: hidden;
+}
+.panel--podium .pod .id-club {
+  max-width: 100%;
+}
+
+/* Sponsor branding stays on the title card, leaving race tables unobstructed. */
+.title-sponsors { display: flex; gap: 32px; align-items: center; justify-content: center; padding: 20px 36px; background: #fff; }
+.title-sponsors img { width: 200px; height: 72px; object-fit: contain; }

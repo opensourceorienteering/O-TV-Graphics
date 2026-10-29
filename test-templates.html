@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Template Tester - OL-Grafik</title>
+  <title>Template Tester - Split Control</title>
   <style>
     body {
       margin: 0;
@@ -110,7 +110,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🧪 Template Tester - OL-Grafik</h1>
+    <h1>🧪 Template Tester - Split Control</h1>
     
     <div class="controls">
       <div class="control-group">
@@ -343,13 +343,26 @@
         // Load the module with cache-busting to force fresh loads
         const cacheBuster = Date.now();
         const moduleUrl = `http://localhost:5657/templates/${templateId}/graphic.js?v=${cacheBuster}`;
-        await import(moduleUrl);
-        
-        // Wait for custom element registration
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        // OGraf v1: the module default-exports the Web Component class; the page registers it.
+        // Falls back to legacy templates that self-register under their directory name.
+        const defineGraphic = async (url, id) => {
+          const mod = await import(/* @vite-ignore */ url);
+          if (typeof mod.default === 'function') {
+            window.__ografTags = window.__ografTags || new Map();
+            if (window.__ografTags.has(mod.default)) return window.__ografTags.get(mod.default);
+            window.__ografSeq = (window.__ografSeq || 0) + 1;
+            const tag = `ograf-${id.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${window.__ografSeq}`;
+            customElements.define(tag, mod.default);
+            window.__ografTags.set(mod.default, tag);
+            return tag;
+          }
+          if (customElements.get(id)) return id;
+          throw new Error(`Graphic module must "export default" its Web Component class (OGraf v1): ${url}`);
+        };
+        const tagName = await defineGraphic(moduleUrl, templateId);
+
         // Create element
-        currentElement = document.createElement(templateId);
+        currentElement = document.createElement(tagName);
         document.getElementById('preview').appendChild(currentElement);
         
         // Load data

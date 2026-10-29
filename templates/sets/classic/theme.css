@@ -1,0 +1,149 @@
+/*
+ * Classic OL-Grafik theme: the look of the original templates (results-list-paginated,
+ * split-time lower thirds): #B14340 header with a white logo box, white rows in #301525,
+ * bold place with a red rule, teal #548889 time cells (leader #89B6A5), 8 px corners,
+ * Inter, and the teal radial glow from the bottom-left corner.
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --red: #B14340;
+  --teal: #548889;
+  --mint: #89B6A5;
+  --text: #301525;
+  --font: Inter, sans-serif;
+  --fs: 22px;
+  --margin-x: 60px;
+  --margin-y: 60px;
+  --table-top: 150px;  /* below the corner clock */
+  --table-x: 340px;
+  --lower-w: 640px;
+  --side-w: 420px;
+  --podium-x: 340px;
+  --line-0: #B14340; --line-1: #548889; --line-2: #89B6A5; --line-3: #301525;
+  --line-4: #d08c60; --line-5: #6c4f70; --line-6: #3f7cac; --line-7: #9a9a9a;
+}
+
+/* teal glow behind tables and lower thirds */
+.gfx::before {
+  content: ""; position: absolute; pointer-events: none; opacity: 0; transition: opacity .4s ease;
+  background: radial-gradient(100% 100% at 0% 100%, rgba(84, 136, 137, .8) 0%, rgba(84, 136, 137, 0) 100%);
+}
+.gfx:is(.gfx--results, .gfx--start-list, .gfx--podium, .gfx--position-history)::before { inset: 0; }
+.gfx:is(.gfx--standings-lower-third, .gfx--runner-lower-third, .gfx--start-group, .gfx--name-strap, .gfx--runner-identity, .gfx--runner-start, .gfx--free-text, .gfx--speaker)::before { left: 0; bottom: 0; width: 50%; height: 50%; }
+.gfx:is([data-state="in"], [data-state="on"], [data-state="step"], [data-state="step-out"])::before { opacity: 1; }
+
+.panel { border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, .1); }
+.panel--clock { overflow: visible; }
+
+/* header: logo box left, title right-aligned */
+.hdr-mark, .ftr-mark { display: none; }
+.hdr {
+  background: var(--red); color: #fff; font-weight: 600; font-size: 24px;
+  height: 60px; padding: 0 20px 0 0; gap: 12px; justify-content: flex-end; border-bottom: 2px solid var(--red);
+}
+.hdr-logo { order: -1; margin-right: auto; background: #fff; min-width: 75px; height: 100%; padding: 0 20px; }
+.hdr-logo img { width: 35px; height: 35px; }
+.hdr-logo--empty { display: none; }
+.hdr-title::after { content: " –"; }
+.hdr:not(:has(.hdr-sub)) .hdr-title::after { content: none; }
+.ftr { display: none; }
+.panel--table .ftr:has(.ftr-page) { display: flex; background: #fff; color: var(--text); justify-content: flex-end; padding: 6px 16px; font-size: 16px; }
+.panel--table .ftr .ftr-label, .panel--table .ftr .ftr-logo { display: none; }
+
+/* rows */
+.row { background: #fff; color: var(--text); font-size: 18px; white-space: nowrap; min-height: 52px; }
+.c-place { font-weight: 700; min-width: 60px; padding: 0 20px; border-right: 2px solid var(--red); }
+.c-name { font-weight: 700; padding: 10px 16px; }
+.id-club { font-size: 16px; font-weight: 400; max-width: 260px; }
+.c-id { padding-right: 16px; }
+.c-time, .c-start { width: 8rem; font-weight: 700; justify-content: flex-end; background: var(--teal); color: #fff; padding: 0 10px; }
+.c-start { justify-content: center; }
+.c-bib { min-width: 56px; font-weight: 700; color: var(--red); }
+.row--leader { border-bottom: 2px solid var(--mint); }
+.row--leader .c-time { background: var(--mint); }
+.row--hl { background: #f6efe9; }
+.row--status .c-time { background: #9a9a9a; }
+
+/* lower thirds use the same header (class – control) */
+.gfx .panel--strap { width: auto; min-width: 560px; max-width: 1200px; }
+.panel--strap .c-name { flex: 0 1 auto; margin-right: auto; }
+.panel--strap .row { font-size: 24px; min-height: 64px; }
+.panel--strap .c-place { border-right: 2px solid var(--red); }
+.panel--strap .ftr { display: flex; background: var(--red); color: #fff; padding: 8px 16px; font-size: 18px; font-weight: 600; }
+.panel--strap .ftr-logo { display: none; }
+.hdr-clock { background: var(--teal); align-self: stretch; display: flex; align-items: center; padding: 0 14px; font-variant-numeric: tabular-nums; }
+.panel--runner .row--ref { font-size: 16px; min-height: 40px; background: #f3f3f3; }
+.panel--runner .row--ref .c-time { background: var(--mint); }
+.panel--runner .is-running .c-time { background: var(--red); }
+
+/* info panels */
+.panel--side .c-label { padding: 0 16px; font-weight: 600; }
+.panel--side .c-value { background: var(--teal); color: #fff; padding: 0 14px; min-width: 40%; font-weight: 700; }
+.panel--splits .c-place { min-width: 48px; padding: 0 10px; }
+.panel--splits .c-change { width: 48px; font-size: 14px; justify-content: center; }
+.c-change.up { color: #2f8f5b; } .c-change.down { color: var(--red); }
+.panel--splits .c-time.is-best { background: var(--mint); }
+
+/* podium */
+.podium { display: flex; align-items: flex-end; background: #fff; }
+.pod { flex: 1 1 33%; display: flex; }
+.pod .c-place { font-size: 24px; }
+.pod-names { flex: 1; display: flex; flex-direction: column; }
+.pod--1 .row { min-height: 76px; font-size: 22px; }
+.pod--1 .c-place { background: var(--red); color: #fff; }
+
+/* clock */
+.panel--clock { box-shadow: none; }
+.clk-label { background: var(--red); color: #fff; font-weight: 600; font-size: 20px; padding: 0 16px; display: flex; align-items: center; border-radius: 8px 0 0 8px; }
+.clk-time { background: var(--teal); color: #fff; font-weight: 700; font-size: 34px; padding: 12px 20px; border-radius: 0 8px 8px 0; min-width: 150px; text-align: center; }
+.panel--clock:not(:has(.clk-label)) .clk-time { border-radius: 8px; }
+.clk-logo { display: none; }
+
+/* event title */
+.panel--title .hdr { justify-content: flex-start; padding-left: 20px; }
+.panel--title .hdr-title::after { content: none; }
+.title-body { background: #fff; color: var(--text); }
+.title-logo { background: #fff; padding: 16px 24px; border-right: 2px solid var(--red); width: 140px; }
+.title-text { padding: 18px 24px; }
+.title-main { font-size: 40px; font-weight: 700; }
+.title-sub { font-size: 20px; margin-top: 6px; color: var(--teal); font-weight: 600; }
+
+/* chart */
+.chart-body { background: #fff; padding: 20px 28px; }
+.chart .ax, .chart .ay { fill: var(--text); font-weight: 600; }
+
+/* --- motion: one predictable rhythm across every Classic graphic ---------------------- */
+.gfx {
+  --cl-ease: cubic-bezier(.2, 0, 0, 1);       /* entries decelerate into place */
+  --cl-ease-out: cubic-bezier(.4, 0, 1, 1);   /* exits accelerate away */
+  --cl-enter: 360ms;
+  --cl-exit: 280ms;
+  --cl-stagger: 40ms;
+}
+@keyframes cl-hdr { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+@keyframes cl-row { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+@keyframes cl-row-r { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+.gfx[data-state="in"] .panel { animation: fade-in 180ms var(--cl-ease) both; }
+.gfx[data-state="in"] .hdr { animation: cl-hdr 420ms var(--cl-ease) both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: cl-row var(--cl-enter) var(--cl-ease) calc(120ms + min(var(--i, 0), 10) * var(--cl-stagger)) both; }
+.gfx[data-state="in"] :is(.panel--lower, .panel--side) .row { animation-name: cl-row-r; }
+.gfx[data-state="in"] :is(.title-body, .chart-body) { animation: fade-in var(--cl-enter) var(--cl-ease) 120ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 300ms var(--cl-ease) calc(240ms + var(--i, 0) * var(--cl-stagger)) both; }
+.gfx[data-state="leave"] .panel { animation: fade-out var(--cl-exit) var(--cl-ease-out) both; }
+.gfx[data-state="step-out"] .row { animation: fade-out 180ms var(--cl-ease-out) both; }
+.gfx[data-state="step"] .row { animation: cl-row 300ms var(--cl-ease) calc(min(var(--i, 0), 10) * 20ms) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gfx[data-state="in"] :is(.panel, .hdr, .row, .pod, .title-body, .chart-body, .chart .ln),
+  .gfx[data-state="step"] .row {
+    animation: fade-in 150ms linear both !important;
+  }
+  .gfx[data-state="leave"] .panel,
+  .gfx[data-state="step-out"] .row {
+    animation: fade-out 150ms linear both !important;
+  }
+  .gfx::before { transition-duration: 150ms !important; }
+}
+
+.ftr-sep { margin: 0 .3em; }

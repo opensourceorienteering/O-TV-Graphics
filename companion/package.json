@@ -1,0 +1,22 @@
+{
+  "name": "companion-module-olgrafik-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/main.js",
+  "license": "MIT",
+  "scripts": {
+    "package": "companion-module-build",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@companion-module/base": "~2.0.0",
+    "socket.io-client": "^4.8.4"
+  },
+  "devDependencies": {
+    "@companion-module/tools": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "cz-results",
+  "version": "1.0.0",
+  "name": "ČO – Results",
+  "description": "Results or standings at the finish or a radio control, paged (each play shows the next page).",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": -1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Header text (default: class name)"
+      },
+      "rowsPerPage": {
+        "type": "number",
+        "title": "Rows per page",
+        "description": "Runners per page",
+        "default": 10
+      },
+      "positionChange": {
+        "type": "boolean",
+        "title": "Position change",
+        "description": "Show places gained ▲ or lost ▼ since the previous split",
+        "default": false
+      }
+    }
+  },
+  "customActions": [
+    {
+      "id": "next-page",
+      "name": "Next page",
+      "description": "Show the next page",
+      "schema": null
+    },
+    {
+      "id": "previous-page",
+      "name": "Previous page",
+      "description": "Show the previous page",
+      "schema": null
+    },
+    {
+      "id": "first-page",
+      "name": "First page",
+      "description": "Back to page 1",
+      "schema": null
+    }
+  ],
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "cz",
+  "v_olgrafik_kind": "results",
+  "v_olgrafik_zone": "main"
+}

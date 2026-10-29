@@ -14,7 +14,8 @@ import { logger } from '../utils/logger';
 const OGRAF_MANIFEST_SCHEMA = {
   $schema: 'http://json-schema.org/draft-07/schema#',
   type: 'object',
-  required: ['$schema', 'id', 'version', 'name', 'main', 'schema', 'supportsRealTime'],
+  // Matches the official v1 schema (https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json)
+  required: ['$schema', 'id', 'name', 'main', 'supportsRealTime', 'supportsNonRealTime'],
   properties: {
     $schema: {
       type: 'string',
@@ -28,8 +29,7 @@ const OGRAF_MANIFEST_SCHEMA = {
     },
     version: {
       type: 'string',
-      pattern: '^\\d+\\.\\d+\\.\\d+$',
-      description: 'Semantic version (e.g., 1.0.0)'
+      description: 'Graphic version; any alphabetically sortable string (e.g. "1.0.0", "2", "2024-07-01_final")'
     },
     name: {
       type: 'string',
@@ -73,9 +73,39 @@ const OGRAF_MANIFEST_SCHEMA = {
       description: 'Supports non-real-time rendering'
     },
     stepCount: {
-      type: 'integer',
-      minimum: 0,
-      description: 'Number of steps (0=auto, 1=single, >1=multi-step)'
+      type: 'number',
+      minimum: -1,
+      description: 'Number of steps (default 1; -1 = dynamic/unknown number of steps)'
+    },
+    thumbnails: {
+      type: 'array',
+      description: 'Thumbnail images (PNG, JPG, GIF, webp) relative to the manifest (added 2026-04)',
+      items: {
+        type: 'object',
+        required: ['file'],
+        properties: {
+          file: { type: 'string', minLength: 1 },
+          resolution: {
+            type: 'object',
+            properties: {
+              width: { type: 'integer', minimum: 1 },
+              height: { type: 'integer', minimum: 1 }
+            }
+          }
+        }
+      }
+    },
+    actionDurations: {
+      type: 'array',
+      description: 'Static animation durations per action in ms, -1 = dynamic (added 2026-06)',
+      items: {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: { type: 'string' },
+          duration: { type: 'integer', minimum: -1 }
+        }
+      }
     },
     customActions: {
       type: 'array',
@@ -86,7 +116,8 @@ const OGRAF_MANIFEST_SCHEMA = {
           id: { type: 'string', minLength: 1 },
           name: { type: 'string', minLength: 1 },
           description: { type: 'string' },
-          schema: { type: 'object' }
+          // null when the action takes no parameters (lib/action.json)
+          schema: { type: ['object', 'null'] }
         }
       }
     },
@@ -132,6 +163,17 @@ const OGRAF_MANIFEST_SCHEMA = {
             required: ['exact'],
             properties: {
               exact: { type: 'boolean' }
+            }
+          },
+          engine: {
+            type: 'array',
+            description: 'Minimum rendering engine versions, e.g. { type: "CEF", version: { min: 139 } } (added 2026-04)',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string' },
+                version: { type: 'object' }
+              }
             }
           }
         }

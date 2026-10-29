@@ -1,3 +1,4 @@
+import { t as tr } from "../i18n";
 /**
  * Toast Container Component
  * Displays toast notifications in the UI
@@ -34,7 +35,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
       <button
         className="toast-close"
         onClick={() => onClose(toast.id)}
-        aria-label="Close notification"
+        aria-label={tr("Close notification")}
       >
         ×
       </button>

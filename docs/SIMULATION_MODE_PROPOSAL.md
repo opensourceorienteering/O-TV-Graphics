@@ -8,7 +8,7 @@
 
 ## Overview
 
-Training/Simulation Mode allows operators to practice using OL-Grafik without connecting to live competitions. This feature enables:
+Training/Simulation Mode allows operators to practice using Split Control without connecting to live competitions. This feature enables:
 - Testing graphics templates and workflows
 - Training new operators
 - Demonstrating the software without requiring a live event
@@ -26,7 +26,7 @@ Implement simulation as a new `IDataSource` implementation that integrates seaml
 - Zero changes needed to DataStore, PlaybackEngine, or renderers
 - Reuses existing event/WebSocket infrastructure
 - Works with all existing templates automatically
-- Follows OL-Grafik's pluggable data source pattern
+- Follows Split Control's pluggable data source pattern
 - Can switch between live and simulation by changing data source
 
 **Data Flow:**
@@ -496,13 +496,13 @@ class SnapshotCreator {
 5. **Multi-Class Simulation:** Simulate multiple classes simultaneously
 6. **Realistic Variations:** Add randomness to simulate real-world variations
 7. **Snapshot Library:** Built-in library of training scenarios
-8. **Cloud Sharing:** Share snapshots with other OL-Grafik users
+8. **Cloud Sharing:** Share snapshots with other Split Control users
 
 ---
 
 ## Notes
 
-- Follow OL-Grafik standards: logger usage, error handling, IPC response format
+- Follow Split Control standards: logger usage, error handling, IPC response format
 - Don't break existing data source functionality
 - Make it clear when system is in simulation mode to prevent confusion
 - Consider performance - simulation shouldn't impact ability to switch to live mode quickly

@@ -1,6 +1,6 @@
 {
   "appId": "com.olgrafik.app",
-  "productName": "OL-Grafik",
+  "productName": "Split Control",
   "beforePack": "scripts/rebuild-native.js",
   "directories": {
     "output": "release/${version}"
@@ -9,36 +9,42 @@
     "dist",
     "dist-electron",
     "templates",
-    "node_modules/grandiose/**/*",
-    "!node_modules/grandiose/build/Release/.deps",
-    "!node_modules/grandiose/build/Release/obj.target",
-    "!node_modules/grandiose/**/*.{md,txt,yml,yaml}",
-    "!node_modules/grandiose/examples/**/*",
-    "!node_modules/grandiose/scratch/**/*"
+    "club-logos/**/*",
+    "node_modules/@stagetimerio/grandiose/package.json",
+    "node_modules/@stagetimerio/grandiose/dist/**/*",
+    "companion/*.tgz"
   ],
   "asarUnpack": [
-    "node_modules/grandiose/**/*"
+    "node_modules/@stagetimerio/grandiose/dist/**/*"
   ],
   "npmRebuild": false,
   "buildDependenciesFromSource": false,
   "nodeGypRebuild": false,
   "mac": {
-    "target": ["dmg", "zip"],
+    "target": [
+      "dmg",
+      "zip"
+    ],
     "category": "public.app-category.graphics-design",
-    "icon": "build/icon.icns"
+    "icon": "resources/icon.icns"
   },
   "win": {
-    "target": ["nsis", "portable"],
-    "icon": "build/icon.ico"
+    "target": [
+      "nsis",
+      "portable"
+    ],
+    "icon": "resources/icon-win.png"
   },
   "linux": {
-    "target": ["AppImage", "deb"],
+    "target": [
+      "AppImage",
+      "deb"
+    ],
     "category": "Graphics",
-    "icon": "build/icon.png"
+    "icon": "resources/icon-win.png"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true
   }
 }
-

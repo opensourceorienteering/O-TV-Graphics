@@ -1,0 +1,45 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "classic-position-history",
+  "version": "1.0.0",
+  "name": "Classic – Position history",
+  "description": "Chart of the top runners' places at each radio control and the finish.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "runners": {
+        "type": "number",
+        "title": "Runners",
+        "description": "How many runners to draw (top at the finish)",
+        "default": 8
+      },
+      "runnerNames": {
+        "type": "string",
+        "title": "Runners to draw",
+        "description": "Optional: names separated by commas, instead of the top runners"
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "classic",
+  "v_olgrafik_kind": "position-history",
+  "v_olgrafik_zone": "main"
+}

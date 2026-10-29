@@ -7,6 +7,9 @@ import { getLogger } from '../utils/logger';
 import { getProjectManager, CreateProjectOptions } from '../projects/ProjectManager';
 import { getRundownManager, CreateRundownOptions, CreateRundownItemOptions } from '../projects/RundownManager';
 import { SPXProject, SPXRundown, SPXRundownItem } from '../../shared/types/spx';
+import { getPlaybackEngine } from '../playback/PlaybackEngine';
+import { getTemplateManager } from '../templates/OGrafManager';
+import { assertTemplateInProjectSet, templateGraphicKind } from '../templates/templateSets';
 
 const logger = getLogger();
 
@@ -207,8 +210,17 @@ export function registerProjectHandlers(): void {
   ipcMain.handle('rundown:addItem', async (_event, projectId: string, rundownId: string, options: CreateRundownItemOptions, index?: number): Promise<IPCResponse<SPXRundownItem>> => {
     try {
       logger.debug('IPC: rundown:addItem', { projectId, rundownId, templateId: options.templateId, index });
+      // Graphics from another template set cannot be mixed into this project
+      const project = await getProjectManager().loadProject(projectId);
+      const template = getTemplateManager().getTemplateById(options.templateId);
+      if (!template) throw new Error(`Graphic not found: ${options.templateId}`);
+      assertTemplateInProjectSet(project, template);
       const rundownManager = getRundownManager();
-      const item = await rundownManager.addItem(projectId, rundownId, options, index);
+      const item = await rundownManager.addItem(projectId, rundownId, {
+        ...options,
+        graphicKind: templateGraphicKind(template),
+        templatePath: template.directoryName
+      }, index);
       logger.info('IPC: rundown:addItem success', { rundownId, projectId, itemId: item.id });
       return { success: true, data: item };
     } catch (error) {
@@ -226,6 +238,19 @@ export function registerProjectHandlers(): void {
       const rundownManager = getRundownManager();
       const item = await rundownManager.updateItem(projectId, rundownId, itemId, updates);
       logger.info('IPC: rundown:updateItem success', { rundownId, projectId, itemId });
+
+      // Edited while on air: push the new settings to the graphic and re-sync live polling
+      // (e.g. another runner, class or control). Failures here must not fail the save.
+      if ('fields' in updates || 'liveResultsData' in updates || 'autoPageDurationSeconds' in updates) {
+        try {
+          await getPlaybackEngine().refreshItem(projectId, rundownId, itemId);
+        } catch (refreshError) {
+          logger.warn('IPC: rundown:updateItem saved, but refreshing the on-air graphic failed', {
+            itemId,
+            error: refreshError instanceof Error ? refreshError.message : String(refreshError)
+          });
+        }
+      }
       return { success: true, data: item };
     } catch (error) {
       logger.error('IPC: rundown:updateItem failed', { error, projectId, rundownId, itemId });

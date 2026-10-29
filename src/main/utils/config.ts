@@ -4,10 +4,12 @@
  */
 
 import fs from 'fs';
+import type { EventorLogoSettings } from '../data/ClubLogoService';
 import path from 'path';
 import { app } from 'electron';
 import { getLogger } from './logger';
 import { DataSourceConfig } from '../../shared/types/dataSource';
+import { BUILT_IN_DATA_SOURCES, mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 
 /**
  * Get the appropriate user data directory based on environment
@@ -25,6 +27,7 @@ function getUserDataDirectory(): string {
     // - macOS: ~/Library/Application Support/OL-Grafik
     // - Windows: %APPDATA%\OL-Grafik
     // - Linux: ~/.config/OL-Grafik
+    // (kept after the rename to Split Control; see appIdentity.ts)
     return app.getPath('userData');
   } else {
     // Development: Use project directory for easier debugging
@@ -65,12 +68,16 @@ export interface AppConfig {
   liveresults: {
     baseUrl: string;
     cacheInterval: number;
+    /** 'auto' picks the REST API when baseUrl is https://api.orienteering.services */
+    api?: 'legacy' | 'rest' | 'auto';
     timeout: number;
   };
   /**
    * Data sources configuration (new pluggable architecture)
    */
   dataSources?: DataSourceConfig[];
+  /** Eventor access for club logos (downloaded on request, never polled) */
+  eventor?: EventorLogoSettings;
   output: {
     ndi: {
       enabled: boolean;
@@ -95,7 +102,7 @@ function getDefaultConfig(): AppConfig {
 
   return {
     general: {
-      hostname: 'OL-Grafik',
+      hostname: 'Split Control',
       port: 5657,
       wsPort: 5656,
       dataroot: path.join(userDataDir, 'DATAROOT'),
@@ -110,23 +117,14 @@ function getDefaultConfig(): AppConfig {
       cacheInterval: 15000,
       timeout: 10000
     },
-    dataSources: [
-      {
-        id: 'liveresults-default',
-        type: 'liveresults',
-        name: 'LiveResults (Default)',
-        enabled: true,
-        config: {
-          baseUrl: 'https://liveresultat.orientering.se',
-          cacheInterval: 15000,
-          timeout: 10000
-        }
-      }
-    ],
+    dataSources: BUILT_IN_DATA_SOURCES.map((source) => ({
+      ...source,
+      config: { ...source.config },
+    })),
     output: {
       ndi: {
         enabled: false,
-        name: 'OL-Grafik NDI Output',
+        name: 'Split Control NDI Output',
         fps: 50,
         colorFormat: 'BGRA'
       },
@@ -204,7 +202,10 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
   const merged = {
     general: { ...defaults.general, ...loaded.general },
     liveresults: { ...defaults.liveresults, ...loaded.liveresults },
-    dataSources: loaded.dataSources || defaults.dataSources || [],
+    dataSources: mergeBuiltInDataSources(
+      loaded.dataSources || defaults.dataSources || [],
+    ),
+    ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }

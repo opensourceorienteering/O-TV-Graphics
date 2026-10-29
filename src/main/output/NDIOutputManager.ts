@@ -36,7 +36,8 @@ class NDIOutputManager {
       fps: 30,
       colorFormat: 'BGRA',
       groups: [],
-      clockVideo: true,
+      // Frames are paced by the renderer's paints; NDI clocking would block each send and drop frames
+      clockVideo: false,
       clockAudio: false
     };
   }
@@ -343,12 +344,6 @@ class NDIOutputManager {
         fourCC = 1498831189; // UYVY
       }
 
-      // Generate PTP timestamp [seconds, nanoseconds]
-      // Convert milliseconds to seconds and nanoseconds
-      const seconds = Math.floor(now / 1000);
-      const nanoseconds = (now % 1000) * 1000000; // Convert remaining ms to ns
-      const ptpTimestamp: [number, number] = [seconds, nanoseconds];
-
       const videoFrame = {
         xres: width,
         yres: height,
@@ -357,8 +352,7 @@ class NDIOutputManager {
         fourCC: fourCC,
         pictureAspectRatio: width / height,
         frameFormatType: this.grandiose.FORMAT_TYPE_PROGRESSIVE,
-        timestamp: ptpTimestamp,
-        timecode: ptpTimestamp, // Use same timestamp for timecode
+        // timecode omitted: NDI 6 synthesizes it (the binding takes number | bigint)
         data: frameData,
         lineStrideBytes: width * (format === 'UYVY' ? 2 : 4) // UYVY = 2 bytes/pixel, RGBA/BGRA = 4 bytes/pixel
       };

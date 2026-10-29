@@ -55,8 +55,27 @@ export class WebSocketServer {
     });
 
     this.setupHandlers();
+    // Dedicated feedback namespace: no graphic acknowledgements or program-room membership.
+    this.io.of('/control').on('connection', socket => {
+      let pending = false, previous = '';
+      const publish = async () => {
+        if (pending || !socket.connected) return;
+        pending = true;
+        try {
+          const { controlState } = await import('../events/LiveControl');
+          const state = await controlState();
+          const serialized = JSON.stringify(state);
+          if (serialized !== previous && socket.connected) { socket.emit('state', state); previous = serialized; }
+        } catch (error) { logger.debug('Control feedback not ready', { error: String(error) }); }
+        finally { pending = false; }
+      };
+      void publish();
+      const timer = setInterval(publish, 500);
+      socket.on('disconnect', () => clearInterval(timer));
+    });
 
     // Set singleton instance
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- module singleton
     wsServerInstance = this;
   }
 
@@ -133,7 +152,7 @@ export class WebSocketServer {
     logger.verbose('Message from client', { cmd: data.spxcmd, data });
 
     switch (data.spxcmd) {
-      case 'identifyClient':
+      case 'identifyClient': {
         const client = this.clients.get(socket.id);
         if (client) {
           client.name = data.name;
@@ -192,12 +211,14 @@ export class WebSocketServer {
           }
         }
         break;
+      }
 
-      case 'saveToLog':
+      case 'saveToLog': {
         const level = (data.level || 'info') as 'error' | 'warn' | 'info' | 'verbose' | 'debug';
         const ref = data.fileref || 'unknown';
         logger[level](`TemplateLog [${ref}] --> ${data.message}`);
         break;
+      }
 
       case 'graphics:response':
         // Graphics renderer response to a command
@@ -312,7 +333,7 @@ export class WebSocketServer {
             port: this.port,
             error: error.message
           });
-          reject(new Error(`Port ${this.port} is already in use. Please close any other instances of OL-Grafik or change the wsPort in config.json`));
+          reject(new Error(`Port ${this.port} is already in use. Please close any other instances of Split Control or change the wsPort in config.json`));
         } else {
           logger.error('Failed to start WebSocket server', { error });
           reject(error);

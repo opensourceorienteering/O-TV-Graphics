@@ -1,0 +1,32 @@
+{
+  "$schema": "../node_modules/@companion-module/base/assets/manifest.schema.json",
+  "type": "connection",
+  "id": "olgrafik-control",
+  "name": "Split Control",
+  "shortname": "Split Control",
+  "description": "Event graphics, runner graphics and live tally for Split Control",
+  "version": "0.1.0",
+  "license": "MIT",
+  "maintainers": [
+    {
+      "name": "Split Control"
+    }
+  ],
+  "runtime": {
+    "type": "node22",
+    "api": "nodejs-ipc",
+    "apiVersion": "2.0.0",
+    "entrypoint": "../src/main.js"
+  },
+  "manufacturer": "Split Control",
+  "products": [
+    "Split Control"
+  ],
+  "keywords": [
+    "orienteering",
+    "graphics"
+  ],
+  "repository": "git+https://bitbucket.org/hollowell/ol-grafik.git",
+  "bugs": "https://bitbucket.org/hollowell/ol-grafik/issues",
+  "legacyIds": []
+}

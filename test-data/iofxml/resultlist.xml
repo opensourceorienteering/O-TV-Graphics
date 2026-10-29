@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ResultList xmlns="http://www.orienteering.org/datastandard/3.0" iofVersion="3.0" createTime="2026-10-25T11:30:00+01:00" creator="Test" status="Snapshot">
+  <Event>
+    <Name>Höstkavlen 2026</Name>
+    <StartTime><Date>2026-10-25</Date><Time>10:00:00+01:00</Time></StartTime>
+    <Organiser><Name>OK Exempel</Name></Organiser>
+  </Event>
+  <ClassResult>
+    <Class><Name>H21</Name></Class>
+    <PersonResult>
+      <Person><Name><Family>Andersson</Family><Given>Anna</Given></Name></Person>
+      <Organisation><Name>OK Exempel</Name><ShortName>OKE</ShortName></Organisation>
+      <Result>
+        <BibNumber>101</BibNumber>
+        <StartTime>2026-10-25T10:00:00+01:00</StartTime>
+        <Time>2400</Time><Status>OK</Status>
+        <SplitTime><ControlCode>31</ControlCode><Time>300</Time></SplitTime>
+        <SplitTime><ControlCode>45</ControlCode><Time>900.5</Time></SplitTime>
+        <SplitTime><ControlCode>31</ControlCode><Time>1500</Time></SplitTime>
+        <SplitTime><ControlCode>100</ControlCode><Time>2300</Time></SplitTime>
+      </Result>
+    </PersonResult>
+    <PersonResult>
+      <Person><Name><Family>Bok</Family><Given>Bertil</Given></Name></Person>
+      <Organisation><Name>IK Granen</Name></Organisation>
+      <Result>
+        <StartTime>2026-10-25T10:02:00+01:00</StartTime>
+        <Time>2350</Time><Status>OK</Status>
+        <SplitTime><ControlCode>31</ControlCode><Time>310</Time></SplitTime>
+        <SplitTime status="Missing"><ControlCode>45</ControlCode></SplitTime>
+        <SplitTime><ControlCode>31</ControlCode><Time>1450</Time></SplitTime>
+        <SplitTime><ControlCode>100</ControlCode><Time>2250</Time></SplitTime>
+      </Result>
+    </PersonResult>
+    <PersonResult>
+      <Person><Name><Family>Cykel</Family><Given>Cesar</Given></Name></Person>
+      <Organisation><Name>IK Granen</Name></Organisation>
+      <Result><StartTime>2026-10-25T10:04:00+01:00</StartTime><Status>MissingPunch</Status><Time>2100</Time></Result>
+    </PersonResult>
+    <PersonResult>
+      <Person><Name><Family>Dahl</Family><Given>Doris</Given></Name></Person>
+      <Organisation><Name>OK Exempel</Name></Organisation>
+      <Result><StartTime>2026-10-25T10:06:00+01:00</StartTime><Status>Active</Status>
+        <SplitTime><ControlCode>31</ControlCode><Time>295</Time></SplitTime>
+      </Result>
+    </PersonResult>
+    <PersonResult>
+      <Person><Name><Family>Ek</Family><Given>Erik</Given></Name></Person>
+      <Result><Status>DidNotStart</Status></Result>
+    </PersonResult>
+    <PersonResult>
+      <Person><Name><Family>Fors</Family><Given>Fia</Given></Name></Person>
+      <Result><Status>DidNotEnter</Status></Result>
+    </PersonResult>
+  </ClassResult>
+  <ClassResult>
+    <Class><Name>Kavle</Name></Class>
+    <TeamResult>
+      <Name>OK Exempel 1</Name><BibNumber>1</BibNumber>
+      <TeamMemberResult>
+        <Person><Name><Family>Gran</Family><Given>Gustav</Given></Name></Person>
+        <Result><Leg>1</Leg><StartTime>2026-10-25T11:00:00+01:00</StartTime><Time>1800</Time><Status>OK</Status>
+          <OverallResult><Time>1800</Time><Status>OK</Status></OverallResult>
+          <SplitTime><ControlCode>50</ControlCode><Time>600</Time></SplitTime>
+        </Result>
+      </TeamMemberResult>
+      <TeamMemberResult>
+        <Person><Name><Family>Holm</Family><Given>Hanna</Given></Name></Person>
+        <Result><Leg>2</Leg><StartTime>2026-10-25T11:30:00+01:00</StartTime><Time>1900</Time><Status>OK</Status>
+          <OverallResult><Time>3700</Time><Status>OK</Status></OverallResult>
+          <SplitTime><ControlCode>50</ControlCode><Time>650</Time></SplitTime>
+        </Result>
+      </TeamMemberResult>
+    </TeamResult>
+    <TeamResult>
+      <Name>IK Granen 1</Name><BibNumber>2</BibNumber>
+      <TeamMemberResult>
+        <Person><Name><Family>Is</Family><Given>Ivar</Given></Name></Person>
+        <Result><Leg>1</Leg><StartTime>2026-10-25T11:00:00+01:00</StartTime><Time>1750</Time><Status>OK</Status>
+          <SplitTime><ControlCode>50</ControlCode><Time>580</Time></SplitTime>
+        </Result>
+      </TeamMemberResult>
+      <TeamMemberResult>
+        <Person><Name><Family>Jul</Family><Given>Julia</Given></Name></Person>
+        <Result><Leg>2</Leg><StartTime>2026-10-25T11:29:10+01:00</StartTime><Status>Active</Status>
+          <SplitTime><ControlCode>50</ControlCode><Time>700</Time></SplitTime>
+        </Result>
+      </TeamMemberResult>
+    </TeamResult>
+  </ClassResult>
+</ResultList>

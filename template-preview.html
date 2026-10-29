@@ -15,6 +15,7 @@
         width: 100%;
         height: 100%;
         overflow: hidden;
+        background: transparent;
       }
 
       body {
@@ -159,21 +160,24 @@
 
           console.log('[TemplatePreview] Importing module', moduleUrl, 'cacheBuster:', cacheBuster);
 
-          // Dynamically import the module
-          await import(/* @vite-ignore */ moduleUrl);
+          // OGraf v1: the module default-exports the Web Component class; the page registers it.
+          // Falls back to legacy templates that self-register under their directory name.
+          const defineGraphic = async (url, id) => {
+            const mod = await import(/* @vite-ignore */ url);
+            if (typeof mod.default === 'function') {
+              window.__ografTags = window.__ografTags || new Map();
+              if (window.__ografTags.has(mod.default)) return window.__ografTags.get(mod.default);
+              window.__ografSeq = (window.__ografSeq || 0) + 1;
+              const tag = `ograf-${id.toLowerCase().replace(/[^a-z0-9-]/g, '-')}-${window.__ografSeq}`;
+              customElements.define(tag, mod.default);
+              window.__ografTags.set(mod.default, tag);
+              return tag;
+            }
+            if (customElements.get(id)) return id;
+            throw new Error(`Graphic module must "export default" its Web Component class (OGraf v1): ${url}`);
+          };
 
-          // Wait for custom element registration
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Create the custom element
-          // Use templateId as tag name (matches the directory name and custom element registration)
-          const tagName = templateId;
-
-          // Check if custom element is defined
-          if (!customElements.get(tagName)) {
-            throw new Error(`Custom element "${tagName}" not registered. The graphic.js file should call customElements.define('${tagName}', YourClassName)`);
-          }
-
+          const tagName = await defineGraphic(moduleUrl, templateId);
           const element = document.createElement(tagName);
 
           // Verify the element implements the OGRAF interface
@@ -339,7 +343,7 @@
 
           // Extract template ID from URL path or params
           const pathParts = window.location.pathname.split('/');
-          const templateId = params.templateId || pathParts[pathParts.length - 1] || null;
+          const templateId = params.templateId ? String(params.templateId) : (pathParts[pathParts.length - 1] || null);
 
           if (!templateId) {
             showError('No template ID specified. Use ?templateId=your-template-id');
@@ -355,7 +359,9 @@
 
           // Try .ograf.json first (new spec requirement), then fall back to manifest.json
           let manifest = null;
-          let manifestUrl = `${templateServerOrigin}/templates/${templateId}/${templateId}.ograf.json`;
+          // Graphics in template sets live at sets/<set>/<id>/<id>.ograf.json
+          const manifestBase = String(templateId).split('/').pop();
+          let manifestUrl = `${templateServerOrigin}/templates/${templateId}/${manifestBase}.ograf.json`;
           console.log('[TemplatePreview] Fetching manifest', manifestUrl);
 
           let manifestResponse = await fetch(manifestUrl);

@@ -10,8 +10,27 @@ import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
 import { WebSocketServer, SocketRoom } from '../data/WebSocketServer';
 import { getDataStore } from '../data/DataStore';
 import type { OGrafResultsData } from '../data/LiveResultsTransformer';
+import { getProjectManager } from '../projects/ProjectManager';
+import { applyStartList } from '../events/EventService';
+import { assertTemplateInProjectSet } from '../templates/templateSets';
+import { zonesClash, type GraphicZone } from '../../shared/types/ograf';
+import type { ProjectPresentation, SPXRundown } from '../../shared/types/spx';
 
 const logger = getLogger();
+
+/**
+ * Renderers reply { success, result: ReturnPayload }, so the step is result.result.currentStep.
+ * (Reading result.currentStep always gave 1, which broke multi-step resync and undo.)
+ */
+function stepFromPlayResult(playResult: any): number {
+  const step = playResult?.result?.currentStep ?? playResult?.currentStep;
+  return Number.isFinite(step) && step > 0 ? step : 1;
+}
+
+function totalStepsFromPlayResult(playResult: any): number | undefined {
+  const steps = playResult?.result?.totalSteps ?? playResult?.totalSteps;
+  return Number.isFinite(steps) && steps > 0 ? steps : undefined;
+}
 
 /**
  * Playback Engine class
@@ -20,6 +39,7 @@ export class PlaybackEngine {
   private wsServer: WebSocketServer | null = null;
   private activeGraphics: Map<string, ActiveGraphic> = new Map();
   private removalTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private autoPageTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private pendingResponses: Map<string, {
     resolve: (value: any) => void;
     reject: (error: Error) => void;
@@ -31,9 +51,60 @@ export class PlaybackEngine {
   private timedOutCommands: Set<string> = new Set();
   // Track in-progress play operations to prevent race conditions
   private playInProgress: Set<string> = new Set();
+  // Live-results polls currently running, keyed by `${sourceId}|${competitionId}|${className}`
+  private livePolls: Map<string, { competitionId: number; className: string; client: any }> = new Map();
+  // Coalescing of live updates per competition/class: one run at a time, at most one queued
+  private liveUpdateRunning: Set<string> = new Set();
+  private liveUpdatePending: Set<string> = new Set();
 
   constructor() {
     logger.info('Playback engine initialized');
+  }
+
+  private cancelAutoPage(graphicId: string): void {
+    const timeout = this.autoPageTimeouts.get(graphicId);
+    if (timeout) clearTimeout(timeout);
+    this.autoPageTimeouts.delete(graphicId);
+  }
+
+  private scheduleAutoPage(
+    projectId: string,
+    rundownId: string,
+    itemId: string,
+    seconds?: number,
+  ): void {
+    const graphicId = `${projectId}-${rundownId}-${itemId}`;
+    this.cancelAutoPage(graphicId);
+    if (!seconds || seconds <= 0) return;
+    const timeout = setTimeout(async () => {
+      this.autoPageTimeouts.delete(graphicId);
+      const graphic = this.activeGraphics.get(graphicId);
+      if (!graphic?.isPlaying) return;
+      const previousStep = graphic.currentStep || 1;
+      try {
+        if (graphic.totalSteps && previousStep >= graphic.totalSteps) {
+          logger.info('Automatic page playback finished; hiding graphic', {
+            itemId,
+            currentStep: graphic.currentStep,
+            totalSteps: graphic.totalSteps,
+          });
+          await this.stopItem(projectId, rundownId, itemId);
+          return;
+        }
+        await this.nextItem(projectId, rundownId, itemId);
+        const currentStep = this.activeGraphics.get(graphicId)?.currentStep || previousStep;
+        if (currentStep === previousStep) {
+          logger.info('Automatic page playback reached the last page; hiding graphic', { itemId, currentStep });
+          await this.stopItem(projectId, rundownId, itemId);
+        }
+      } catch (error) {
+        logger.error('Automatic page advance failed', {
+          itemId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }, seconds * 1000);
+    this.autoPageTimeouts.set(graphicId, timeout);
   }
 
   /**
@@ -141,111 +212,182 @@ export class PlaybackEngine {
   }
 
   /**
-   * Handle LiveResults update from DataStore
-   * Automatically updates all active graphics that use this competition/class
+   * Which competition/class/source an item follows live, or null when it doesn't auto-update.
+   *
+   * One rule for play, polling, updates and stop:
+   *  - competition: the rundown's data source competition (what play uses), else the item's saved one
+   *  - class: the datasource UI value, else the item's saved className
+   *  - autoUpdate: the item's flag; API templates default to on
+   */
+  private resolveLiveBinding(
+    rundown: { dataSource?: { competitionId?: number; sourceId?: string } },
+    item: { liveResultsData?: any },
+    template?: { dataSourceConfig?: { mode?: string } }
+  ): { competitionId: number; className: string; sourceId?: string; dataSourceValues: Record<string, any> } | null {
+    const lr = item.liveResultsData || {};
+    const dataSourceValues: Record<string, any> = lr.dataSourceValues || {};
+    const autoUpdate = lr.autoUpdate ?? (template?.dataSourceConfig?.mode === 'api');
+    const competitionId = Number(rundown.dataSource?.competitionId || lr.competitionId || 0);
+    const className: string | undefined = dataSourceValues.className || lr.className;
+    if (!autoUpdate || !competitionId || !className) return null;
+    return { competitionId, className, sourceId: rundown.dataSource?.sourceId, dataSourceValues };
+  }
+
+  /**
+   * The LiveResults client of a configured data source (null = DataStore singleton)
+   */
+  private async getSourceClient(sourceId?: string): Promise<any | null> {
+    if (!sourceId) return null;
+    const { getDataSourceRegistry } = await import('../data/DataSourceRegistry');
+    const dataSource = getDataSourceRegistry().get(sourceId);
+    return dataSource && 'getClient' in dataSource ? (dataSource as any).getClient() : null;
+  }
+
+  /**
+   * Reconcile live-results polling with what is on air.
+   * Starts a poll for every (source, competition, class) used by a playing graphic and stops
+   * every poll nothing uses any more. Called after play, stop, clear and item edits, so
+   * polls never leak and follow class/competition changes on air.
+   */
+  async syncPolling(): Promise<void> {
+    const desired = new Map<string, { competitionId: number; className: string; sourceId?: string }>();
+    const rundownManager = getRundownManager();
+    const templates = getTemplateManager().getAllTemplates();
+
+    for (const graphic of this.activeGraphics.values()) {
+      if (!graphic.isPlaying || graphic.source === 'api') continue;
+      try {
+        const rundown = await rundownManager.loadRundown(graphic.projectId, graphic.rundownId);
+        const item = rundown.items.find(i => i.id === graphic.itemId);
+        if (!item) continue;
+        const template = templates.find(t => t.manifest.id === item.templateId);
+        const binding = this.resolveLiveBinding(rundown, item, template);
+        if (!binding) continue;
+        desired.set(`${binding.sourceId ?? ''}|${binding.competitionId}|${binding.className}`, binding);
+      } catch (error) {
+        logger.warn('syncPolling: could not inspect graphic', {
+          graphicId: graphic.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    const dataStore = getDataStore();
+    for (const [key, poll] of this.livePolls) {
+      if (!desired.has(key)) {
+        dataStore.stopPolling(poll.competitionId, poll.className, poll.client);
+        this.livePolls.delete(key);
+        logger.info('Stopped live polling (nothing on air uses it)', { competitionId: poll.competitionId, className: poll.className });
+      }
+    }
+    for (const [key, binding] of desired) {
+      if (this.livePolls.has(key)) continue;
+      const client = await this.getSourceClient(binding.sourceId);
+      // Interval 0 = the client's own minimum: 10 s for the REST API, 15 s for legacy api.php
+      dataStore.startPolling(binding.competitionId, binding.className, 0, client);
+      this.livePolls.set(key, { competitionId: binding.competitionId, className: binding.className, client });
+      logger.info('Started live polling', {
+        competitionId: binding.competitionId,
+        className: binding.className,
+        dataSourceId: binding.sourceId
+      });
+    }
+  }
+
+  getLivePollingStatus() {
+    return getDataStore().getPollingStatus().filter(status => status.active &&
+      [...this.livePolls.values()].some(p => p.competitionId === status.competitionId && p.className === status.className));
+  }
+
+  /**
+   * Handle LiveResults update from DataStore.
+   * Updates run one at a time per competition/class; updates arriving meanwhile collapse into
+   * one follow-up run, so a slow renderer never builds a backlog.
    */
   private async handleLiveResultsUpdate(
     competitionId: number,
     className: string,
-    ografData: OGrafResultsData
+    _ografData: OGrafResultsData
   ): Promise<void> {
-    logger.debug('LiveResults update received', {
-      competitionId,
-      className,
-      runners: ografData.results.length
-    });
+    const key = `${competitionId}|${className}`;
+    if (this.liveUpdateRunning.has(key)) {
+      this.liveUpdatePending.add(key);
+      return;
+    }
+    this.liveUpdateRunning.add(key);
+    try {
+      do {
+        this.liveUpdatePending.delete(key);
+        await this.applyLiveResultsUpdate(competitionId, className);
+      } while (this.liveUpdatePending.has(key));
+    } finally {
+      this.liveUpdateRunning.delete(key);
+    }
+  }
 
-    // Find all active graphics using this competition/class with autoUpdate enabled
+  /**
+   * Push fresh data to every active graphic that follows this competition/class.
+   * On a fetch error the graphic keeps its last good data instead of being blanked.
+   */
+  private async applyLiveResultsUpdate(competitionId: number, className: string): Promise<void> {
     let updatedCount = 0;
-    for (const [graphicId, graphic] of this.activeGraphics) {
-      // Get the rundown item to check autoUpdate setting
+    const rundownManager = getRundownManager();
+    const templates = getTemplateManager().getAllTemplates();
+
+    for (const [graphicId, graphic] of Array.from(this.activeGraphics)) {
+      if (graphic.source === 'api') continue;
       try {
-        const rundownManager = getRundownManager();
         const rundown = await rundownManager.loadRundown(graphic.projectId, graphic.rundownId);
         const item = rundown.items.find(i => i.id === graphic.itemId);
-
-        if (!item) {
-          logger.warn('Item not found for active graphic', { graphicId, itemId: graphic.itemId });
+        if (!item) continue;
+        const template = templates.find(t => t.manifest.id === item.templateId);
+        const binding = this.resolveLiveBinding(rundown, item, template);
+        if (!binding || binding.competitionId !== competitionId || binding.className !== className) continue;
+        if (!template?.dataSourceConfig) {
+          logger.warn('Template has no dataSourceConfig; cannot auto-update', { graphicId, templateId: item.templateId });
           continue;
         }
 
-        // Check if this graphic uses this competition/class and has autoUpdate enabled
-        if (item.liveResultsData?.autoUpdate &&
-            item.liveResultsData?.competitionId === competitionId &&
-            item.liveResultsData?.className === className) {
-
-          logger.info('Auto-updating playing graphic', {
+        let mappedData: Record<string, any>;
+        try {
+          mappedData = await DataSourceFieldMapper.fetchAndMapData(
+            template.dataSourceConfig,
+            binding.competitionId,
+            binding.dataSourceValues,
+            rundown.settings,
+            binding.sourceId
+          );
+        } catch (error) {
+          logger.warn('Live update skipped: fetch failed, keeping last good data on air', {
             graphicId,
-            competitionId,
-            className,
-            isPlaying: graphic.isPlaying
+            error: error instanceof Error ? error.message : String(error)
           });
-
-          try {
-            // Prepare data for the graphic using field mappings
-            const templateManager = getTemplateManager();
-            const templates = templateManager.getAllTemplates();
-            const template = templates.find((t) => t.manifest.id === item.templateId);
-
-            if (!template || !template.dataSourceConfig) {
-              logger.warn('Template or dataSourceConfig not found for auto-update', {
-                graphicId,
-                templateId: item.templateId
-              });
-              continue;
-            }
-
-            // Map the OGRAF data to template fields
-            const mappedData = await DataSourceFieldMapper.fetchAndMapData(
-              template.dataSourceConfig,
-              competitionId,
-              item.liveResultsData.dataSourceValues || {},
-              rundown.settings,
-              rundown.dataSource?.sourceId
-            );
-
-            // Log the data being sent in the update
-            logger.info('=== PlaybackEngine: Auto-update data being sent ===', {
-              graphicId,
-              hasResults: !!mappedData.results,
-              resultsCount: mappedData.results?.length || 0
-            });
-
-            // Log first 3 results to verify data integrity
-            if (mappedData.results && mappedData.results.length > 0) {
-              for (let i = 0; i < Math.min(3, mappedData.results.length); i++) {
-                logger.info(`[PlaybackEngine Auto-Update] Result ${i + 1}`, {
-                  position: mappedData.results[i].position,
-                  name: mappedData.results[i].name,
-                  time: mappedData.results[i].time,
-                  timeType: typeof mappedData.results[i].time,
-                  diff: mappedData.results[i].diff,
-                  diffType: typeof mappedData.results[i].diff,
-                  statusCode: mappedData.results[i].statusCode
-                });
-              }
-            }
-
-            // Send update command with fresh data
-            await this.sendCommand('update', {
-              id: graphicId,
-              data: mappedData
-            });
-
-            // Update the stored data in active graphic
-            graphic.data = mappedData;
-
-            updatedCount++;
-            logger.info('Graphic auto-updated successfully', { graphicId });
-          } catch (error) {
-            logger.error('Failed to auto-update graphic', {
-              graphicId,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            });
-          }
+          continue;
         }
+        if (!mappedData || Object.keys(mappedData).length === 0) {
+          logger.warn('Live update skipped: mapper returned no data', { graphicId });
+          continue;
+        }
+        mappedData = await this.decorateData(graphic.projectId, rundown, { ...(item.fields || {}), ...mappedData });
+        // The graphic may have been stopped and disposed while we were fetching
+        if (!this.activeGraphics.has(graphicId)) continue;
+        // Operator chose to hold this graphic's data on air: only note that what it would show changed
+        if (graphic.isPlaying && item.liveResultsData?.holdOnAir) {
+          const withSplits = /splits|position-history/.test(graphic.templateId);
+          graphic.newData = shownResults(mappedData, withSplits) !== shownResults(graphic.data, withSplits);
+          continue;
+        }
+
+        await this.sendCommand('update', { id: graphicId, data: mappedData });
+        graphic.data = mappedData;
+        updatedCount++;
+        logger.info('Graphic auto-updated', {
+          graphicId,
+          resultsCount: mappedData.results?.length || 0,
+          isPlaying: graphic.isPlaying
+        });
       } catch (error) {
-        logger.error('Error checking graphic for auto-update', {
+        logger.error('Failed to auto-update graphic', {
           graphicId,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
@@ -253,12 +395,48 @@ export class PlaybackEngine {
     }
 
     if (updatedCount > 0) {
-      logger.info('Auto-update complete', {
-        competitionId,
-        className,
-        updatedGraphics: updatedCount
-      });
+      logger.info('Auto-update complete', { competitionId, className, updatedGraphics: updatedCount });
     }
+  }
+
+  /**
+   * Re-map an on-air item from its saved settings and push the result, then re-sync polling.
+   * Used after the operator edits an item while it is playing (e.g. picks another runner/class).
+   */
+  async refreshItem(projectId: string, rundownId: string, itemId: string): Promise<boolean> {
+    const graphicId = `${projectId}-${rundownId}-${itemId}`;
+    const graphic = this.activeGraphics.get(graphicId);
+    if (!graphic) return false;
+
+    const rundown = await getRundownManager().loadRundown(projectId, rundownId);
+    const item = rundown.items.find(i => i.id === itemId);
+    const template = getTemplateManager().getAllTemplates().find(t => t.manifest.id === item?.templateId);
+    if (!item || !template) return false;
+
+    let data: Record<string, any> = item.fields || {};
+    if (template.dataSourceConfig && item.liveResultsData?.dataSourceValues) {
+      data = await DataSourceFieldMapper.fetchAndMapData(
+        template.dataSourceConfig,
+        rundown.dataSource?.competitionId || item.liveResultsData.competitionId || 0,
+        item.liveResultsData.dataSourceValues,
+        rundown.settings,
+        rundown.dataSource?.sourceId
+      ).then(mapped => ({ ...(item.fields || {}), ...mapped }));
+    }
+    data = await this.decorateData(projectId, rundown, data);
+    await this.sendCommand('update', { id: graphicId, data });
+    graphic.data = data;
+    graphic.newData = false;
+    if (graphic.isPlaying) {
+      this.scheduleAutoPage(
+        projectId,
+        rundownId,
+        itemId,
+        item.autoPageDurationSeconds,
+      );
+    }
+    await this.syncPolling();
+    return true;
   }
 
   /**
@@ -360,6 +538,58 @@ export class PlaybackEngine {
   /**
    * Play a rundown item
    */
+  /**
+   * Context every graphic gets besides its own fields: the project's presentation settings
+   * (club/flag rule, logos) and event info from the rundown. Template sets read
+   * data.presentation and data.event; other graphics ignore them.
+   */
+  private async decorateData(projectId: string, rundown: SPXRundown, data: Record<string, any>): Promise<Record<string, any>> {
+    let presentation: ProjectPresentation = {};
+    let info: import('../../shared/types/event').EventInfo = {};
+    try {
+      const project = await getProjectManager().loadProject(projectId);
+      presentation = project.settings?.presentation ?? {};
+      info = project.info ?? {};
+    } catch {
+      // project file unreadable: defaults
+    }
+    // Bibs (real or virtual) and favourites from the event's start list
+    data = applyStartList(projectId, data);
+    return {
+      ...data,
+      presentation: { identity: 'auto', clubLogos: true, clearClashing: true, ...presentation },
+      event: {
+        name: rundown.settings?.competitionNameOverride || rundown.dataSource?.competitionName || data.competitionName || '',
+        location: rundown.settings?.raceLocation || '',
+        date: info.date || data.competitionDate || '',
+        series: info.series || '',
+        organiser: info.organiser || '',
+        timeZone: info.timeZone || ''
+      }
+    };
+  }
+
+  /** Take graphics off air whose screen zone clashes with the one about to play */
+  private async clearClashing(graphicId: string, zone: GraphicZone | undefined): Promise<void> {
+    if (!zone) return;
+    const rundownManager = getRundownManager();
+    for (const g of Array.from(this.activeGraphics.values())) {
+      if (g.id === graphicId || !g.isPlaying || !zonesClash(zone, g.zone)) continue;
+      logger.info('Clearing clashing graphic', { playing: graphicId, zone, clearing: g.id, theirZone: g.zone });
+      try {
+        await this.sendCommand('stop', { id: g.id, skipAnimation: false });
+        g.isPlaying = false;
+        if (g.source !== 'api') {
+          const r = await rundownManager.loadRundown(g.projectId, g.rundownId);
+          const it = r.items.find(i => i.id === g.itemId);
+          if (it) { it.onair = false; await rundownManager.saveRundown(r); }
+        }
+      } catch (error) {
+        logger.warn('Failed to clear clashing graphic', { graphicId: g.id, error: error instanceof Error ? error.message : String(error) });
+      }
+    }
+  }
+
   async playItem(
     projectId: string,
     rundownId: string,
@@ -405,11 +635,12 @@ export class PlaybackEngine {
         throw new Error(`Template not found: ${item.templateId}`);
       }
 
-      // Generate unique graphic ID
-      const graphicId = `${projectId}-${rundownId}-${itemId}`;
+      // One look per production: refuse graphics from another template set
+      const project = await getProjectManager().loadProject(projectId);
+      assertTemplateInProjectSet(project, template);
 
       // Prepare data for the graphic
-      let graphicData = item.fields || {};
+      let graphicData: Record<string, any> = item.fields || {};
 
       // NEW datasource configuration system
       if (template.dataSourceConfig && item.liveResultsData?.dataSourceValues) {
@@ -442,8 +673,8 @@ export class PlaybackEngine {
             fetchDurationMs: fetchDuration
           });
 
-          // Use mapped data as graphic data
-          graphicData = mappedData;
+          // Live data on top of the operator's manual options (rows per page, titles ...)
+          graphicData = { ...(item.fields || {}), ...mappedData };
 
         } catch (error) {
           const fetchDuration = Date.now() - fetchStartTime;
@@ -458,6 +689,8 @@ export class PlaybackEngine {
           throw new Error(`Failed to fetch API data: ${errorMessage}. Check data source configuration and network connection.`);
         }
       }
+
+      graphicData = await this.decorateData(projectId, rundown, graphicData);
 
       // Check playback mode - if solo, stop all currently playing graphics
       // Priority: rundown item > template manifest > default to stackable
@@ -495,6 +728,9 @@ export class PlaybackEngine {
           }
         }
       } else {
+        if (graphicData.presentation?.clearClashing !== false) {
+          await this.clearClashing(graphicId, template.zone);
+        }
         logger.debug('Stackable mode template - keeping other graphics playing', {
           templateId: item.templateId,
           graphicId,
@@ -555,6 +791,7 @@ export class PlaybackEngine {
           itemId,
           templateId: item.templateId,
           isPlaying: false,
+          zone: template.zone,
           manifest: template.manifest,
           templateDirectoryName: template.directoryName,
           data: graphicData,
@@ -563,7 +800,7 @@ export class PlaybackEngine {
       } else {
         logger.info('Graphic already loaded', { graphicId });
         // Graphic already loaded - update with fresh data if LiveResults is configured
-        if (item.liveResultsData?.competitionId && item.liveResultsData?.className) {
+        if (template.dataSourceConfig && item.liveResultsData?.dataSourceValues) {
           logger.info('Updating already-loaded graphic with fresh LiveResults data', {
             graphicId,
             dataKeys: Object.keys(graphicData)
@@ -608,10 +845,11 @@ export class PlaybackEngine {
 
       // Update active graphic state
       activeGraphic = this.activeGraphics.get(graphicId);
-      const currentStep = playResult?.currentStep || 1;
+      const currentStep = stepFromPlayResult(playResult);
       if (activeGraphic) {
         activeGraphic.isPlaying = true;
         activeGraphic.currentStep = currentStep;
+        activeGraphic.totalSteps = totalStepsFromPlayResult(playResult);
       }
 
       // Update rundown item state with current step
@@ -623,47 +861,15 @@ export class PlaybackEngine {
 
       logger.info('Rundown item playing', { itemId, graphicId, currentStep });
 
-      // Start polling if autoUpdate is enabled
-      if (item.liveResultsData?.autoUpdate &&
-          item.liveResultsData?.competitionId &&
-          item.liveResultsData?.className) {
+      this.scheduleAutoPage(
+        projectId,
+        rundownId,
+        itemId,
+        item.autoPageDurationSeconds,
+      );
 
-        const dataStore = getDataStore();
-
-        // Use standard polling interval (15 seconds)
-        // Auto-update is now the standard for all API templates
-        const interval = 15000;
-
-        // Get the data source's client to ensure we poll the correct API
-        let pollingClient = null;
-        if (rundown.dataSource?.sourceId) {
-          const { getDataSourceRegistry } = await import('../data/DataSourceRegistry');
-          const registry = getDataSourceRegistry();
-          const dataSource = registry.get(rundown.dataSource.sourceId);
-
-          if (dataSource && 'getClient' in dataSource) {
-            pollingClient = (dataSource as any).getClient();
-            logger.info('Using data source client for polling', {
-              dataSourceId: rundown.dataSource.sourceId,
-              graphicId
-            });
-          }
-        }
-
-        dataStore.startPolling(
-          item.liveResultsData.competitionId,
-          item.liveResultsData.className,
-          interval,
-          pollingClient // Pass the data source's client
-        );
-
-        logger.info('Started auto-update polling', {
-          graphicId,
-          competitionId: item.liveResultsData.competitionId,
-          className: item.liveResultsData.className,
-          interval
-        });
-      }
+      // Start (or keep) live-results polling for everything on air
+      await this.syncPolling();
 
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -689,6 +895,7 @@ export class PlaybackEngine {
     try {
       // Generate graphic ID
       const graphicId = `${projectId}-${rundownId}-${itemId}`;
+      this.cancelAutoPage(graphicId);
 
       // Check if loaded
       if (!this.activeGraphics.has(graphicId)) {
@@ -740,70 +947,8 @@ export class PlaybackEngine {
 
       this.removalTimeouts.set(graphicId, timeoutId);
 
-      // Stop polling if this was the last graphic using this competition/class
-      // Reuse rundownManager from above
-      const rundown = await rundownManager.loadRundown(projectId, rundownId);
-      const item = rundown.items.find(i => i.id === itemId);
-
-      if (item?.liveResultsData?.autoUpdate &&
-          item.liveResultsData?.competitionId &&
-          item.liveResultsData?.className) {
-
-        const competitionId = item.liveResultsData.competitionId;
-        const className = item.liveResultsData.className;
-
-        // Check if any other active graphics are using this competition/class
-        let otherGraphicsUsingData = false;
-        for (const [otherGraphicId, otherGraphic] of this.activeGraphics) {
-          if (otherGraphicId === graphicId) continue; // Skip the graphic we're stopping
-
-          try {
-            const otherRundown = await rundownManager.loadRundown(otherGraphic.projectId, otherGraphic.rundownId);
-            const otherItem = otherRundown.items.find(i => i.id === otherGraphic.itemId);
-
-            if (otherItem?.liveResultsData?.autoUpdate &&
-                otherItem.liveResultsData?.competitionId === competitionId &&
-                otherItem.liveResultsData?.className === className &&
-                otherGraphic.isPlaying) {
-              otherGraphicsUsingData = true;
-              break;
-            }
-          } catch (error) {
-            logger.warn('Error checking other graphic for polling', {
-              otherGraphicId,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            });
-          }
-        }
-
-        // Only stop polling if no other graphics are using this data
-        if (!otherGraphicsUsingData) {
-          // Get the data source's client to stop polling on the correct client
-          let pollingClient = null;
-          if (rundown.dataSource?.sourceId) {
-            const { getDataSourceRegistry } = await import('../data/DataSourceRegistry');
-            const registry = getDataSourceRegistry();
-            const dataSource = registry.get(rundown.dataSource.sourceId);
-
-            if (dataSource && 'getClient' in dataSource) {
-              pollingClient = (dataSource as any).getClient();
-            }
-          }
-
-          const dataStore = getDataStore();
-          dataStore.stopPolling(competitionId, className, pollingClient);
-          logger.info('Stopped auto-update polling (no other graphics using this data)', {
-            competitionId,
-            className,
-            usingDataSourceClient: !!pollingClient
-          });
-        } else {
-          logger.debug('Keeping auto-update polling active (other graphics still using this data)', {
-            competitionId,
-            className
-          });
-        }
-      }
+      // Stop live polling that nothing on air needs any more
+      await this.syncPolling();
 
       logger.info('Rundown item stopped', { itemId, graphicId });
 
@@ -835,10 +980,12 @@ export class PlaybackEngine {
         return;
       }
 
-      // Update the graphic
+      // Keep the presentation/event context the graphic was loaded with
+      const rundown = await getRundownManager().loadRundown(projectId, rundownId);
+      const decorated = await this.decorateData(projectId, rundown, data ?? {});
       await this.sendCommand('update', {
         id: graphicId,
-        data
+        data: decorated
       });
 
       logger.info('Rundown item updated', { itemId, graphicId });
@@ -878,6 +1025,7 @@ export class PlaybackEngine {
         logger.warn('Graphic not playing, cannot advance to next step', { graphicId });
         return;
       }
+      const previousStep = activeGraphic.currentStep || 1;
 
       // Send play command with delta: 1 to advance to next step
       // According to OGRAF spec, playAction with delta advances relative to current step
@@ -890,9 +1038,10 @@ export class PlaybackEngine {
       });
 
       // Update active graphic state
-      const currentStep = playResult?.currentStep || 1;
+      const currentStep = stepFromPlayResult(playResult);
       if (activeGraphic) {
         activeGraphic.currentStep = currentStep;
+        activeGraphic.totalSteps = totalStepsFromPlayResult(playResult) ?? activeGraphic.totalSteps;
       }
 
       // Update rundown item with new current step
@@ -902,6 +1051,17 @@ export class PlaybackEngine {
       });
 
       logger.info('Advanced to next step', { itemId, graphicId, currentStep });
+
+      const rundown = await rundownManager.loadRundown(projectId, rundownId);
+      const item = rundown.items.find(candidate => candidate.id === itemId);
+      if (currentStep > previousStep) {
+        this.scheduleAutoPage(
+          projectId,
+          rundownId,
+          itemId,
+          item?.autoPageDurationSeconds,
+        );
+      }
 
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -950,7 +1110,7 @@ export class PlaybackEngine {
       });
 
       // Update active graphic state
-      const currentStep = playResult?.currentStep || 1;
+      const currentStep = stepFromPlayResult(playResult);
       if (activeGraphic) {
         activeGraphic.currentStep = currentStep;
       }
@@ -986,6 +1146,7 @@ export class PlaybackEngine {
       // Update all rundown items to set onair = false
       const rundownManager = getRundownManager();
       for (const graphic of activeGraphicsList) {
+        if (graphic.source === 'api') continue;
         try {
           await rundownManager.updateItem(
             graphic.projectId,
@@ -1009,12 +1170,115 @@ export class PlaybackEngine {
 
       // Clear the active graphics map
       this.activeGraphics.clear();
+      // ...and stop every live poll (they used to keep running after Esc / clear all)
+      await this.syncPolling();
       logger.info('All graphics cleared');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logger.error('Failed to clear graphics', { error: message });
       throw error;
     }
+  }
+
+  // ------------------------------------------------------------------------------------------
+  // OGraf Server API (graphic instances loaded by external controllers)
+  // ------------------------------------------------------------------------------------------
+
+  /** Everything loaded on the program output, rundown items and API instances alike */
+  listGraphicInstances(): { graphicInstanceId: string; templateId: string; source: 'rundown' | 'api'; isPlaying: boolean }[] {
+    return Array.from(this.activeGraphics.values()).map(g => ({
+      graphicInstanceId: g.id,
+      templateId: g.templateId,
+      source: g.source ?? 'rundown',
+      isPlaying: g.isPlaying
+    }));
+  }
+
+  /** Load a template onto the program output for an external controller */
+  async apiLoad(templateId: string, data: unknown): Promise<{ graphicInstanceId: string; statusCode: number; statusMessage?: string }> {
+    const template = getTemplateManager().getAllTemplates().find(t => t.manifest.id === templateId);
+    if (!template) throw Object.assign(new Error(`Graphic not found: ${templateId}`), { httpStatus: 404 });
+    const graphicInstanceId = `ograf-api-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const result: any = await this.sendCommand('load', {
+      id: graphicInstanceId,
+      manifest: template.manifest,
+      templateId: template.directoryName,
+      data: data ?? {}
+    });
+    this.activeGraphics.set(graphicInstanceId, {
+      id: graphicInstanceId,
+      source: 'api',
+      projectId: '',
+      rundownId: '',
+      itemId: '',
+      templateId,
+      isPlaying: false,
+      manifest: template.manifest,
+      templateDirectoryName: template.directoryName,
+      data: data ?? {},
+      currentStep: 0
+    });
+    return { graphicInstanceId, statusCode: 200, statusMessage: result?.message };
+  }
+
+  private requireApiInstance(graphicInstanceId: string): ActiveGraphic {
+    const g = this.activeGraphics.get(graphicInstanceId);
+    if (!g) throw Object.assign(new Error(`GraphicInstance not found: ${graphicInstanceId}`), { httpStatus: 404 });
+    if (g.source !== 'api') {
+      throw Object.assign(new Error('This GraphicInstance belongs to an Split Control rundown item; control it from the rundown'), { httpStatus: 409 });
+    }
+    return g;
+  }
+
+  async apiPlay(graphicInstanceId: string, params: { delta?: number; goto?: number; skipAnimation?: boolean } = {}) {
+    const g = this.requireApiInstance(graphicInstanceId);
+    const result: any = await this.sendCommand('play', { id: graphicInstanceId, options: params });
+    g.isPlaying = true;
+    g.currentStep = stepFromPlayResult(result);
+    return { graphicInstanceId, statusCode: result?.result?.statusCode ?? 200, statusMessage: result?.result?.message, currentStep: g.currentStep };
+  }
+
+  async apiStop(graphicInstanceId: string, params: { skipAnimation?: boolean } = {}) {
+    const g = this.requireApiInstance(graphicInstanceId);
+    await this.sendCommand('stop', { id: graphicInstanceId, skipAnimation: params.skipAnimation ?? false });
+    g.isPlaying = false;
+    return { graphicInstanceId, statusCode: 200 };
+  }
+
+  async apiUpdate(graphicInstanceId: string, params: { data: unknown; skipAnimation?: boolean }) {
+    const g = this.requireApiInstance(graphicInstanceId);
+    await this.sendCommand('update', { id: graphicInstanceId, data: params.data, skipAnimation: params.skipAnimation });
+    g.data = params.data;
+    return { graphicInstanceId, statusCode: 200 };
+  }
+
+  async apiCustomAction(graphicInstanceId: string, actionId: string, params: { payload: unknown; skipAnimation?: boolean }) {
+    this.requireApiInstance(graphicInstanceId);
+    await this.sendCommand('custom', { id: graphicInstanceId, actionId, payload: params.payload, skipAnimation: params.skipAnimation });
+    return { graphicInstanceId, statusCode: 200 };
+  }
+
+  /**
+   * Clear (remove) instances matching any filter (all when no filters).
+   * Rundown items are stopped through the rundown so their on-air state stays correct.
+   */
+  async apiClear(filters: { graphicId?: string; graphicInstanceId?: string }[]): Promise<string[]> {
+    const matches = (g: ActiveGraphic) => filters.length === 0 || filters.some(f =>
+      (!f.graphicId || f.graphicId === g.templateId) && (!f.graphicInstanceId || f.graphicInstanceId === g.id));
+    const cleared: string[] = [];
+    for (const g of Array.from(this.activeGraphics.values())) {
+      if (!matches(g)) continue;
+      if (g.source === 'api') {
+        await this.sendCommand('dispose', { id: g.id });
+        this.activeGraphics.delete(g.id);
+      } else if (g.isPlaying) {
+        await this.stopItem(g.projectId, g.rundownId, g.itemId);
+      } else {
+        continue;
+      }
+      cleared.push(g.id);
+    }
+    return cleared;
   }
 
   /**
@@ -1166,16 +1430,28 @@ export class PlaybackEngine {
  */
 interface ActiveGraphic {
   id: string;
+  /** 'api' = loaded through the OGraf Server API (no rundown item behind it) */
+  source?: 'rundown' | 'api';
   projectId: string;
   rundownId: string;
   itemId: string;
   templateId: string;
   isPlaying: boolean;
+  /** Screen zone of the graphic (template manifest v_olgrafik_zone) */
+  zone?: GraphicZone;
   // Full state for syncing to new renderers
   manifest?: any;
   templateDirectoryName?: string;
   data?: any;
   currentStep?: number;
+  totalSteps?: number;
+  /** Live updates are held for this graphic and newer results have arrived */
+  newData?: boolean;
+}
+
+/** What a graphic shows from live data, for telling whether held data is out of date */
+function shownResults(data: any, withSplits: boolean): string {
+  return JSON.stringify((data?.results ?? []).map((r: any) => [r.name, r.club, r.position, r.time, r.diff, r.statusCode, withSplits ? r.splitTimes : 0]));
 }
 
 // Singleton instance

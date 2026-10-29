@@ -1,0 +1,59 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "iof-name-strap",
+  "version": "1.0.0",
+  "name": "IOF – Name strap",
+  "description": "Name and role: commentators, interviews, athletes.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "title": "Name",
+        "description": "Full name"
+      },
+      "title": {
+        "type": "string",
+        "title": "Role",
+        "description": "e.g. Commentator, World Champion 2025"
+      },
+      "club": {
+        "type": "string",
+        "title": "Club",
+        "description": "Club or team"
+      },
+      "country": {
+        "type": "string",
+        "title": "Country",
+        "description": "IOC code, e.g. SWE"
+      },
+      "bib": {
+        "type": "string",
+        "title": "Bib",
+        "description": "Bib number"
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "iof",
+  "v_olgrafik_kind": "name-strap",
+  "v_olgrafik_zone": "lower"
+}

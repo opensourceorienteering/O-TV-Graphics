@@ -8,6 +8,11 @@ import { getLogger } from '../utils/logger';
 import { getDataSourceRegistry } from '../data/DataSourceRegistry';
 import { DataSourceConfig } from '../../shared/types/dataSource';
 import { getConfig, saveConfig } from '../utils/config';
+import {
+  BUILT_IN_DATA_SOURCE_IDS,
+  getBuiltInDataSource,
+  mergeBuiltInDataSources,
+} from '../../shared/builtInDataSources';
 
 const logger = getLogger();
 
@@ -44,11 +49,9 @@ export function registerDataSourceHandlers(): void {
    */
   ipcMain.handle('dataSource:getAll', async () => {
     try {
-      const registry = getDataSourceRegistry();
-      const instances = registry.getAll();
-      
-      // Return configs only (not full instances)
-      const configs = instances.map(instance => instance.config);
+      // Configuration is the source of truth here. Disabled and temporarily
+      // offline built-ins must still be visible and selectable in setup.
+      const configs = mergeBuiltInDataSources(getConfig().dataSources || []);
       
       return {
         success: true,
@@ -103,6 +106,8 @@ export function registerDataSourceHandlers(): void {
    */
   ipcMain.handle('dataSource:create', async (_event, config: DataSourceConfig) => {
     try {
+      if (BUILT_IN_DATA_SOURCE_IDS.has(config.id))
+        throw new Error('This ID is reserved for a built-in data source');
       const registry = getDataSourceRegistry();
       const instance = await registry.create(config);
 
@@ -143,12 +148,20 @@ export function registerDataSourceHandlers(): void {
   ipcMain.handle('dataSource:update', async (_event, id: string, config: DataSourceConfig) => {
     try {
       const registry = getDataSourceRegistry();
+      const builtIn = getBuiltInDataSource(id);
+      const effectiveConfig = builtIn
+        ? {
+            ...builtIn,
+            config: { ...builtIn.config },
+            enabled: config.enabled,
+          }
+        : config;
 
       // Destroy old instance
       registry.destroy(id);
 
       // Create new instance with updated config
-      const instance = await registry.create(config);
+      const instance = await registry.create(effectiveConfig, !builtIn);
 
       // Persist to config file
       const appConfig = getConfig();
@@ -159,17 +172,17 @@ export function registerDataSourceHandlers(): void {
       // Find and update the existing config, or add if not found
       const existingIndex = appConfig.dataSources.findIndex(ds => ds.id === id);
       if (existingIndex >= 0) {
-        appConfig.dataSources[existingIndex] = config;
+        appConfig.dataSources[existingIndex] = effectiveConfig;
       } else {
-        appConfig.dataSources.push(config);
+        appConfig.dataSources.push(effectiveConfig);
       }
 
       await saveConfig(appConfig);
 
       logger.info('Data source updated and persisted via IPC', {
         id,
-        type: config.type,
-        name: config.name
+        type: effectiveConfig.type,
+        name: effectiveConfig.name
       });
 
       return {
@@ -195,6 +208,8 @@ export function registerDataSourceHandlers(): void {
    */
   ipcMain.handle('dataSource:delete', async (_event, id: string) => {
     try {
+      if (BUILT_IN_DATA_SOURCE_IDS.has(id))
+        throw new Error('Built-in data sources cannot be deleted');
       const registry = getDataSourceRegistry();
       registry.destroy(id);
 

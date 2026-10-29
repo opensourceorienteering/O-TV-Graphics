@@ -75,9 +75,10 @@ describe('RundownManager Migration Logic', () => {
       // Access private method via type assertion
       const migratedRundown = (rundownManager as any).migrateRundown(oldRundown);
 
+      // Migration keeps the competition but leaves the source empty so the UI asks the user to pick one
       expect(migratedRundown.dataSource).toBeDefined();
-      expect(migratedRundown.dataSource?.sourceId).toBe('liveresults-default');
-      expect(migratedRundown.dataSource?.baseUrl).toBe('https://test.liveresults.com');
+      expect(migratedRundown.dataSource?.sourceId).toBe('');
+      expect(migratedRundown.dataSource?.baseUrl).toBe('');
       expect(migratedRundown.dataSource?.competitionId).toBe(123);
       expect(migratedRundown.dataSource?.competitionName).toBe('Test Competition');
     });
@@ -199,9 +200,9 @@ describe('RundownManager Migration Logic', () => {
 
       const migratedRundown = (rundownManager as any).migrateRundown(rundown);
 
-      // Should use default baseUrl when config is not available
+      // Migration does not depend on config: the base URL is chosen when the user selects a source
       expect(migratedRundown.dataSource).toBeDefined();
-      expect(migratedRundown.dataSource?.baseUrl).toBe('https://liveresultat.orientering.se');
+      expect(migratedRundown.dataSource?.baseUrl).toBe('');
       expect(migratedRundown.dataSource?.competitionId).toBe(789);
     });
 

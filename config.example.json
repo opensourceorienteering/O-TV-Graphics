@@ -1,0 +1,78 @@
+{
+  "general": {
+    "hostname": "OL-Grafik",
+    "port": 5657,
+    "wsPort": 5656,
+    "dataroot": "./DATAROOT",
+    "logfolder": "./LOG",
+    "loglevel": "info",
+    "langfile": "en.json",
+    "launchBrowser": true,
+    "resolution": "HD"
+  },
+  "liveresults": {
+    "baseUrl": "",
+    "cacheInterval": 10000,
+    "timeout": 10000
+  },
+  "dataSources": [
+    {
+      "id": "liveresults-default",
+      "type": "liveresults",
+      "name": "LiveResults REST",
+      "enabled": true,
+      "builtIn": true,
+      "config": {
+        "baseUrl": "https://api.orienteering.services",
+        "cacheInterval": 10000,
+        "timeout": 10000,
+        "api": "rest",
+        "push": true
+      }
+    },
+    {
+      "id": "liveresults-legacy",
+      "type": "liveresults",
+      "name": "LiveResults Legacy",
+      "enabled": true,
+      "builtIn": true,
+      "config": {
+        "baseUrl": "https://liveresultat.orientering.se",
+        "cacheInterval": 15000,
+        "timeout": 10000,
+        "api": "legacy"
+      }
+    },
+    {
+      "id": "liveresults-simulation",
+      "type": "liveresults",
+      "name": "LiveResults (local simulator)",
+      "enabled": false,
+      "config": {
+        "baseUrl": "http://localhost:3001",
+        "cacheInterval": 15000,
+        "timeout": 10000,
+        "api": "legacy"
+      }
+    }
+  ],
+  "eventor": {
+    "apiKeys": {
+      "se": "",
+      "no": "",
+      "au": ""
+    }
+  },
+  "output": {
+    "ndi": {
+      "enabled": false,
+      "name": "Grafik",
+      "fps": 50,
+      "colorFormat": "BGRA"
+    },
+    "web": {
+      "enabled": true,
+      "cors": true
+    }
+  }
+}

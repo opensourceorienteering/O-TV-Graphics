@@ -18,7 +18,7 @@ const logger = getLogger();
  * Data Source Registry
  * Singleton registry for data source factories
  */
-class DataSourceRegistry {
+export class DataSourceRegistry {
   private factories: Map<DataSourceType, DataSourceRegistryEntry> = new Map();
   private instances: Map<string, IDataSource> = new Map();
 
@@ -73,7 +73,7 @@ class DataSourceRegistry {
   /**
    * Create a data source instance
    */
-  async create(config: DataSourceConfig): Promise<IDataSource> {
+  async create(config: DataSourceConfig, initialize = true): Promise<IDataSource> {
     const entry = this.factories.get(config.type);
     
     if (!entry) {
@@ -92,11 +92,20 @@ class DataSourceRegistry {
       // Create new instance
       const instance = entry.factory(config);
       
-      // Initialize the instance
-      await instance.initialize();
-      
       // Store the instance
       this.instances.set(config.id, instance);
+
+      // Packaged and saved sources are registered lazily at startup so an
+      // offline network cannot make them disappear from the application.
+      if (initialize) {
+        try {
+          await instance.initialize();
+        } catch (error) {
+          this.instances.delete(config.id);
+          instance.destroy();
+          throw error;
+        }
+      }
       
       logger.info('Data source instance created', {
         id: config.id,

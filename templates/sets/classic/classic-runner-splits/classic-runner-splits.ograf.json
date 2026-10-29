@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "classic-runner-splits",
+  "version": "1.0.0",
+  "name": "Classic – Runner split comparison",
+  "description": "One runner at every radio control: place, places gained or lost, and time behind the best.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "maxControls": {
+        "type": "number",
+        "title": "Controls shown",
+        "description": "Latest radio controls to show",
+        "default": 6
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "classic",
+  "v_olgrafik_kind": "runner-splits",
+  "v_olgrafik_zone": "side"
+}

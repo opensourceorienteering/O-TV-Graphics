@@ -2,49 +2,6 @@
  * Main Application Styles
  */
 
-:root {
-  /* Colors - SPX-inspired palette */
-  --color-bg-primary: #1a1b1f;
-  --color-bg-secondary: #23252b;
-  --color-bg-tertiary: #2d2f36;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #b0b3b8;
-  --color-border: #3a3d44;
-  
-  /* Accent colors */
-  --color-gray: #6c757d;
-  --color-red: #dc3545;
-  --color-orange: #fd7e14;
-  --color-green: #28a745;
-  --color-blue: #007bff;
-  --color-pink: #e83e8c;
-  --color-violet: #6f42c1;
-  --color-black: #000000;
-  
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  
-  /* Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  --font-size-sm: 12px;
-  --font-size-md: 14px;
-  --font-size-lg: 16px;
-  --font-size-xl: 20px;
-  
-  /* Borders */
-  --border-radius: 4px;
-  --border-radius-lg: 8px;
-
-  /* Z-index layers */
-  --z-modal: 1000;
-  --z-modal-overlay: 999;
-}
-
 * {
   margin: 0;
   padding: 0;
@@ -58,6 +15,17 @@ body {
   background: var(--color-bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-width: 320px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  color: inherit;
 }
 
 .app {
@@ -146,7 +114,9 @@ body {
 }
 
 /* Inputs */
-input, textarea, select {
+input,
+textarea,
+select {
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   border-radius: var(--border-radius);
@@ -157,7 +127,9 @@ input, textarea, select {
   outline: none;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   border-color: var(--color-blue);
 }
 
@@ -257,11 +229,14 @@ input:focus, textarea:focus, select:focus {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -293,7 +268,7 @@ input:focus, textarea:focus, select:focus {
   background: var(--color-bg-secondary);
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 /* Templates Grid */
@@ -356,7 +331,7 @@ input:focus, textarea:focus, select:focus {
 
 .template-id {
   color: var(--color-text-tertiary);
-  font-family: 'Courier New', monospace;
+  font-family: "Courier New", monospace;
 }
 
 .template-author {
@@ -379,9 +354,15 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* Color variants for template cards */
-.template-card.color-red { border-left: 4px solid var(--accent-red); }
-.template-card.color-orange { border-left: 4px solid var(--accent-orange); }
-.template-card.color-green { border-left: 4px solid var(--accent-green); }
+.template-card.color-red {
+  border-left: 4px solid var(--accent-red);
+}
+.template-card.color-orange {
+  border-left: 4px solid var(--accent-orange);
+}
+.template-card.color-green {
+  border-left: 4px solid var(--accent-green);
+}
 
 /* Modal Styles */
 .modal-overlay {
@@ -426,6 +407,12 @@ input:focus, textarea:focus, select:focus {
   resize: vertical;
   min-height: 80px;
 }
-.template-card.color-blue { border-left: 4px solid var(--accent-blue); }
-.template-card.color-pink { border-left: 4px solid var(--accent-pink); }
-.template-card.color-violet { border-left: 4px solid var(--accent-violet); }
+.template-card.color-blue {
+  border-left: 4px solid var(--accent-blue);
+}
+.template-card.color-pink {
+  border-left: 4px solid var(--accent-pink);
+}
+.template-card.color-violet {
+  border-left: 4px solid var(--accent-violet);
+}

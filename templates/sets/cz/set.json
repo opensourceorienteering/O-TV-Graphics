@@ -1,0 +1,8 @@
+{
+  "id": "cz",
+  "name": "ČO (Czech orienteering)",
+  "description": "Orange and beige look of the Czech orienteering streams (Český orienťák), after thejoeejoee/co-stream-gfx: italic headers with the control-circle mark, slide-and-unclip motion.",
+  "author": "Split Control, styling after co-stream-gfx by thejoeejoee (used with permission)",
+  "colors": ["#fe5900", "#edece3", "#272727"],
+  "fonts": "Albert Sans (OFL) stands in for GT Planar; install GT Planar to use the original"
+}

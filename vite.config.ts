@@ -18,7 +18,7 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/main',
-            rollupOptions: {
+            rolldownOptions: {
               external: [
                 'electron',
                 // Optional native dependencies for ws/socket.io
@@ -29,7 +29,7 @@ export default defineConfig({
                 // Electron-specific modules
                 'electron-squirrel-startup',
                 // NDI native module (requires NDI SDK)
-                'grandiose'
+                '@stagetimerio/grandiose'
               ]
             }
           }
@@ -45,7 +45,7 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/preload',
-            rollupOptions: {
+            rolldownOptions: {
               external: [
                 'electron'
               ]
@@ -65,7 +65,7 @@ export default defineConfig({
     }
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
         graphics: path.resolve(__dirname, 'graphics.html'),

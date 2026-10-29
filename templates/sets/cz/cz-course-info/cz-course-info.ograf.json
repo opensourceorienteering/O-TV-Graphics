@@ -1,0 +1,75 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "cz-course-info",
+  "version": "1.0.0",
+  "name": "ČO – Course facts",
+  "description": "Course parameters: length, climb, controls, estimated winning time, start interval.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Class or course, e.g. \"Women Long\""
+      },
+      "legs": {
+        "type": "string",
+        "title": "Legs",
+        "description": "Relay legs, e.g. \"Leg 1 & 3\""
+      },
+      "length": {
+        "type": "string",
+        "title": "Length (km)",
+        "description": "e.g. 10.8"
+      },
+      "climb": {
+        "type": "string",
+        "title": "Climb (m)",
+        "description": "e.g. 420"
+      },
+      "controls": {
+        "type": "string",
+        "title": "Controls",
+        "description": "e.g. 24"
+      },
+      "winningTime": {
+        "type": "string",
+        "title": "Est. winning time",
+        "description": "e.g. 75 (min is added)"
+      },
+      "startInterval": {
+        "type": "string",
+        "title": "Start interval",
+        "description": "e.g. 2 (min is added)"
+      },
+      "extra": {
+        "type": "string",
+        "title": "Extra rows",
+        "description": "One \"Label: value\" per line",
+        "multiline": true
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "cz",
+  "v_olgrafik_kind": "course-info",
+  "v_olgrafik_zone": "side"
+}

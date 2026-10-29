@@ -28,11 +28,16 @@ export interface CreateRundownOptions {
  * Rundown item creation options
  */
 export interface CreateRundownItemOptions {
+  graphicKind?: string;
   templateId: string;
   templatePath: string;
   fields?: Record<string, any>;
   layer?: string;
   out?: string;
+  playbackMode?: SPXRundownItem['playbackMode'];
+  autoPageDurationSeconds?: number;
+  instanceName?: string;
+  liveResultsData?: SPXRundownItem['liveResultsData'];
 }
 
 /**
@@ -295,12 +300,19 @@ export class RundownManager {
 
       const item: SPXRundownItem = {
         id: uuidv4(),
+        ...(options.graphicKind ? { graphicKind: options.graphicKind } : {}),
         templateId: options.templateId,
         templatePath: options.templatePath,
         fields: options.fields || {},
         onair: false,
         layer: options.layer || '1',
-        out: options.out || 'animate'
+        out: options.out || 'animate',
+        ...(options.playbackMode ? { playbackMode: options.playbackMode } : {}),
+        ...(options.autoPageDurationSeconds && options.autoPageDurationSeconds > 0
+          ? { autoPageDurationSeconds: options.autoPageDurationSeconds }
+          : {}),
+        ...(options.instanceName ? { instanceName: options.instanceName } : {}),
+        ...(options.liveResultsData ? { liveResultsData: options.liveResultsData } : {})
       };
 
       // Insert at index or append

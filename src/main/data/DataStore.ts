@@ -28,6 +28,8 @@ export interface PollingStatus {
   className?: string;
   interval?: number;
   lastUpdate?: number;
+  lastPoll?: number;
+  lastError?: string;
   errorCount?: number;
 }
 
@@ -215,6 +217,7 @@ export class DataStore extends EventEmitter {
       competitionName?: string;
       controlCode?: string; // If specified, transform split time results for this control
       client?: any; // Optional LiveResultsClient instance (if not provided, uses singleton)
+      maxAgeMs?: number; // Accept raw data fetched this recently (avoids duplicate requests)
     }
   ): Promise<OGrafResultsData> {
     // Use provided client or fall back to singleton (for backward compatibility)
@@ -226,7 +229,7 @@ export class DataStore extends EventEmitter {
       : `${competitionId}_${className}`;
 
     // Fetch raw data (uses LiveResultsClient cache)
-    const rawData = await client.getClassResults(competitionId, className);
+    const rawData = await client.getClassResults(competitionId, className, { maxAgeMs: options?.maxAgeMs });
 
     // Check if we have cached transformed data
     const cached = this.transformedResults.get(cacheKey);
@@ -315,6 +318,15 @@ export class DataStore extends EventEmitter {
       competitionId,
       className,
       interval,
+      onPoll: (_changed: boolean, effectiveInterval: number) => {
+        const status = this.pollingStatus.get(key);
+        if (status) {
+          status.lastPoll = Date.now();
+          status.interval = effectiveInterval;
+          status.errorCount = 0;
+          delete status.lastError;
+        }
+      },
       onUpdate: async (data: LiveResultsClassResult) => {
         try {
           // Get competition name
@@ -372,6 +384,7 @@ export class DataStore extends EventEmitter {
         const status = this.pollingStatus.get(key);
         if (status) {
           status.errorCount = (status.errorCount || 0) + 1;
+          status.lastError = error.message;
         }
 
         this.emit('error', error);
@@ -384,7 +397,7 @@ export class DataStore extends EventEmitter {
       competitionId,
       className,
       interval,
-      lastUpdate: Date.now(),
+      lastUpdate: undefined,
       errorCount: 0
     });
 

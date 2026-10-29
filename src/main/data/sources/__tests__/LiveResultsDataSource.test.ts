@@ -1,13 +1,16 @@
 /**
- * Integration Tests for LiveResultsDataSource
+ * Unit Tests for LiveResultsDataSource
+ * The client is mocked; mocks return the client's real CachedResponse shape ({ data, hash, timestamp, changed }).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { LiveResultsDataSource, LiveResultsDataSourceConfig } from '../LiveResultsDataSource';
+import { LiveResultsDataSource } from '../LiveResultsDataSource';
 import { LiveResultsClient } from '../../LiveResultsClient';
+import { LiveResultsDataSourceConfig } from '../../../../shared/types/dataSource';
 
-// Mock LiveResultsClient
 vi.mock('../../LiveResultsClient');
+
+const cached = <T,>(data: T) => ({ data, hash: 'h', timestamp: Date.now(), changed: true });
 
 describe('LiveResultsDataSource', () => {
   let dataSource: LiveResultsDataSource;
@@ -26,28 +29,32 @@ describe('LiveResultsDataSource', () => {
     }
   });
 
+  const createInitialized = async () => {
+    dataSource = new LiveResultsDataSource(createConfig());
+    mockClient.getCompetitions.mockResolvedValue(cached([{ id: 1, name: 'Test Competition' }]));
+    await dataSource.initialize();
+    vi.clearAllMocks();
+  };
+
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Create mock client
     mockClient = {
       getCompetitions: vi.fn(),
       getClasses: vi.fn(),
-      getResults: vi.fn(),
+      getClassResults: vi.fn(),
       startPolling: vi.fn(),
       stopPolling: vi.fn(),
+      stopAllPolling: vi.fn(),
       destroy: vi.fn()
     };
 
-    // Mock LiveResultsClient constructor
-    (LiveResultsClient as any).mockImplementation(() => mockClient);
+    // Must be a function (not an arrow) so `new LiveResultsClient()` works under Vitest 4+
+    (LiveResultsClient as any).mockImplementation(function () { return mockClient; });
   });
 
   afterEach(() => {
-    if (dataSource) {
-      dataSource.destroy();
-    }
+    dataSource?.destroy();
   });
 
   describe('Initialization', () => {
@@ -60,13 +67,13 @@ describe('LiveResultsDataSource', () => {
       expect(dataSource.initialized).toBe(false);
     });
 
-    it('should initialize successfully', async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
+    it('should reject a non-liveresults config', () => {
+      expect(() => new LiveResultsDataSource({ ...createConfig(), type: 'manual' } as any)).toThrow('Invalid config type');
+    });
 
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
+    it('should initialize successfully', async () => {
+      dataSource = new LiveResultsDataSource(createConfig());
+      mockClient.getCompetitions.mockResolvedValue(cached([{ id: 1, name: 'Test Competition' }]));
 
       await dataSource.initialize();
 
@@ -75,9 +82,7 @@ describe('LiveResultsDataSource', () => {
     });
 
     it('should throw error if initialization fails', async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
-
+      dataSource = new LiveResultsDataSource(createConfig());
       mockClient.getCompetitions.mockRejectedValue(new Error('Network error'));
 
       await expect(dataSource.initialize()).rejects.toThrow('Network error');
@@ -85,267 +90,151 @@ describe('LiveResultsDataSource', () => {
     });
 
     it('should pass configuration to LiveResultsClient', () => {
-      const config = createConfig({
-        baseUrl: 'https://custom.url',
+      dataSource = new LiveResultsDataSource(createConfig({
+        baseUrl: 'https://api.orienteering.services',
         cacheInterval: 30000,
-        timeout: 20000
-      });
-
-      dataSource = new LiveResultsDataSource(config);
+        timeout: 20000,
+        api: 'rest'
+      }));
 
       expect(LiveResultsClient).toHaveBeenCalledWith({
-        baseUrl: 'https://custom.url',
+        baseUrl: 'https://api.orienteering.services',
         cacheInterval: 30000,
-        timeout: 20000
+        timeout: 20000,
+        api: 'rest'
       });
+    });
+
+    it('should refuse queries before initialization', async () => {
+      dataSource = new LiveResultsDataSource(createConfig());
+      await expect(dataSource.getCompetitions()).rejects.toThrow('not initialized');
     });
   });
 
   describe('getCompetitions', () => {
-    beforeEach(async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
+    beforeEach(createInitialized);
 
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-      vi.clearAllMocks();
-    });
-
-    it('should fetch competitions from LiveResults', async () => {
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Competition 1', date: '2025-10-20', organizer: 'Test Club' },
-        { id: 2, name: 'Competition 2', date: '2025-10-21', organizer: 'Another Club' }
-      ]);
+    it('should convert competitions to the normalized format', async () => {
+      mockClient.getCompetitions.mockResolvedValue(cached([
+        { id: 123, name: 'Test Event', date: '2025-10-20', organizer: 'Test Organizer', timediff: 0, extraField: 'x' },
+        { id: 124, name: 'Test Event 2', date: '2025-10-21', organizer: 'Other', timediff: 0 }
+      ]));
 
       const competitions = await dataSource.getCompetitions();
 
       expect(competitions).toHaveLength(2);
-      expect(competitions[0]).toEqual({
-        id: 1,
-        name: 'Competition 1',
-        date: '2025-10-20',
-        organizer: 'Test Club'
-      });
-      expect(mockClient.getCompetitions).toHaveBeenCalledTimes(1);
+      expect(competitions[0]).toEqual({ id: 123, name: 'Test Event', date: '2025-10-20', organizer: 'Test Organizer' });
+      expect(competitions[0]).not.toHaveProperty('extraField');
     });
 
     it('should return empty array when no competitions', async () => {
-      mockClient.getCompetitions.mockResolvedValue([]);
-
-      const competitions = await dataSource.getCompetitions();
-
-      expect(competitions).toHaveLength(0);
+      mockClient.getCompetitions.mockResolvedValue(cached([]));
+      expect(await dataSource.getCompetitions()).toHaveLength(0);
     });
 
     it('should handle API errors', async () => {
       mockClient.getCompetitions.mockRejectedValue(new Error('API error'));
-
       await expect(dataSource.getCompetitions()).rejects.toThrow('API error');
-    });
-
-    it('should convert LiveResults format to normalized format', async () => {
-      mockClient.getCompetitions.mockResolvedValue([
-        {
-          id: 123,
-          name: 'Test Event',
-          date: '2025-10-20',
-          organizer: 'Test Organizer',
-          extraField: 'should be ignored'
-        }
-      ]);
-
-      const competitions = await dataSource.getCompetitions();
-
-      expect(competitions[0]).toEqual({
-        id: 123,
-        name: 'Test Event',
-        date: '2025-10-20',
-        organizer: 'Test Organizer'
-      });
-      expect(competitions[0]).not.toHaveProperty('extraField');
     });
   });
 
   describe('getClasses', () => {
-    beforeEach(async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
+    beforeEach(createInitialized);
 
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-      vi.clearAllMocks();
-    });
-
-    it('should fetch classes for a competition', async () => {
-      mockClient.getClasses.mockResolvedValue([
-        { name: 'M21', distance: 5000, climb: 200, numberOfControls: 15 },
-        { name: 'W21', distance: 4000, climb: 150, numberOfControls: 12 }
-      ]);
+    it('should fetch and convert classes for a competition', async () => {
+      mockClient.getClasses.mockResolvedValue(cached([{ className: 'M21' }, { className: 'W21' }]));
 
       const classes = await dataSource.getClasses(123);
 
-      expect(classes).toHaveLength(2);
-      expect(classes[0]).toEqual({
-        name: 'M21',
-        distance: 5000,
-        climb: 200,
-        numberOfControls: 15
-      });
       expect(mockClient.getClasses).toHaveBeenCalledWith(123);
+      expect(classes).toEqual([
+        { className: 'M21', displayName: 'M21', numberOfEntries: 0 },
+        { className: 'W21', displayName: 'W21', numberOfEntries: 0 }
+      ]);
     });
 
     it('should return empty array when no classes', async () => {
-      mockClient.getClasses.mockResolvedValue([]);
-
-      const classes = await dataSource.getClasses(123);
-
-      expect(classes).toHaveLength(0);
+      mockClient.getClasses.mockResolvedValue(cached([]));
+      expect(await dataSource.getClasses(123)).toHaveLength(0);
     });
 
     it('should handle API errors', async () => {
       mockClient.getClasses.mockRejectedValue(new Error('API error'));
-
       await expect(dataSource.getClasses(123)).rejects.toThrow('API error');
     });
   });
 
   describe('getResults', () => {
-    beforeEach(async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
+    beforeEach(createInitialized);
 
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-      vi.clearAllMocks();
-    });
-
-    it('should fetch results for a class', async () => {
-      mockClient.getResults.mockResolvedValue([
-        {
-          place: 1,
-          name: 'John Doe',
-          club: 'Test Club',
-          time: '00:30:00',
-          status: 'OK',
-          bibNumber: '101',
-          startTime: '10:00:00',
-          finishTime: '10:30:00',
-          timeBehind: '00:00:00',
-          splits: [
-            { controlCode: '101', time: '00:05:00', timeBehind: '00:00:00', place: 1 }
-          ]
-        },
-        {
-          place: 2,
-          name: 'Jane Smith',
-          club: 'Another Club',
-          time: '00:32:00',
-          status: 'OK',
-          bibNumber: '102',
-          timeBehind: '00:02:00'
-        }
-      ]);
-
-      const results = await dataSource.getResults(123, 'M21');
-
-      expect(results).toHaveLength(2);
-      expect(results[0]).toEqual({
-        place: 1,
-        name: 'John Doe',
-        club: 'Test Club',
-        time: '00:30:00',
-        status: 'OK',
-        bibNumber: '101',
-        startTime: '10:00:00',
-        finishTime: '10:30:00',
-        timeBehind: '00:00:00',
-        splits: [
-          { controlCode: '101', time: '00:05:00', timeBehind: '00:00:00', place: 1 }
+    it('should fetch class results and convert them', async () => {
+      mockClient.getClassResults.mockResolvedValue(cached({
+        className: 'M21',
+        splitcontrols: [],
+        hash: '',
+        results: [
+          { place: '1', name: 'John Doe', club: 'Test Club', result: '180000', status: 0, timeplus: '0', progress: 100, start: 3600000 },
+          { place: '2', name: 'Jane Smith', club: 'Another Club', result: '192000', status: 0, timeplus: '12000', progress: 100, start: 3660000 }
         ]
-      });
-      expect(mockClient.getResults).toHaveBeenCalledWith(123, 'M21');
-    });
-
-    it('should handle different result statuses', async () => {
-      mockClient.getResults.mockResolvedValue([
-        { place: 1, name: 'Runner 1', club: 'Club 1', time: '00:30:00', status: 'OK' },
-        { place: 0, name: 'Runner 2', club: 'Club 2', time: '', status: 'DNS' },
-        { place: 0, name: 'Runner 3', club: 'Club 3', time: '', status: 'DNF' },
-        { place: 0, name: 'Runner 4', club: 'Club 4', time: '', status: 'DSQ' },
-        { place: 0, name: 'Runner 5', club: 'Club 5', time: '', status: 'MP' }
-      ]);
+      }));
 
       const results = await dataSource.getResults(123, 'M21');
 
-      expect(results).toHaveLength(5);
-      expect(results.map(r => r.status)).toEqual(['OK', 'DNS', 'DNF', 'DSQ', 'MP']);
+      expect(mockClient.getClassResults).toHaveBeenCalledWith(123, 'M21');
+      expect(results).toEqual([
+        { place: 1, name: 'John Doe', club: 'Test Club', time: '180000', status: '0' },
+        { place: 2, name: 'Jane Smith', club: 'Another Club', time: '192000', status: '0' }
+      ]);
+    });
+
+    it('should leave place undefined for runners without a place', async () => {
+      mockClient.getClassResults.mockResolvedValue(cached({
+        className: 'M21', splitcontrols: [], hash: '',
+        results: [{ place: '', name: 'Runner DNS', club: 'Club', result: '', status: 1, timeplus: '', progress: 0, start: 0 }]
+      }));
+
+      const [result] = await dataSource.getResults(123, 'M21');
+      expect(result.place).toBeUndefined();
+      expect(result.status).toBe('1');
     });
 
     it('should return empty array when no results', async () => {
-      mockClient.getResults.mockResolvedValue([]);
-
-      const results = await dataSource.getResults(123, 'M21');
-
-      expect(results).toHaveLength(0);
+      mockClient.getClassResults.mockResolvedValue(cached({ className: 'M21', splitcontrols: [], hash: '', results: [] }));
+      expect(await dataSource.getResults(123, 'M21')).toHaveLength(0);
     });
 
     it('should handle API errors', async () => {
-      mockClient.getResults.mockRejectedValue(new Error('API error'));
-
+      mockClient.getClassResults.mockRejectedValue(new Error('API error'));
       await expect(dataSource.getResults(123, 'M21')).rejects.toThrow('API error');
     });
   });
 
   describe('Real-time Support', () => {
-    beforeEach(async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
-
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-      vi.clearAllMocks();
-    });
+    beforeEach(createInitialized);
 
     it('should support real-time updates', () => {
       expect(dataSource.supportsRealTime()).toBe(true);
     });
 
-    it('should start polling', () => {
+    it('should start polling through the client', () => {
       dataSource.startPolling!(123, 'M21', 15000);
 
-      expect(mockClient.startPolling).toHaveBeenCalledWith(123, 'M21', 15000);
+      expect(mockClient.startPolling).toHaveBeenCalledWith(expect.objectContaining({
+        competitionId: 123,
+        className: 'M21',
+        interval: 15000
+      }));
     });
 
-    it('should stop polling', () => {
+    it('should stop polling with the client poll id', () => {
       dataSource.stopPolling!(123, 'M21');
-
-      expect(mockClient.stopPolling).toHaveBeenCalledWith(123, 'M21');
+      expect(mockClient.stopPolling).toHaveBeenCalledWith('123_M21');
     });
   });
 
   describe('Cleanup', () => {
     it('should destroy client on destroy', async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
-
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-
+      await createInitialized();
       dataSource.destroy();
 
       expect(mockClient.destroy).toHaveBeenCalledTimes(1);
@@ -353,15 +242,7 @@ describe('LiveResultsDataSource', () => {
     });
 
     it('should be safe to destroy multiple times', async () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
-
-      mockClient.getCompetitions.mockResolvedValue([
-        { id: 1, name: 'Test Competition' }
-      ]);
-
-      await dataSource.initialize();
-
+      await createInitialized();
       dataSource.destroy();
       dataSource.destroy();
 
@@ -369,12 +250,10 @@ describe('LiveResultsDataSource', () => {
     });
 
     it('should be safe to destroy before initialization', () => {
-      const config = createConfig();
-      dataSource = new LiveResultsDataSource(config);
+      dataSource = new LiveResultsDataSource(createConfig());
 
       expect(() => dataSource.destroy()).not.toThrow();
       expect(mockClient.destroy).toHaveBeenCalledTimes(1);
     });
   });
 });
-

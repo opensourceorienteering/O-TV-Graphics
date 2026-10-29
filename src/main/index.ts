@@ -3,10 +3,11 @@
  * Electron main process - handles app lifecycle, windows, and backend services
  */
 
+import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
 import { initLogger } from './utils/logger';
-import { loadConfig } from './utils/config';
+import { loadConfig, getConfig } from './utils/config';
 import { WebSocketServer } from './data/WebSocketServer';
 import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
@@ -26,6 +27,10 @@ import { registerWindowHandlers, setGraphicsWindow } from './ipc/windowHandlers'
 import { registerOutputHandlers } from './ipc/outputHandlers';
 import { registerSettingsHandlers } from './ipc/settingsHandlers';
 import { registerSystemHandlers } from './ipc/systemHandlers';
+import { registerClubLogoHandlers } from './ipc/clubLogoHandlers';
+import { registerEventHandlers } from './ipc/eventHandlers';
+import { registerDirectorHandlers } from './output/DirectorApi';
+import { initClubLogoService } from './data/ClubLogoService';
 import { checkNDIAvailability, isSupportedCPU } from './utils/ndi-check';
 import { ndiOutputManager } from './output/NDIOutputManager';
 import { frameCaptureService } from './output/FrameCaptureService';
@@ -36,7 +41,7 @@ import { registerBuiltInDataSources } from './data/sources';
 const logger = initLogger();
 
 // CRITICAL: Validate Node.js version before proceeding
-// OL-Grafik requires Node.js v20.x for NDI (grandiose) compatibility
+// Split Control requires Node.js v20.x for NDI (grandiose) compatibility
 validateNodeVersionOrExit();
 
 // Environment detection
@@ -137,7 +142,7 @@ async function initializeServices() {
       for (const dsConfig of appConfig.dataSources) {
         if (dsConfig.enabled) {
           try {
-            await registry.create(dsConfig);
+            await registry.create(dsConfig, false);
             logger.info('Data source created from config', {
               id: dsConfig.id,
               type: dsConfig.type,
@@ -160,11 +165,12 @@ async function initializeServices() {
     }
 
     // Initialize LiveResults client (backward compatibility)
-    const liveResultsBaseUrl = appConfig.liveresults?.baseUrl || 'https://liveresultat.orientering.se';
+    const liveResultsBaseUrl = appConfig.liveresults?.baseUrl || 'https://api.orienteering.services';
     initLiveResultsClient({
       baseUrl: liveResultsBaseUrl,
-      cacheInterval: 15000,
-      timeout: 10000
+      cacheInterval: appConfig.liveresults?.cacheInterval,
+      timeout: 10000,
+      api: appConfig.liveresults?.api ?? 'auto'
     });
     logger.info('LiveResults client initialized (legacy)', { baseUrl: liveResultsBaseUrl });
 
@@ -177,6 +183,17 @@ async function initializeServices() {
     }
 
     logger.info('Data store initialized');
+
+    // Club logos: bundled with the app (club-logos/, refreshed by maintainers before a release)
+    // plus logos the operator adds by hand in DATAROOT/club-logos/manual
+    try {
+      initClubLogoService(
+        isDev ? path.join(process.cwd(), 'club-logos') : path.join(__dirname, '../../club-logos'),
+        path.join(appConfig.general.dataroot, 'club-logos')
+      );
+    } catch (error) {
+      logger.warn('Club logos unavailable', { error: error instanceof Error ? error.message : String(error) });
+    }
 
     // Initialize project and rundown managers
     initProjectManager();
@@ -227,9 +244,9 @@ async function initializeNDI() {
           `${ndiAvailability.error}\n\n` +
           `The application will continue to run, but NDI output will be disabled.\n\n` +
           `To enable NDI output:\n` +
-          `1. Install NDI Runtime from https://ndi.link/NDIRedistV5\n` +
+          `1. Install NDI Tools / NDI 6 Runtime from https://ndi.video/tools/\n` +
           `2. Restart this application\n\n` +
-          `Note: If grandiose failed to install, ensure you're using Node.js v18-v20 during npm install.`,
+          `Note: If the NDI bindings failed to build, run "npm rebuild @stagetimerio/grandiose".`,
         buttons: ['OK']
       }).catch(err => {
         logger.error('Failed to show NDI warning dialog', { error: err });
@@ -250,7 +267,8 @@ async function initializeNDI() {
       fps: appConfig.output.ndi.fps,
       colorFormat: appConfig.output.ndi.colorFormat,
       groups: [],
-      clockVideo: true,
+      // Output is paced by the graphics renderer's paints (see FrameCaptureService)
+      clockVideo: false,
       clockAudio: false
     });
 
@@ -314,6 +332,8 @@ function setupContentSecurityPolicy() {
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const webOrigin = `http://localhost:${getConfig().general.port}`;
+    const socketOrigin = `ws://localhost:${getConfig().general.wsPort}`;
     // Build CSP based on environment
     const cspDirectives = [
       // Default: only allow resources from same origin
@@ -328,15 +348,15 @@ function setupContentSecurityPolicy() {
 
       // Styles: allow self and inline styles (required for React inline styles)
       // Allow cdnjs.cloudflare.com for highlight.js CSS in documentation
-      "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com",
+      `style-src 'self' 'unsafe-inline' ${webOrigin} https://cdnjs.cloudflare.com`,
 
       // Images: allow self, data URIs, and localhost
       isDev
         ? "img-src 'self' data: http://localhost:5173 http://localhost:5657"
-        : "img-src 'self' data:",
+        : `img-src 'self' data: ${webOrigin}`,
 
       // Fonts: allow self and data URIs
-      "font-src 'self' data:",
+      `font-src 'self' data: ${webOrigin}`,
 
       // Connect: allow WebSocket and HTTP connections to localhost
       // Allow cdnjs.cloudflare.com for documentation assets
@@ -366,7 +386,7 @@ function setupContentSecurityPolicy() {
       "form-action 'self'"
     ];
 
-    const csp = cspDirectives.join('; ');
+    const csp = cspDirectives.join('; ').split('http://localhost:5657').join(webOrigin).split('ws://localhost:5656').join(socketOrigin);
 
     callback({
       responseHeaders: {
@@ -384,9 +404,15 @@ function setupContentSecurityPolicy() {
 /**
  * App ready handler
  */
+// Development aid: OLG_REMOTE_DEBUGGING_PORT=9333 lets tools drive and screenshot the windows
+if (process.env.OLG_REMOTE_DEBUGGING_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.OLG_REMOTE_DEBUGGING_PORT);
+  app.commandLine.appendSwitch('remote-allow-origins', 'http://127.0.0.1');
+}
+
 app.whenReady().then(async () => {
   try {
-    logger.info('OL-Grafik starting...', {
+    logger.info('Split Control starting...', {
       version: app.getVersion(),
       platform: process.platform,
       isDev,
@@ -413,6 +439,9 @@ app.whenReady().then(async () => {
       registerOutputHandlers();
       registerSettingsHandlers();
       registerSystemHandlers();
+      registerClubLogoHandlers();
+      registerEventHandlers();
+      registerDirectorHandlers();
       registerWindowHandlers();
       handlersRegistered = true;
       logger.info('IPC handlers registered');
@@ -427,7 +456,7 @@ app.whenReady().then(async () => {
     // Initialize NDI output system
     await initializeNDI();
 
-    logger.info('OL-Grafik ready');
+    logger.info('Split Control ready');
 
   } catch (error) {
     logger.error('Failed to start application', { error });
@@ -435,8 +464,8 @@ app.whenReady().then(async () => {
     // Show user-friendly error dialog
     const errorMessage = error instanceof Error ? error.message : String(error);
     dialog.showErrorBox(
-      'OL-Grafik Startup Error',
-      `Failed to start OL-Grafik:\n\n${errorMessage}\n\nPlease check the logs for more details.`
+      'Split Control Startup Error',
+      `Failed to start Split Control:\n\n${errorMessage}\n\nPlease check the logs for more details.`
     );
 
     app.quit();
@@ -465,7 +494,7 @@ app.on('window-all-closed', () => {
  * Before quit handler - cleanup
  */
 app.on('before-quit', async () => {
-  logger.info('OL-Grafik shutting down...');
+  logger.info('Split Control shutting down...');
 
   try {
     // Clear all graphics and reset rundown states
@@ -490,7 +519,7 @@ app.on('before-quit', async () => {
       await webServer.stop();
     }
 
-    logger.info('OL-Grafik shutdown complete');
+    logger.info('Split Control shutdown complete');
   } catch (error) {
     logger.error('Error during shutdown', { error });
   }

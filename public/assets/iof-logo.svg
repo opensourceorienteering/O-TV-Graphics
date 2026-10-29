@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" role="img" aria-labelledby="title">
+  <title id="title">International Orienteering Federation</title>
+  <rect width="320" height="120" rx="8" fill="#fff"/>
+  <path d="M24 24h72v72H24z" fill="#fff" stroke="#20252a" stroke-width="5"/>
+  <path d="M31 31h58L31 89z" fill="#e43b32"/>
+  <circle cx="60" cy="60" r="17" fill="#fff"/>
+  <path d="M60 41l8 19-8 19-8-19z" fill="#20252a"/>
+  <text x="116" y="76" font-family="Arial,Helvetica,sans-serif" font-size="62" font-weight="800" letter-spacing="2" fill="#20252a">IOF</text>
+  <text x="118" y="96" font-family="Arial,Helvetica,sans-serif" font-size="10" font-weight="700" letter-spacing="1.1" fill="#4b535a">INTERNATIONAL ORIENTEERING FEDERATION</text>
+</svg>

@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="512" height="512" fill="#1E1E1E"/>
+<g id="In app logo" clip-path="url(#clip0_0_1)">
+<rect width="512" height="512" fill="#020203" fill-opacity="0.2"/>
+<g id="Product mark">
+<rect width="512" height="512" fill="#FF650F"/>
+<g id="Slash" filter="url(#filter0_di_0_1)">
+<path d="M337.591 70.2424L237.591 441.758H174.409L274.409 70.2424H337.591Z" fill="#171A1D"/>
+</g>
+</g>
+</g>
+<defs>
+<filter id="filter0_di_0_1" x="160.409" y="56.2424" width="191.182" height="399.515" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="7"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.3 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.65 0"/>
+<feBlend mode="normal" in2="shape" result="effect2_innerShadow_0_1"/>
+</filter>
+<clipPath id="clip0_0_1">
+<rect width="512" height="512" fill="white"/>
+</clipPath>
+</defs>
+</svg>

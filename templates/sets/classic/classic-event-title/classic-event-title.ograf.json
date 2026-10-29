@@ -1,0 +1,54 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "classic-event-title",
+  "version": "1.0.0",
+  "name": "Classic – Event title",
+  "description": "Event ID card: series, event name, place and date. Defaults come from the rundown and competition.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "series": {
+        "type": "string",
+        "title": "Series",
+        "description": "e.g. World Orienteering Championships 2026"
+      },
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Event or race name"
+      },
+      "place": {
+        "type": "string",
+        "title": "Place",
+        "description": "Host city or region"
+      },
+      "date": {
+        "type": "string",
+        "title": "Date",
+        "description": "e.g. 12 July 2026"
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "classic",
+  "v_olgrafik_kind": "event-title",
+  "v_olgrafik_zone": "full"
+}

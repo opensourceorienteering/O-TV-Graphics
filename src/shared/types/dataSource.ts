@@ -8,7 +8,7 @@ import { LiveResultsCompetition, LiveResultsClass, LiveResultsResult } from './l
 /**
  * Data source type identifier
  */
-export type DataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'custom';
+export type DataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'iofxml' | 'meos' | 'custom';
 
 /**
  * Data source configuration
@@ -25,6 +25,9 @@ export interface DataSourceConfig {
   
   /** Whether this data source is enabled */
   enabled: boolean;
+
+  /** Packaged with Split Control; connection details cannot be edited or deleted. */
+  builtIn?: boolean;
   
   /** Type-specific configuration */
   config: Record<string, any>;
@@ -39,6 +42,14 @@ export interface LiveResultsDataSourceConfig extends DataSourceConfig {
     baseUrl: string;
     cacheInterval?: number;
     timeout?: number;
+    /** 'auto' (default) picks the REST API for https://api.orienteering.services */
+    api?: 'legacy' | 'rest' | 'auto';
+    /** Faster polling for a local simulator (localhost only; ignored for public APIs) */
+    localPollFloorMs?: number;
+    /** REST only: refetch as soon as the Liveresultat push channel reports a change (default true) */
+    push?: boolean;
+    /** Push channel URL (default wss://ws.orienteering.services) */
+    pushUrl?: string;
   };
 }
 
@@ -79,6 +90,46 @@ export interface MySQLDataSourceConfig extends DataSourceConfig {
       enabled: boolean;
       rejectUnauthorized?: boolean;
     };
+    /** IANA zone of the event, used for live clocks (default Europe/Stockholm) */
+    timezone?: string;
+    /** Live poll interval in ms (default 2000, minimum 1000) */
+    pollIntervalMs?: number;
+  };
+}
+
+/**
+ * IOF XML 3.0 file data source configuration
+ */
+export interface IofXmlDataSourceConfig extends DataSourceConfig {
+  type: 'iofxml';
+  config: {
+    /** ResultList or StartList exported by the timing software */
+    filePath: string;
+    /** Competition id to use for this file in Split Control (default 1) */
+    competitionId?: number;
+    /** IANA zone of the event (default Europe/Stockholm) */
+    timezone?: string;
+    /** Only these control codes become split columns (default: all) */
+    radioControls?: number[];
+    /** How often to check the file (ms, default 2000, minimum 1000) */
+    pollIntervalMs?: number;
+  };
+}
+
+/**
+ * MeOS information server data source configuration
+ */
+export interface MeosDataSourceConfig extends DataSourceConfig {
+  type: 'meos';
+  config: {
+    /** MeOS information server, e.g. http://192.168.1.10:2009 (default http://localhost:2009) */
+    url: string;
+    /** Competition id to use for this event in Split Control (default 1) */
+    competitionId?: number;
+    /** IANA zone of the event (default Europe/Stockholm) */
+    timezone?: string;
+    /** Live poll interval in ms (default 1000, minimum 500) */
+    pollIntervalMs?: number;
   };
 }
 

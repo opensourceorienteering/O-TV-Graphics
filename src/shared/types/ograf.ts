@@ -11,8 +11,8 @@ export interface OGrafManifest {
   /** Unique identifier for the graphic */
   id: string;
   
-  /** Version of the graphic (semver) */
-  version: string;
+  /** Version of the graphic (optional in the spec) */
+  version?: string;
   
   /** Human-readable name */
   name: string;
@@ -30,8 +30,8 @@ export interface OGrafManifest {
   /** Main JavaScript file (Web Component) */
   main: string;
   
-  /** JSON Schema for data validation */
-  schema: JSONSchema;
+  /** GDD / JSON Schema for the update() data (optional in the spec) */
+  schema?: JSONSchema;
   
   /** Supports real-time rendering (live broadcast) */
   supportsRealTime: boolean;
@@ -39,8 +39,14 @@ export interface OGrafManifest {
   /** Supports non-real-time rendering (post-production) */
   supportsNonRealTime: boolean;
   
-  /** Number of steps (0 = auto, 1 = single, >1 = multi-step) */
+  /** Number of steps (default 1; -1 = dynamic/unknown) */
   stepCount?: number;
+
+  /** Thumbnail images, paths relative to the manifest (OGraf 2026-04) */
+  thumbnails?: { file: string; resolution?: { width?: number; height?: number } }[];
+
+  /** Static animation durations in ms; -1 = dynamic (OGraf 2026-06) */
+  actionDurations?: ActionDuration[];
 
   /** Custom actions supported by this graphic */
   customActions?: CustomAction[];
@@ -85,7 +91,17 @@ export interface CustomAction {
   id: string;
   name: string;
   description?: string;
-  schema?: JSONSchema;
+  /** null when the action takes no parameters */
+  schema?: JSONSchema | null;
+}
+
+export interface ActionDuration {
+  type: 'playAction' | 'stopAction' | 'updateAction' | 'customAction' | string;
+  /** milliseconds, -1 = dynamic/unknown */
+  duration?: number;
+  steps?: { step?: number; duration: number }[];
+  /** customAction id */
+  id?: string;
 }
 
 export interface RenderRequirement {
@@ -95,6 +111,8 @@ export interface RenderRequirement {
   };
   frameRate?: { exact?: number; min?: number; max?: number; ideal?: number };
   accessToPublicInternet?: { exact: boolean };
+  /** Minimum rendering engine versions, e.g. { type: 'CEF', version: { min: 139 } } (OGraf 2026-04) */
+  engine?: { type: string; version?: { exact?: number; min?: number; max?: number } }[];
 }
 
 export interface ReturnPayload {
@@ -118,11 +136,15 @@ export interface StopActionOptions {
 
 export interface UpdateActionOptions {
   data: any;
+  /** OGraf 2026-01: optional; render the update without animating */
+  skipAnimation?: boolean;
 }
 
 export interface CustomActionOptions {
   id: string;
   payload?: any;
+  /** OGraf 2026-01: optional; perform the action without animating */
+  skipAnimation?: boolean;
 }
 
 export interface LoadOptions {
@@ -183,7 +205,50 @@ export interface OGrafTemplateInfo {
   description: string;
   uicolor: number;
   webplayout: string;
-  directoryName: string; // Directory name for URL construction (e.g., "runner-spotlight")
+  /** Path below templates/ used in URLs, e.g. "sets/iof/iof-results" or "my-graphic" */
+  directoryName: string;
   dataSourceConfig?: any; // TemplateDataSourceConfig | null - using any to avoid circular dependency
+  /** Template set this graphic belongs to ('custom' for graphics outside templates/sets) */
+  setId: string;
+  /** Screen zone (manifest v_olgrafik_zone): graphics in clashing zones replace each other */
+  zone?: GraphicZone;
 }
 
+export type GraphicZone = 'main' | 'lower' | 'side' | 'corner' | 'full';
+
+/** A template set: graphics that share one look; a project uses exactly one set */
+export interface TemplateSetInfo {
+  id: string;
+  name: string;
+  description?: string;
+  author?: string;
+  colors?: string[];
+  fonts?: string;
+  templateCount: number;
+}
+
+export const CUSTOM_TEMPLATE_SET = 'custom';
+
+/**
+ * Which zones clash: playing a graphic takes clashing graphics off air first.
+ * Tables in the upper centre reach down into the lower-third and side areas.
+ */
+export const ZONE_CLASHES: Record<GraphicZone, GraphicZone[]> = {
+  main: ['main', 'lower', 'side', 'full'],
+  lower: ['lower', 'main', 'full'],
+  side: ['side', 'main', 'full'],
+  corner: ['corner'],
+  full: ['main', 'lower', 'side', 'full']
+};
+
+export function zonesClash(a?: GraphicZone, b?: GraphicZone): boolean {
+  if (!a || !b) return false;
+  return ZONE_CLASHES[a]?.includes(b) ?? false;
+}
+
+
+/** True for graphics with more than one step: 0 = auto (legacy), -1 = dynamic (OGraf), or > 1 */
+export function isMultiStep(manifest?: { stepCount?: number } | null): boolean {
+  const n = manifest?.stepCount;
+  return n === 0 || n === -1 || (typeof n === 'number' && n > 1);
+}

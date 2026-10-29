@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getLogger } from '../utils/logger';
 import { getConfig } from '../utils/config';
 import {
+  DEFAULT_TEMPLATE_SET,
   SPXProject,
   SPXProjectListItem,
   SPXProjectVariable
@@ -23,11 +24,9 @@ export interface CreateProjectOptions {
   name: string;
   description?: string;
   variables?: SPXProjectVariable[];
-  settings?: {
-    defaultLayer?: string;
-    defaultOut?: string;
-    autoSave?: boolean;
-  };
+  /** Template set for the project (default "classic") */
+  templateSet?: string;
+  settings?: SPXProject['settings'];
 }
 
 /**
@@ -82,6 +81,7 @@ export class ProjectManager {
       modified: now,
       variables: options.variables || [],
       customControls: [],
+      templateSet: options.templateSet || DEFAULT_TEMPLATE_SET,
       settings: {
         defaultLayer: '1',
         defaultOut: 'animate',
@@ -124,6 +124,8 @@ export class ProjectManager {
 
       const content = fs.readFileSync(projectPath, 'utf-8');
       const project: SPXProject = JSON.parse(content);
+      // Projects from before template sets used the original (classic) graphics
+      if (!project.templateSet) project.templateSet = DEFAULT_TEMPLATE_SET;
 
       logger.debug('Project loaded', { projectId, name: project.name });
       return project;
@@ -230,7 +232,8 @@ export class ProjectManager {
               description: project.description,
               created: project.created,
               modified: project.modified,
-              rundownCount
+              rundownCount,
+              templateSet: project.templateSet
             });
           } catch (error) {
             logger.warn('Failed to load project in list', { projectId: entry.name, error });
