@@ -39,8 +39,11 @@ export default defineConfig({
         // Preload scripts
         entry: 'src/preload/index.ts',
         onstart(options) {
-          // Reload preload scripts when they change
-          options.reload();
+          // Reload a running app when the preload script changes. Never start one here: the
+          // main entry starts the app, and both builds finish together on `npm run dev`. The
+          // plugin's reload() starts Electron when none is running yet, so the two starts raced
+          // and launched two apps; the plugin only tracked one, leaving the other orphaned.
+          if ((process as NodeJS.Process & { electronApp?: unknown }).electronApp) options.reload();
         },
         vite: {
           build: {

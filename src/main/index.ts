@@ -37,6 +37,7 @@ import { frameCaptureService } from './output/FrameCaptureService';
 import { validateNodeVersionOrExit } from './utils/version-check';
 import { initDataSourceRegistry, getDataSourceRegistry } from './data/DataSourceRegistry';
 import { registerBuiltInDataSources } from './data/sources';
+import { claimSingleInstance } from './utils/singleInstance';
 
 const logger = initLogger();
 
@@ -410,7 +411,26 @@ if (process.env.OLG_REMOTE_DEBUGGING_PORT) {
   app.commandLine.appendSwitch('remote-allow-origins', 'http://127.0.0.1');
 }
 
+// One app at a time; in development the newest start takes over and orphans quit themselves
+let instanceClaimed = false;
+
 app.whenReady().then(async () => {
+  instanceClaimed = claimSingleInstance({
+    dev: !app.isPackaged,
+    focus: () => {
+      const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+      if (!window) return;
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+    },
+    log: (message) => logger.info(message)
+  });
+  if (!instanceClaimed) {
+    // Another Split Control runs: it was focused instead. Nothing here was started yet.
+    app.exit(0);
+    return;
+  }
   try {
     logger.info('Split Control starting...', {
       version: app.getVersion(),
@@ -476,7 +496,7 @@ app.whenReady().then(async () => {
  * Activate handler (macOS)
  */
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (instanceClaimed && BrowserWindow.getAllWindows().length === 0) {
     createWindows();
   }
 });
