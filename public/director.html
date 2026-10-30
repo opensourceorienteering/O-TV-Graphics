@@ -38,6 +38,21 @@
   .empty { padding: 14px; color: var(--muted); }
   .err { color: #f87171; padding: 0 16px; }
   .hint { color: var(--muted); font-size: 14px; }
+  .sound-off { margin: 0 16px; padding: 8px 12px; border-radius: 6px; background: #3b2a06; color: #fde68a; font-size: 14px; }
+  .sound-off[hidden] { display: none; }
+  .sound-menu { position: relative; }
+  .sound-menu > summary { list-style: none; cursor: pointer; user-select: none; background: #222; border: 1px solid #3a3a3a; border-radius: 6px; padding: 6px 10px; }
+  .sound-menu > summary::-webkit-details-marker { display: none; }
+  .sound-menu[open] > summary { border-color: var(--accent); }
+  .sound-menu .sum { color: var(--muted); font-size: 13px; }
+  .sound-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px; min-width: 380px;
+    padding: 12px; background: #1b1b1b; border: 1px solid #3a3a3a; border-radius: 8px; box-shadow: 0 10px 30px rgb(0 0 0 / .5); }
+  .sound-pop > .hint { margin: 0; }
+  .sounds .sound { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #222; border: 1px solid #333; border-radius: 8px; }
+  .sounds .sound label { flex: 1; white-space: nowrap; }
+  .sounds .sound input[type=number] { width: 4.5em; padding: 4px 6px; }
+  .sounds .sound button { padding: 2px 8px; font-size: 13px; }
+  .sounds .sound:has(input[type=checkbox]:not(:checked)) { opacity: .55; }
 </style>
 </head>
 <body>
@@ -45,12 +60,33 @@
   <h1>Director start alerts</h1>
   <select id="rundown" aria-label="Rundown"></select>
   <button id="sound" title="Browsers only allow sound after a click">🔇 Sound off</button>
-  <label class="hint">Alert <input id="offset" type="number" min="5" max="600" value="45" style="width:4.5em"> s before start</label>
+  <details class="sound-menu" id="soundMenu">
+    <summary title="Which sounds play for favourites, and when"><span aria-hidden="true">🔔</span> Sounds <span class="sum" id="soundSummary"></span> ▾</summary>
+    <div class="sound-pop sounds" role="group" aria-label="Sounds for favourites">
+      <p class="hint">Sounds for favourites</p>
+      <span class="sound">
+        <label><input type="checkbox" id="headsUp-on"> Heads-up</label>
+        <input id="headsUp-sec" type="number" min="5" max="600" aria-label="Heads-up: seconds before start"> s
+        <button data-preview="headsUp" title="Play the heads-up chime">▶</button>
+      </span>
+      <span class="sound">
+        <label><input type="checkbox" id="imminent-on"> Start imminent</label>
+        <input id="imminent-sec" type="number" min="4" max="120" aria-label="Start imminent: seconds before start"> s
+        <button data-preview="imminent" title="Play the start-imminent chime">▶</button>
+      </span>
+      <span class="sound">
+        <label><input type="checkbox" id="start-on"> Start beeps</label>
+        <span class="hint">3, 2, 1 s and at the start</span>
+        <button data-preview="start" title="Play the start beeps">▶</button>
+      </span>
+    </div>
+  </details>
   <label class="hint"><input id="onlyFav" type="checkbox"> Only favourites</label>
   <div class="clock" id="clock">--:--:--</div>
 </header>
 <div class="bar"><span class="hint">Classes:</span><div class="classes" id="classes"></div></div>
 <div class="err" id="err"></div>
+<p class="sound-off" id="soundHint" hidden>Sound is off. Click <b>🔇 Sound off</b> to hear the heads-up chime and start beeps for favourites (browsers only allow sound after a click on the page).</p>
 <main id="cols"></main>
 <script>
 (() => {
@@ -66,7 +102,8 @@
   let favs = new Set(store.get('favs', []));
   let selected = new Set();
   let audio = null;
-  const alerted = new Set();
+  /** Sounds scheduled on the audio clock per start time (favourites starting together share one countdown) */
+  const scheduled = new Map();
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const now = () => Date.now() + offsetMs;
   const key = (cls, r) => `${ctx?.comp}|${cls}|${r.name}|${r.club}`;
@@ -132,7 +169,7 @@
         .map(r => {
           const left = (r.startTimeMs - t) / 1000;
           const k = key(cls, r);
-          const cls2 = [favs.has(k) ? 'fav' : '', left <= 0 ? 'now' : left < 120 ? 'soon' : '', favs.has(k) && left > -10 && left < Number($('offset').value) ? 'alerting' : ''].join(' ');
+          const cls2 = [favs.has(k) ? 'fav' : '', left <= 0 ? 'now' : left < 120 ? 'soon' : '', favs.has(k) && left > -10 && left < alertSeconds() ? 'alerting' : ''].join(' ');
           return `<div class="row ${cls2}"><button class="star" data-k="${esc(k)}" title="Favourite">★</button>` +
             `<div class="who"><b>${esc(r.name)}</b><span>${esc(r.bib ? '#' + r.bib + ' · ' : '')}${esc(r.club)}</span></div>` +
             `<div class="when"><span class="t">${tod(r.startTimeMs)}</span><span class="cd">${left > 0 ? '-' + clock(left).replace('-', '') : '+' + clock(-left)}</span></div></div>`;
@@ -147,7 +184,7 @@
     const on = !favs.has(k);
     if (on) favs.add(k); else favs.delete(k);
     store.set('favs', [...favs]);
-    render();
+    tick();
     // Shared with Split Control's start list (Plan) and the Live runner finder
     if (ctx?.event) {
       const [, cls, name, club] = k.split('|');
@@ -158,40 +195,157 @@
     }
   });
   $('onlyFav').onchange = render;
-  $('offset').value = store.get('offset', 45);
-  $('offset').onchange = () => store.set('offset', Number($('offset').value));
+  // Sound settings, kept in this browser. "Heads-up" took over the old single alert time.
+  const SOUND_DEFAULTS = { headsUp: { on: true, sec: store.get('offset', 45) }, imminent: { on: true, sec: 10 }, start: { on: true } };
+  const sounds = Object.fromEntries(Object.entries(SOUND_DEFAULTS).map(([k, d]) => [k, { ...d, ...store.get('sound.' + k, {}) }]));
+  for (const [k, cfg] of Object.entries(sounds)) {
+    const on = $(k + '-on'), sec = $(k + '-sec');
+    on.checked = cfg.on;
+    on.onchange = () => { cfg.on = on.checked; store.set('sound.' + k, cfg); tick(); };
+    if (sec) {
+      sec.value = cfg.sec;
+      sec.onchange = () => {
+        const v = Math.round(Number(sec.value));
+        cfg.sec = Math.min(Number(sec.max), Math.max(Number(sec.min), Number.isFinite(v) ? v : SOUND_DEFAULTS[k].sec));
+        sec.value = cfg.sec;
+        store.set('sound.' + k, cfg);
+        tick();
+      };
+    }
+  }
+  // The menu button shows which sounds are on, e.g. "45 s · 10 s · start"
+  const updateSoundSummary = () => {
+    const parts = [sounds.headsUp.on && `${sounds.headsUp.sec} s`, sounds.imminent.on && `${sounds.imminent.sec} s`, sounds.start.on && 'start'].filter(Boolean);
+    $('soundSummary').textContent = parts.length ? parts.join(' · ') : 'none';
+  };
+  for (const id of ['headsUp-on', 'headsUp-sec', 'imminent-on', 'imminent-sec', 'start-on']) $(id).addEventListener('change', updateSoundSummary);
+  updateSoundSummary();
+  document.addEventListener('click', (e) => { if (!$('soundMenu').contains(e.target)) $('soundMenu').open = false; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && $('soundMenu').open) { $('soundMenu').open = false; $('soundMenu').querySelector('summary').focus(); }
+  });
+
+  /** Seconds before the start when a favourite's row starts flashing: the earliest chime that is on */
+  const alertSeconds = () => Math.max(sounds.headsUp.on ? sounds.headsUp.sec : 0, sounds.imminent.on ? sounds.imminent.sec : 0, 10);
 
   $('sound').onclick = () => {
-    if (audio) { audio.close(); audio = null; } else { audio = new (window.AudioContext || window.webkitAudioContext)(); }
+    if (audio) { audio.close(); audio = null; scheduled.clear(); }
+    else { audio = new (window.AudioContext || window.webkitAudioContext)(); }
     $('sound').textContent = audio ? '🔊 Sound on' : '🔇 Sound off';
     $('sound').classList.toggle('on', !!audio);
+    tick();
   };
 
-  // Three short beeps and one long, like a start clock
-  function beep() {
-    if (!audio) return;
-    const t0 = audio.currentTime;
-    [[0, .2], [1, .2], [2, .2], [3, .8]].forEach(([at, len]) => {
+  /**
+   * Start imminent: a bell-like rising chime (three soft triangle notes that ring out),
+   * clearly different from the plain start-clock beeps.
+   */
+  function imminentChime(at) {
+    return [1046.5, 1318.5, 1568].map((freq, i) => {
+      const t = at + i * 0.16;
       const o = audio.createOscillator(), g = audio.createGain();
-      o.type = 'sine'; o.frequency.value = at === 3 ? 760 : 380;
-      g.gain.setValueAtTime(.0001, t0 + at); g.gain.exponentialRampToValueAtTime(.4, t0 + at + .02);
-      g.gain.setValueAtTime(.4, t0 + at + len - .03); g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
-      o.connect(g).connect(audio.destination); o.start(t0 + at); o.stop(t0 + at + len + .05);
+      o.type = 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.35, t + .01);
+      g.gain.exponentialRampToValueAtTime(.0001, t + 1.1);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 1.15);
+      return o;
     });
   }
+
+  /**
+   * Heads-up notification: a quick, bright double "ding-ding", played twice. Different from
+   * the start-imminent chime and the start beeps.
+   */
+  function headsUpChime(at) {
+    return [0, .14, .42, .56].map((offset, i) => {
+      const t = at + offset;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'square'; o.frequency.value = i % 2 ? 2093 : 1568;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.12, t + .005);
+      g.gain.exponentialRampToValueAtTime(.0001, t + .22);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t + .25);
+      return o;
+    });
+  }
+
+  /** Start beeps at audio time `at` = the start: short beeps 3, 2, 1 s before, a long beep at it */
+  function startBeeps(atStart, audioNow) {
+    const out = [];
+    for (const s of [3, 2, 1]) if (atStart - s > audioNow + 0.05) out.push(tone(atStart - s, .2, 440));
+    if (atStart > audioNow + 0.05) out.push(tone(atStart, .8, 880));
+    return out;
+  }
+
+  /** One tone at audio time `at` (seconds); returns its oscillator so it can be cancelled */
+  function tone(at, len, freq) {
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o.frequency.value = freq;
+    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(.4, at + .02);
+    g.gain.setValueAtTime(.4, at + len - .03); g.gain.exponentialRampToValueAtTime(.0001, at + len);
+    o.connect(g).connect(audio.destination); o.start(at); o.stop(at + len + .05);
+    return o;
+  }
+
+  /**
+   * A start's sounds, placed on the audio clock so they are exact even when the browser slows
+   * timers in a background tab: the heads-up chime, the start-imminent chime and the start
+   * beeps, each only when it is switched on.
+   */
+  function scheduleStart(startTimeMs) {
+    const nodes = [];
+    const audioNow = audio.currentTime;
+    const atStart = audioNow + (startTimeMs - now()) / 1000;
+    const future = (t) => t > audioNow + 0.05;
+    if (sounds.headsUp.on && future(atStart - sounds.headsUp.sec)) nodes.push(...headsUpChime(atStart - sounds.headsUp.sec));
+    if (sounds.imminent.on && future(atStart - sounds.imminent.sec)) nodes.push(...imminentChime(atStart - sounds.imminent.sec));
+    if (sounds.start.on) nodes.push(...startBeeps(atStart, audioNow));
+    return nodes;
+  }
+
+  /** Keep the scheduled sounds in step with favourites, start times and the sound settings */
+  function syncSounds() {
+    if (!audio) return;
+    if (audio.state === 'suspended') audio.resume();
+    const t = now();
+    const settings = JSON.stringify(sounds);
+    // Schedule a minute before the earliest sound that is on; drop starts that are over
+    const horizon = (Math.max(sounds.headsUp.on ? sounds.headsUp.sec : 0, sounds.imminent.on ? sounds.imminent.sec : 0, 3) + 60) * 1000;
+    const wanted = new Map();
+    for (const cls of selected) {
+      for (const r of data[cls] || []) {
+        if (favs.has(key(cls, r)) && r.startTimeMs > t && r.startTimeMs - t <= horizon) wanted.set(String(r.startTimeMs), r.startTimeMs);
+      }
+    }
+    for (const [k, entry] of scheduled) {
+      if (wanted.has(k) && entry.settings === settings) continue;
+      // Unfavourited, start time changed or settings changed: cancel what has not played yet
+      for (const o of entry.nodes) { try { o.stop(); } catch {} }
+      scheduled.delete(k);
+    }
+    for (const [k, startTimeMs] of wanted) {
+      if (!scheduled.has(k)) scheduled.set(k, { settings, nodes: scheduleStart(startTimeMs) });
+    }
+  }
+
+  /** Sound on (the click counts as the browser's permission), then play a preview */
+  function preview(play) {
+    if (!audio) $('sound').click();
+    if (audio.state === 'suspended') audio.resume();
+    play(audio.currentTime + 0.05);
+  }
+  const PREVIEW = {
+    headsUp: (t) => headsUpChime(t),
+    imminent: (t) => imminentChime(t),
+    start: (t) => startBeeps(t + 3, t - 1)
+  };
+  document.querySelectorAll('[data-preview]').forEach((b) => { b.onclick = () => preview(PREVIEW[b.dataset.preview]); });
 
   function tick() {
     const t = now();
     $('clock').textContent = tod(t);
-    const lead = Number($('offset').value) * 1000;
-    for (const cls of selected) {
-      for (const r of data[cls] || []) {
-        const k = key(cls, r);
-        if (!favs.has(k) || alerted.has(k)) continue;
-        const left = r.startTimeMs - t;
-        if (left <= lead && left > lead - 5000) { alerted.add(k); beep(); }
-      }
-    }
+    const anyFav = [...selected].some(cls => (data[cls] || []).some(r => favs.has(key(cls, r)) && r.startTimeMs > t));
+    $('soundHint').hidden = !!audio || !anyFav;
+    syncSounds();
     render();
   }
 
