@@ -13,7 +13,8 @@ import { MopBackend, mopStatusToLiveResults, mopSplitCode } from '../MopBackend'
 const DUMP = path.resolve(__dirname, '../../../../../templates/SMGraphics-example/backup.sql');
 
 function loadDump(): DatabaseSync {
-  const sql = fs.readFileSync(DUMP, 'utf8');
+  // Git on Windows may check the dump out with CRLF line endings; the patterns below expect \n
+  const sql = fs.readFileSync(DUMP, 'utf8').replace(/\r\n/g, '\n');
   const db = new DatabaseSync(':memory:');
   for (const m of sql.matchAll(/CREATE TABLE `(\w+)` \(([\s\S]*?)\n\) ENGINE/g)) {
     const cols = [...m[2].matchAll(/^\s+`(\w+)`/gm)].map(c => c[1]);

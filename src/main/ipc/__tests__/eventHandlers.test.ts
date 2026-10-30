@@ -267,7 +267,7 @@ describe("Event monitor and preview IPC", () => {
     await invoke("window:openMonitor", "preview");
     const window = mock.windows[mock.windows.length - 1];
     expect(window.loadFile).toHaveBeenCalledWith(
-      expect.stringContaining("dist/index.html"),
+      expect.stringMatching(/dist[\\/]index\.html$/), // either path separator (Windows)
       { search: "monitor=preview" },
     );
     expect(window.loadURL).not.toHaveBeenCalled();
