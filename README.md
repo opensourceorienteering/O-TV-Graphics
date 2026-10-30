@@ -1,205 +1,256 @@
 # Split Control
 
-*Orienteering Graphics* (formerly OL-Grafik)
+*Orienteering graphics for live broadcasts* (formerly OL-Grafik)
 
-Cross-platform broadcast graphics for orienteering competitions. Split Control plays EBU OGraf HTML graphics fed with live results, and outputs them to OBS, vMix or CasparCG over HTTP, or as an NDI source with alpha.
+Split Control puts live orienteering results on screen: start lists, live splits at radio
+controls, results, runner comparisons and more. It reads live timing data (Liveresultat,
+MeOS or IOF XML), renders broadcast graphics and sends them to your production as a browser
+source (OBS, vMix, CasparCG) or as an NDI source with transparency.
 
-## Event workflow
+It runs on Windows, macOS and Linux.
 
-The control app opens on **Events**, grouped into folders. Every event has two states:
+## Download
 
-- **Plan:** event details, look, data connection and test, start lists with favourite runners and virtual bibs, and output. The checklist shows preparation status.
-- **Live desk:** choose a graphic, fill its fields (or recall a favourite saved for that graphic), check it in Preview, then **Show**, **Update** or **Hide**. Every graphic is triggered by hand; there is no cue list or "next". Ctrl/Cmd+K opens a command palette (`0 2 105` = runner identity, class 2, bib 105) with recent commands.
-- **Monitors:** Program and Preview can run in the desk, in separate windows, or together in one window on another screen. Preview never affects the output.
-- **Start lists:** import IOF XML/CSV, refresh from the event source, mark favourites, assign virtual bibs and export a PDF.
-- **Companion:** HTTP actions, Socket.IO tally and a local module with favourite buttons plus Show / Update / Hide / Hide all. See [control and monitors](docs/CONTROL-API.md) and [module packaging](companion/README.md).
+There is no published release yet. Every push to `main` builds the apps on GitHub:
 
-New events can follow shared folder defaults with event overrides. Existing and duplicated events remain independent until linked; a duplicated event keeps the source's desk favourites. Shared changes wait while graphics are on air. Output configuration is shared by the running app.
+1. Open the [latest successful Build run](https://github.com/opensourceorienteering/O-TV-Graphics/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess).
+2. Under **Artifacts**, download `split-control-mac-arm64` (Apple Silicon Macs) or
+   `split-control-windows-x64` (Windows installer and portable `.exe`). You need to be
+   signed in to GitHub to download artifacts.
 
-See [UX progress and remaining field tests](docs/UX-IMPLEMENTATION-STATUS.md).
+The builds are not signed yet:
+
+- **Windows:** SmartScreen warns on first launch. Choose **More info → Run anyway**.
+- **macOS:** the first launch is blocked. Right-click the app and choose **Open**.
+
+## How it works
+
+Everything is organised in **events**, which can be grouped in folders (a multi-day event, a
+season). Each event has two modes.
+
+### Plan
+
+Prepare the event step by step. A checklist shows what is ready.
+
+1. **Data source & event info:** the timing source and competition, the date and place.
+2. **Output:** the outputs the event uses in Live (web output, NDI). They turn on
+   automatically when the event opens in Live.
+3. **Theme:** the look (template set), colours, logos, language and how runners are
+   shown (club, flag or both).
+4. **Templates:** the order of graphics in the Live list, default values for each graphic,
+   and which graphics to show in Live.
+5. **Start lists:** refresh from the data source or import IOF XML or CSV, mark favourite
+   runners, assign virtual bibs when the event has none, and export a PDF.
+6. **Final check:** test everything, export or import settings, and go live.
+
+### Live
+
+The Live desk is for running the broadcast. Every graphic is triggered by hand; there is no
+running order.
+
+- **Prepare, then send:** choose a graphic, fill in its fields or recall a favourite, check
+  it in **Preview**, then **Show**, **Update** or **Hide**. Preview never affects the output.
+- **Live data:** graphics on air follow new results as they come in. Results tables and the
+  podium can hold their data until you press Update.
+- **Monitors:** Program and Preview can sit in the desk, in their own windows, or together
+  on another screen.
+
+| Key | Action |
+|---|---|
+| `Space` | Show / hide the selected graphic |
+| `U` | Update the graphic on air with the draft |
+| `H` | Hide the active graphic |
+| `Esc` | Hide all (in a field: leave the field) |
+| `←` / `→` | Previous / next page on Program |
+| `0`–`9` | Choose a graphic by its number |
+| `F` | Save the draft as a favourite |
+| `Ctrl/Cmd+K` | Command palette (also from a field) |
+| `↑` / `↓` | Choose a graphic in the list |
+
+**Command palette.** Type a graphic number and its parameters, for example:
+
+- `2 3 105`: runner identity, class 3, bib 105
+- `1 3 F`: live split, class 3, at the finish
+- `2 F1`: runner identity, favourite F1
+
+A hint line shows the whole command for the chosen graphic and what each part accepts.
+Command numbers are the same in every event and are set in **Settings → Controls**.
+Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Template sets: IOF, ČO and Classic.** Each set is a complete look with 13 competition graphics plus an output test pattern: results, start list, standings and runner lower thirds, split comparison, position history chart, podium, next starters, race clock, course facts, weather, event title and name strap. A project picks one set, and graphics from different sets can't be mixed. See [templates/sets](templates/sets/README.md).
-- **Broadcast rules built in.** The club/flag rule follows national or international events. Playing a graphic takes clashing graphics off air (a results table removes the lower third, but the clock stays). Club logos ship with the app and only change with a new version, so nothing contacts Eventor during a broadcast.
-- **Director start alerts** at `http://<host>:5657/director`. Pick classes, star favourites, and get a beep and flash before they start. It works on any device on the network.
-- **EBU OGraf v1 graphics.** Templates are standard OGraf packages: an `.ograf.json` manifest plus an ES module whose default export is the Web Component. Third-party OGraf graphics load unmodified, and ours load in other OGraf renderers.
-- **Live orienteering data.**
-  - The Liveresultat REST API (`api.orienteering.services`) is the default, with instant push updates.
-  - The legacy `api.php` API is still supported.
-  - MeOS directly, through its built-in information server: results, radio splits and relay legs with no internet, receiver or database.
-  - MeOS Online Protocol (MOP) databases, for setups that already run a MOP receiver.
-  - IOF XML 3.0 result or start list files from any timing software.
-- **Web output** for OBS Browser Source, vMix Web Input and CasparCG HTML producer.
-- **NDI 6 output** with alpha, through `@stagetimerio/grandiose`. It is optional.
-- **Projects and rundowns**, inspired by SPX-GC, with live auto-update of graphics while they are on air.
-- **Runs on Windows, macOS and Linux.**
+- **Seven looks (template sets)**, each with the same 17 graphics:
+  - live split at a radio control, and a runner lower third
+  - runner identity, runner focus with a running clock, and a name strap
+  - start list and start group (next starters)
+  - results with live position changes
+  - runner split comparison and position history chart
+  - podium
+  - race title, course facts, weather, identity plate and commentators
+  - timer
 
-## Technology stack
+  An event uses one set.
 
-| Area | Choice |
+  | Set | Look |
+  |---|---|
+  | **IOF** | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
+  | **ČO** | The Czech orienteering streams, after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx) (used with permission) |
+  | **Classic** | The original OL-Grafik look, modernised |
+  | **Standard** | Modern and playful: floating cards with a gradient accent |
+  | **Bold** | Huge condensed uppercase names on ink bands |
+  | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |
+  | **Signal** | Dark glass cards with an RGB-split edge |
+
+- **Broadcast rules built in.**
+  - Clubs, flags or both, following national or international events.
+  - Showing a graphic takes clashing graphics off air (a results table removes a lower
+    third, but the clock stays).
+  - Labels in English, Swedish, Norwegian or Czech.
+- **Club logos ship with the app**, so nothing contacts Eventor during a broadcast. Add or
+  replace logos as `DATAROOT/club-logos/manual/<Club name>.png` (**Plan → Theme** opens the
+  folder).
+- **Live data:**
+  - the **Liveresultat REST API** (`api.orienteering.services`), the default, with instant
+    push updates;
+  - the legacy Liveresultat `api.php`;
+  - **MeOS** directly, through its built-in information server: no internet or database
+    needed;
+  - **MeOS Online Protocol (MOP)** databases;
+  - **IOF XML 3.0** result or start list files from any timing software.
+- **Outputs:** a web output page for OBS Browser Source, vMix Web Input and CasparCG HTML,
+  and **NDI 6** with transparency.
+- **Director start alerts:** a page for the director on any device on the network,
+  `http://<computer>:5657/director`.
+  - Upcoming starters of chosen classes, with favourites starred.
+  - Sounds for favourites, each one on or off: a heads-up (45 s before the start by
+    default), start imminent (10 s by default) and start beeps.
+- **Remote control:** an HTTP control API, a local [Bitfocus Companion module](companion/README.md)
+  with favourite buttons and Show / Update / Hide, and the
+  [EBU OGraf Server API v1](https://github.com/ebu/ograf) at `http://<computer>:5657/ograf/v1`.
+  None of these have authentication: only use them on a trusted network.
+- **Replay a finished race as if it were live**, to rehearse or train operators. See
+  [Replay a race](docs/REPLAY-A-RACE.md).
+- **Standard EBU OGraf v1 graphics.** Third-party OGraf graphics load unchanged, and ours
+  work in other OGraf renderers.
+
+## Outputs
+
+| Output | How |
 |---|---|
-| App shell | Electron 44 (Node.js 24, Chromium) |
-| UI | React 19, React Router 7, Zustand 5 |
-| Server | Express 5, Socket.IO 4 |
-| Build | Vite 8 (Rolldown), TypeScript 6 |
-| Tests and lint | Vitest 5, ESLint 10 flat config |
-| NDI | `@stagetimerio/grandiose` (Node-API, NDI SDK 6.3) |
+| **Web** | `http://<computer>:5657/output` as a browser source. Transparent background; 1920 × 1080 by default. |
+| **NDI** | Choose it in **Plan → Output**. The source is called "Split Control NDI Output" by default. |
 
-## Getting started
+These are app-wide settings: the ports and resolution are in **Settings → General**, and
+the NDI name and frame rate in **Settings → Output defaults**.
+
+## Development
 
 ### Prerequisites
 
 - **Node.js 22 or newer.** Node.js 24 LTS is recommended.
-- **npm 10 or newer.**
-- **A C++ toolchain**, needed once to build the NDI addon. NDI is optional, so the app still runs if the build fails. See the [NDI Setup Guide](docs/NDI-SETUP.md).
+- **npm 10 or newer.** With npm 11+, install scripts must be approved; the NDI addon's build
+  is already approved in `package.json`.
+- **Build tools for the NDI addon:**
+  - Windows: Visual Studio Build Tools with "Desktop development with C++".
+  - macOS: Xcode Command Line Tools.
+  - Linux: `build-essential`.
 
-### Install and run
+  NDI is optional: the app runs without it.
+
+### Run
 
 ```bash
 npm install
-cp config.example.json config.json   # optional; without it, built-in defaults are used
 npm run dev
 ```
 
-The NDI bindings download the NDI 6 SDK during install, so no separate NDI runtime install is needed. npm 11+ only runs approved install scripts; the grandiose build is approved in `package.json`.
+`npm install` downloads the NDI 6 SDK and builds the NDI addon. No separate NDI install is
+needed.
 
-> **VS Code terminals** set `ELECTRON_RUN_AS_NODE=1`, which stops Electron from opening windows. If `npm run dev` starts but shows no window, run `env -u ELECTRON_RUN_AS_NODE npm run dev`.
+> **VS Code terminals** set `ELECTRON_RUN_AS_NODE=1`, which stops Electron from opening a
+> window. Use `env -u ELECTRON_RUN_AS_NODE npm run dev`.
+
+Only one Split Control runs at a time. A new `npm run dev` takes over from an older dev
+app, and a dev app quits when its dev server stops.
 
 ### Scripts
 
 ```bash
-npm run dev          # Vite dev server + Electron
-npm run type-check   # tsc --noEmit
-npm run lint         # ESLint
-npm test             # Vitest (watch); npm test -- --run for a single run
-npm run build        # type-check, build and package with electron-builder
+npm run dev              # Vite dev server + Electron
+npm run type-check       # TypeScript
+npm run lint             # ESLint
+npx vitest run           # tests, once (npm test watches)
+npm run build            # type-check, bundle and package for this platform
+npm run generate:sets    # regenerate the template set packages from templates/sets/_core
+npm run companion:package
 ```
 
-## Project structure
+### Builds
 
-```
-ol-grafik/
-├── src/
-│   ├── main/            # Electron main process
-│   │   ├── data/        # LiveResults client (REST + legacy), data sources, transformer
-│   │   ├── templates/   # OGraf discovery and manifest validation
-│   │   ├── playback/    # Playback engine and live auto-update
-│   │   ├── output/      # Web server, NDI output, frame capture
-│   │   ├── projects/    # Projects and rundowns
-│   │   └── ipc/         # IPC handlers
-│   ├── renderer/
-│   │   ├── control/     # Control panel (React)
-│   │   ├── graphics/    # OGraf renderer and module loader
-│   │   └── web-output/  # Browser-source output page
-│   ├── preload/
-│   └── shared/types/
-├── templates/           # OGraf graphics packages
-├── docs/
-├── DATAROOT/            # Projects and rundowns (git-ignored)
-└── LOG/                 # Logs (git-ignored)
-```
+[`.github/workflows/build.yml`](.github/workflows/build.yml) builds macOS (Apple Silicon)
+and Windows (x64) packages on GitHub, each on its own platform, because the NDI addon can't
+be cross-compiled. It runs on pushes to `main`, on version tags (`v1.2.0`) and from the
+Actions tab. See the [Build & Packaging Guide](docs/BUILD-PACKAGING.md) for local builds and
+club logos.
 
-## Configuration
+### Where things are stored
 
-`config.json` in the application root is local and git-ignored. Start from [config.example.json](config.example.json). The main settings:
-
-```json
-{
-  "general": { "port": 5657, "wsPort": 5656, "dataroot": "./DATAROOT" },
-  "dataSources": [
-    {
-      "id": "liveresults-default",
-      "type": "liveresults",
-      "name": "LiveResults",
-      "enabled": true,
-      "config": { "baseUrl": "https://api.orienteering.services", "cacheInterval": 10000, "api": "rest" }
-    }
-  ],
-  "output": { "ndi": { "enabled": false, "name": "Grafik", "fps": 50 }, "web": { "enabled": true } }
-}
-```
-
-## Live results
-
-Split Control talks to [Liveresultat](https://liveresultat.orientering.se) through one client with two backends:
-
-| `api` | Base URL | Notes |
+| | Development (`npm run dev`) | Installed app |
 |---|---|---|
-| `rest` (default) | `https://api.orienteering.services` | ETag/`If-None-Match` with 304 responses. Poll at most every 10 s. Valid JSON. [API docs](https://liveresultat.orientering.se/beta/docs) |
-| `legacy` | `https://liveresultat.orientering.se` | `api.php?method=...` with a 15 s server cache. It doesn't escape quotes in names, which can break whole responses. |
+| Settings | `config.json` in the project folder (git-ignored; start from [config.example.json](config.example.json)) | `config.json` in the app data folder |
+| Events | `DATAROOT/` in the project folder (git-ignored) | `DATAROOT/` in the app data folder |
 
-`auto` picks `rest` when the base URL host is `api.orienteering.services`. Competition IDs are the same in both APIs. REST responses are mapped to the legacy shapes, so templates and the transformer work with either backend.
+The app data folder is `~/Library/Application Support/OL-Grafik` on macOS and
+`%APPDATA%\OL-Grafik` on Windows. It keeps its old name so existing events survive the
+rename.
 
-Timing software can publish to Liveresultat directly. MeOS uses MOP, and other systems can upload IOF XML 3.0 or JSON. See [Live results and MeOS (MOP)](docs/LIVERESULTS_USER_GUIDE.md) and the [developer guide](docs/LIVERESULTS_DEVELOPER_GUIDE.md).
+### Project structure
 
-## Templates
-
-Graphics come in **template sets** (`templates/sets/<set>/`). Choose a project's set in Project View → Project graphics.
-
-| Set | Look |
-|---|---|
-| `iof` | IOF TV graphics (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic, the three-layer slide |
-| `cz` | Czech orienteering streams, after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx) (used with permission): orange and beige, italic headers with the control-circle mark |
-| `classic` | The original Split Control look, including `countdown-timer`, `results-list-paginated`, `split-time-lower-third` and `split-time-lower-third-runner` |
-
-Fonts are open-licensed stand-ins: Libre Franklin for ITC Franklin Gothic, and Albert Sans for GT Planar. If you have the licensed originals installed, they are used. Flags come from flag-icons (MIT).
-
-**Club logos** ship with the app (`club-logos/`) and are matched to clubs by name. Users never fetch them from Eventor; maintainers refresh them before a release with `npm run logos:fetch` (see [Build & Packaging](docs/BUILD-PACKAGING.md)). Operators can add or replace logos as `DATAROOT/club-logos/manual/<Club name>.png` (Settings → Data → Open logo folder).
-
-See the [Template Developer Guide](docs/TEMPLATE-DEVELOPER-GUIDE.md) and the [OGraf specification](https://ograf.ebu.io/v1/specification/). A graphic module must `export default` its class. The renderer registers it under a unique tag, so an edited template can be reloaded without restarting.
-
-## Output
-
-- **Web:** `http://localhost:5657/output`, for OBS Browser Source, vMix Web Input or CasparCG HTML.
-- **NDI:** enable it on the Output page. See the [NDI Setup Guide](docs/NDI-SETUP.md).
-
-## Keyboard shortcuts
-
-- `Space`: play or stop the selected item
-- `Esc`: stop all graphics
-- `Enter`: edit the selected item
-- `Ctrl+S`: save the rundown
-- `Ctrl+N`: new item
-- `↑/↓`: move between items
-- `Shift+?`: show shortcut help
-
-## OGraf Server API
-
-Split Control implements the [EBU OGraf Server API v1](https://github.com/ebu/ograf/blob/main/v1/specification/open-api/server-api.yaml) at `http://<host>:5657/ograf/v1`. External OGraf controllers can list graphics and load, play, update, stop, run custom actions on and clear them on the program output (renderer `program`, render target `{ "output": "program" }`). Graphics started from a rundown are listed and can be cleared, but play/stop/update stay with the rundown. There is no authentication, so only expose port 5657 on a trusted network.
-
-```bash
-curl http://localhost:5657/ograf/v1/graphics
-curl -X POST http://localhost:5657/ograf/v1/renderers/program/target/graphicInstance/load \
-  -H 'content-type: application/json' \
-  -d '{"renderTarget":{"output":"program"},"graphicId":"countdown-timer","params":{"data":{"title":"Start","targetTime":"11:30:00"}}}'
 ```
-
-## Status
-
-Implemented: template sets (IOF, ČO, Classic) with clash rules and the club/flag rule, Eventor club logos, director start alerts, OGraf v1 graphics and the OGraf Server API v1, projects and rundowns, live data from Liveresultat (REST with push, and legacy), MeOS (information server or MOP database) and IOF XML 3.0 files, live auto-update while on air, web output, and NDI 6 output.
-
-Not yet implemented:
-
-- Manual and CSV data sources. They are declared in the types but not registered.
-- GPS tracking input. Tracking providers (Livelox, Loggator, Sportrec and others) each have their own API, and none is a shared standard yet.
+├── src/
+│   ├── main/            Electron main process
+│   │   ├── data/        Live data client (Liveresultat REST + legacy), data sources
+│   │   ├── events/      Events, Plan, Live desk, start lists, control
+│   │   ├── output/      Web server, NDI, control, director and OGraf APIs
+│   │   ├── playback/    Playback engine and live updates
+│   │   ├── templates/   OGraf discovery and validation, template sets
+│   │   └── ipc/         IPC handlers
+│   ├── renderer/
+│   │   ├── control/     Control app (React): events, Plan, Live desk, settings
+│   │   ├── graphics/    Graphics renderer
+│   │   └── web-output/  Browser source page
+│   ├── preload/
+│   └── shared/          Types and logic shared by main and renderer
+├── templates/sets/      Template sets; shared code in _core/
+├── club-logos/          Bundled Eventor club logos
+├── companion/           Bitfocus Companion module
+├── public/              Director page and other static pages
+├── scripts/             Packaging, template sets, club logos, race replay
+└── docs/
+```
 
 ## Documentation
 
+- [Replay a race](docs/REPLAY-A-RACE.md): rehearse with a finished race played back live
 - [Build & Packaging Guide](docs/BUILD-PACKAGING.md)
-- [NDI Setup Guide](docs/NDI-SETUP.md)
-- [LiveResults User Guide](docs/LIVERESULTS_USER_GUIDE.md)
-- [LiveResults Developer Guide](docs/LIVERESULTS_DEVELOPER_GUIDE.md)
-- [Template Developer Guide](docs/TEMPLATE-DEVELOPER-GUIDE.md)
-- [Data Source Plugin API](docs/data-source-plugin-api.md)
+- [Template sets](templates/sets/README.md)
+- [Companion module](companion/README.md)
+
+## Not yet implemented
+
+- Manual and CSV data sources for live results (start lists can already be imported from
+  CSV).
+- GPS tracking. Tracking providers (Livelox, Loggator and others) each have their own API,
+  and there is no shared standard yet.
 
 ## Acknowledgments
 
-- **EBU OGraf**, for the open graphics standard
-- **SPX-GC**, for architecture and UX inspiration
-- **Liveresultat / LiveResults**, for the orienteering results API
-- **Stagetimer**, for maintaining the grandiose NDI bindings
+- [EBU OGraf](https://ograf.ebu.io), the open graphics standard
+- [SPX-GC](https://spx.graphics), for architecture and UX inspiration
+- [Liveresultat](https://liveresultat.orientering.se), for the orienteering results API
+- [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx), for the ČO look
+- [Stagetimer](https://github.com/stagetimerio/grandiose), for the grandiose NDI bindings
 
 ## License
 
-MIT
+The package is marked MIT in `package.json`, but the repository has no LICENSE file yet.
