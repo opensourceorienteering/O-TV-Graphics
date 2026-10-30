@@ -136,6 +136,48 @@ describe('LiveResultsClient (REST)', () => {
   });
 });
 
+describe('LiveResultsClient API detection (auto, other addresses)', () => {
+  beforeEach(() => get.mockReset());
+
+  it('uses REST when the server answers /competitions like api.orienteering.services (replay server)', async () => {
+    get.mockResolvedValueOnce({ status: 200, data: { competitions: [] }, headers: {} });
+    get.mockResolvedValueOnce(ok({ classes: ['H21'] }));
+    const client = new LiveResultsClient({ baseUrl: 'http://127.0.0.1:5800', retryAttempts: 1 });
+    const res = await client.getClasses(33124);
+    expect(get.mock.calls[0][0]).toBe('/competitions');
+    expect(get.mock.calls[1][0]).toBe('/competitions/33124/classes');
+    expect(client.getApiFlavor()).toBe('rest');
+    expect(res.data).toEqual([{ className: 'H21' }]);
+  });
+
+  it('falls back to the legacy api.php when /competitions is not a REST answer', async () => {
+    get.mockResolvedValueOnce({ status: 404, data: 'Not found', headers: {} });
+    get.mockResolvedValueOnce({ status: 200, data: { status: 'OK', classes: [{ className: 'H21' }] }, headers: {} });
+    const client = new LiveResultsClient({ baseUrl: 'http://localhost:3001', retryAttempts: 1 });
+    await client.getClasses(1);
+    expect(client.getApiFlavor()).toBe('legacy');
+    expect(get.mock.calls[1][0]).toBe('/api.php');
+  });
+
+  it('asks again on the next request when the server could not be reached', async () => {
+    get.mockRejectedValueOnce(Object.assign(new Error('connect ECONNREFUSED'), { isAxiosError: true }));
+    get.mockResolvedValueOnce({ status: 200, data: { status: 'OK', classes: [] }, headers: {} });
+    const client = new LiveResultsClient({ baseUrl: 'http://127.0.0.1:5800', retryAttempts: 1 });
+    await client.getClasses(1).catch(() => undefined);
+    get.mockResolvedValueOnce({ status: 200, data: { competitions: [] }, headers: {} });
+    get.mockResolvedValueOnce(ok({ classes: [] }));
+    await client.getClasses(1);
+    expect(client.getApiFlavor()).toBe('rest');
+  });
+
+  it('never asks for the two Liveresultat addresses or an explicit choice', async () => {
+    get.mockResolvedValue({ status: 200, data: { status: 'OK', classes: [] }, headers: {} });
+    await new LiveResultsClient({ baseUrl: 'https://liveresultat.orientering.se', retryAttempts: 1 }).getClasses(1);
+    await new LiveResultsClient({ baseUrl: 'http://127.0.0.1:5800', api: 'legacy', retryAttempts: 1 }).getClasses(1);
+    expect(get.mock.calls.every(c => c[0] === '/api.php')).toBe(true);
+  });
+});
+
 describe('LiveResultsClient polling', () => {
   beforeEach(() => get.mockReset());
 
@@ -178,6 +220,8 @@ describe('LiveResultsClient push channel', () => {
 
   const make = () => new LiveResultsClient({
     baseUrl: 'http://127.0.0.1:9', api: 'rest', localPollFloorMs: 60_000, retryAttempts: 1,
+    // A local REST server gets push only with its own push address
+    pushUrl: 'wss://push.test',
     webSocketFactory: (url: string) => new FakeSocket(url) as any
   });
 
@@ -189,7 +233,7 @@ describe('LiveResultsClient push channel', () => {
     client.startPolling({ competitionId: 40123, className: 'D21', interval: 0, onUpdate });
     expect(FakeSocket.all).toHaveLength(1); // one socket per competition
     const sock = FakeSocket.all[0];
-    expect(sock.url).toBe('wss://ws.orienteering.services?tavid=40123');
+    expect(sock.url).toBe('wss://push.test?tavid=40123');
     sock.open();
     expect(sock.sent.at(-1)).toEqual({ action: 'sub', tabs: ['H21', 'D21'] });
 
@@ -225,6 +269,14 @@ describe('LiveResultsClient push channel', () => {
     off.startPolling({ competitionId: 1, className: 'H21', interval: 0, onUpdate: () => {} });
     expect(FakeSocket.all).toHaveLength(0);
     legacy.stopAllPolling(); off.stopAllPolling();
+  });
+
+  it("is off for another REST server (replay), which Liveresultat's push channel knows nothing about", () => {
+    get.mockResolvedValue(ok({ classes: [] }));
+    const replay = new LiveResultsClient({ baseUrl: 'http://127.0.0.1:5800', api: 'rest', webSocketFactory: (u: string) => new FakeSocket(u) as any });
+    replay.startPolling({ competitionId: 1, className: 'H21', interval: 0, onUpdate: () => {} });
+    expect(FakeSocket.all).toHaveLength(0);
+    replay.stopAllPolling();
   });
 
   it('ignores unknown push messages', () => {

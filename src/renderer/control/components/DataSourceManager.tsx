@@ -410,6 +410,27 @@ function DataSourceDialog({
                 />
               </div>
               <div className="form-group">
+                <label>{tr("API")}</label>
+                <select
+                  value={(config.config as any)?.api || "auto"}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      config: {
+                        ...(config.config || {}),
+                        api: e.target.value,
+                      },
+                    })
+                  }
+                >
+                  <option value="auto">{tr("Automatic")}</option>
+                  <option value="rest">{tr("REST (api.orienteering.services, replay server)")}</option>
+                  <option value="legacy">{tr("Legacy (api.php)")}</option>
+                </select>
+                <small className="help-text">
+                   {tr("Automatic uses REST for api.orienteering.services and the legacy api.php for other addresses.")} </small>
+              </div>
+              <div className="form-group">
                 <label>{tr("Poll interval (ms)")}</label>
                 <input
                   type="number"

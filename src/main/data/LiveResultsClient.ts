@@ -160,14 +160,23 @@ export class LiveResultsClient {
   private cache: LiveResultsCache;
   private pollingTimers: Map<string, NodeJS.Timeout>;
   private options: Required<Omit<LiveResultsClientOptions, 'api' | 'localPollFloorMs' | 'backend' | 'push' | 'pushUrl' | 'webSocketFactory'>>;
-  private readonly pushEnabled: boolean;
+  /** Push wanted by the options (the API must also turn out to be REST) */
+  private readonly pushWanted: boolean;
   private readonly pushUrl: string;
   private readonly webSocketFactory?: WebSocketFactory;
   /** One push socket per competition with the classes being polled */
   private pushChannels: Map<number, { channel: LiveResultsPushChannel; classes: Map<string, number> }> = new Map();
   /** Immediate refetch hooks of running polls, by pollId */
   private pollTriggers: Map<string, (pushVer?: number) => void> = new Map();
-  private readonly api: 'legacy' | 'rest';
+  private api: 'legacy' | 'rest';
+  /**
+   * 'auto' for an address that is neither Liveresultat API: the first request asks the server
+   * which API it speaks (a replay or self-hosted server can be REST)
+   */
+  private apiUnknown = false;
+  private apiProbe?: Promise<void>;
+  private readonly requestedInterval?: number;
+  private readonly localPollFloorMs?: number;
   private readonly backend?: LiveResultsBackend;
   /** REST only: last ETag and body per request path, for If-None-Match / 304 */
   private etagCache: Map<string, { etag: string; body: unknown }> = new Map();
@@ -179,16 +188,22 @@ export class LiveResultsClient {
   constructor(options: LiveResultsClientOptions) {
     this.api = resolveApiFlavor(options.baseUrl, options.api);
     this.backend = options.backend;
-    this.pushEnabled = !this.backend && this.api === 'rest' && options.push !== false;
+    // Liveresultat's push channel only signals changes on its own API: another REST server (a
+    // replay or self-hosted copy) gets push only with its own pushUrl
+    const official = (() => {
+      try { return new URL(options.baseUrl).hostname === 'api.orienteering.services'; } catch { return false; }
+    })();
+    this.pushWanted = options.push !== false && (official || !!options.pushUrl);
+    const host = (() => { try { return new URL(options.baseUrl).hostname; } catch { return ''; } })();
+    this.apiUnknown = !options.backend && (options.api ?? 'auto') === 'auto' && !!host &&
+      host !== 'api.orienteering.services' && host !== 'liveresultat.orientering.se';
+    this.requestedInterval = options.cacheInterval;
+    this.localPollFloorMs = isLocalUrl(options.baseUrl) ? options.localPollFloorMs : undefined;
     this.pushUrl = options.pushUrl || DEFAULT_PUSH_URL;
     this.webSocketFactory = options.webSocketFactory;
-    let minInterval: number = this.backend ? this.backend.minPollIntervalMs : MIN_INTERVAL_MS[this.api];
-    if (options.localPollFloorMs !== undefined && isLocalUrl(options.baseUrl)) {
-      minInterval = Math.max(100, options.localPollFloorMs);
-    }
     this.options = {
       baseUrl: options.baseUrl.replace(/\/+$/, ''),
-      cacheInterval: Math.max(options.cacheInterval || minInterval, minInterval),
+      cacheInterval: this.pollInterval(),
       timeout: options.timeout || 10000,
       retryAttempts: options.retryAttempts || 3,
       retryDelay: options.retryDelay || 1000
@@ -222,6 +237,40 @@ export class LiveResultsClient {
   /** Which API this client talks to */
   getApiFlavor(): 'legacy' | 'rest' | 'backend' {
     return this.backend ? 'backend' : this.api;
+  }
+
+  private get pushEnabled(): boolean {
+    return !this.backend && this.api === 'rest' && this.pushWanted;
+  }
+
+  /** Poll interval for the current API (REST allows 10 s, the legacy api.php 15 s) */
+  private pollInterval(): number {
+    let floor: number = this.backend ? this.backend.minPollIntervalMs : MIN_INTERVAL_MS[this.api];
+    if (this.localPollFloorMs !== undefined) floor = Math.max(100, this.localPollFloorMs);
+    return Math.max(this.requestedInterval || floor, floor);
+  }
+
+  /**
+   * 'auto' on another address: ask once whether the server speaks the REST API
+   * (GET /competitions answers { competitions: [...] }); otherwise it is the legacy api.php.
+   * An unreachable server is asked again on the next request.
+   */
+  private async ensureApi(): Promise<void> {
+    if (!this.apiUnknown) return;
+    this.apiProbe ??= (async () => {
+      try {
+        const res = await this.client.get('/competitions', { validateStatus: () => true, timeout: Math.min(this.options.timeout, 5000) });
+        this.api = res.status === 200 && Array.isArray((res.data as any)?.competitions) ? 'rest' : 'legacy';
+        this.apiUnknown = false;
+        this.options.cacheInterval = this.pollInterval();
+        logger.info('LiveResults API detected', { baseUrl: this.options.baseUrl, api: this.api });
+      } catch (error) {
+        logger.warn('Could not reach the LiveResults server to detect its API', { error: (error as Error).message });
+      } finally {
+        this.apiProbe = undefined;
+      }
+    })();
+    await this.apiProbe;
   }
 
   /**
@@ -440,6 +489,7 @@ export class LiveResultsClient {
    * Fetch list of competitions
    */
   async getCompetitions(): Promise<CachedResponse<LiveResultsCompetition[]>> {
+    await this.ensureApi();
     logger.debug('LiveResultsClient: Fetching competitions...');
 
     const response = this.backend
@@ -485,6 +535,7 @@ export class LiveResultsClient {
    * Much lighter than getCompetitions(), which returns every competition.
    */
   async getCompetitionInfo(competitionId: number, maxAgeMs = 60_000): Promise<LiveResultsCompetitionInfo> {
+    await this.ensureApi();
     const cached = this.competitionInfoCache.get(competitionId);
     if (cached && Date.now() - cached.fetchedAt < maxAgeMs) return cached.data;
 
@@ -514,6 +565,7 @@ export class LiveResultsClient {
    * Legacy: no time endpoint, so 0 (local clock is trusted).
    */
   async getServerClockOffsetMs(maxAgeMs = 5 * 60_000): Promise<number> {
+    await this.ensureApi();
     if (this.backend || this.api !== 'rest') return 0;
     if (this.clockOffset && Date.now() - this.clockOffset.measuredAt < maxAgeMs) {
       return this.clockOffset.offsetMs;
@@ -543,6 +595,7 @@ export class LiveResultsClient {
    * Fetch classes for a competition
    */
   async getClasses(competitionId: number): Promise<CachedResponse<LiveResultsClass[]>> {
+    await this.ensureApi();
     let data: LiveResultsClass[];
     if (this.backend) {
       data = await this.backend.fetchClasses(competitionId);
@@ -587,6 +640,7 @@ export class LiveResultsClient {
     className: string,
     opts: { pushVer?: number; maxAgeMs?: number } = {}
   ): Promise<CachedResponse<LiveResultsClassResult>> {
+    await this.ensureApi();
     // Reuse a very recent fetch (e.g. the poll that just detected the change) instead of
     // downloading the same class again for every graphic that maps it.
     if (opts.maxAgeMs && !opts.pushVer) {
@@ -678,6 +732,7 @@ export class LiveResultsClient {
     competitionId: number,
     count: number = 20
   ): Promise<CachedResponse<LiveResultsPassing[]>> {
+    await this.ensureApi();
     let data: LiveResultsPassing[];
     if (this.backend) {
       data = this.backend.fetchLastPassings ? await this.backend.fetchLastPassings(competitionId, count) : [];
