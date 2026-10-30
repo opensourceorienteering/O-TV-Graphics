@@ -201,10 +201,17 @@ export const int = (v, d) => {
   return Number.isFinite(n) ? n : d;
 };
 
+/**
+ * Logos show with their own transparency: logo boxes drop their fill behind them (data-clear).
+ * presentation.logoPlate puts a logo back on the theme's white plate (dark logos, or logos
+ * saved without transparency).
+ */
+export const logoIsClear = (data) => !data?.presentation?.logoPlate;
+
 /** Shared by the original Classic graphics and the generated set graphics. */
 export function eventLogoHtml(data) {
   const url = data?.presentation?.logoUrl;
-  return url ? `<img src="${esc(serverUrl(url))}" alt="">` : '';
+  return url ? `<img src="${esc(serverUrl(url))}" alt=""${logoIsClear(data) ? ' data-clear' : ''}>` : '';
 }
 export function updateEventLogo(root, data) {
   const box = root?.querySelector('.logo');

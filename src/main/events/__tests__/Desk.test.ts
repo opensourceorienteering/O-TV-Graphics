@@ -128,7 +128,7 @@ describe('live desk', () => {
     expect(all['free-text'][0]).toMatchObject({ label: 'Greeting', draft });
     expect(desk.deleteDeskFavorite('p1', 'free-text', all['free-text'][0].id)['free-text']).toEqual([]);
 
-    expect(desk.loadDeskCommands()['0']).toBe('runner-identity');
+    expect(desk.loadDeskCommands()['0']).toBe('event-title');
     expect(desk.saveDeskCommands({ '1': 'results', '20': 'free-text' })).toEqual({ '1': 'results', '20': 'free-text' });
     expect(() => desk.saveDeskCommands({ '1': 'results', '2': 'results' })).toThrow('only one number');
     expect(() => desk.saveDeskCommands({ x: 'results' } as any)).toThrow('0–99');

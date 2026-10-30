@@ -201,7 +201,8 @@ export function LiveDesk() {
         applyStartList(sl.entries || []);
         const first = list.find(t => t.available);
         if (first && !list.find(t => t.key === selected && t.available)) setSelected(first.key);
-        await call('live:enter', eventId);
+        const entered = await call<{ outputErrors?: string[] }>('live:enter', eventId);
+        if (entered?.outputErrors?.length) say(entered.outputErrors.join(' · '), 'err');
         call<string[]>('event:classes', eventId).then(c => alive && setClasses(c)).catch(() => undefined);
       } catch (e) {
         say((e as Error).message, 'err');
@@ -465,6 +466,8 @@ export function LiveDesk() {
   const detached = monitors.includes('both');
   const programAway = detached || monitors.includes('program');
   const previewAway = detached || monitors.includes('preview');
+  // Program popped out on its own: Preview takes the big monitor so it stays readable
+  const previewInBig = programAway && !previewAway;
   const eventPageDuration = Math.max(0, Number(event?.settings?.presentation?.autoPageDurationSeconds) || 0);
 
   const status = onAirSel
@@ -678,11 +681,11 @@ export function LiveDesk() {
                 <div className="d-auto" role="status">
                   {weather?.reading ? (
                     <span>
-                      <b>{tr("Automatic weather")}</b> · {weather.reading.condition} · {weather.reading.temperature}  {tr("°C · wind")} {weather.reading.windSpeed} km/h · {weather.reading.humidity} %
-                      <small> · {weather.source === 'saved' ? 'last saved reading (service unreachable)' : `updated ${new Date(weather.reading.fetchedAt).toLocaleTimeString()}`}  {tr("· refreshes every 5 min while on air. Type in a field to override it.")}</small>
+                      <b>{tr("Automatic weather")}</b> · {tr(weather.reading.condition)} · {weather.reading.temperature}  {tr("°C · wind")} {weather.reading.windSpeed} km/h · {weather.reading.humidity} %
+                      <small> · {weather.source === 'saved' ? tr('last saved reading (service unreachable)') : `${tr('updated')} ${new Date(weather.reading.fetchedAt).toLocaleTimeString()}`}  {tr("· refreshes every 5 min while on air. Type in a field to override it.")}</small>
                     </span>
                   ) : (
-                    <span className="bad">{weather ? `No automatic weather: ${weather.error}` : tr("Checking the weather…")}</span>
+                    <span className="bad">{weather ? `${tr('No automatic weather:')} ${weather.error}` : tr("Checking the weather…")}</span>
                   )}
                   <button type="button" className="d-btn" onClick={() => void loadWeather(true)}>{tr("Check now")}</button>
                 </div>
@@ -716,9 +719,13 @@ export function LiveDesk() {
         </section>
 
         <section className="desk-view" aria-label={tr("Output")}>
-          <div className="mon program">
-            <MonitorHead title={programOnAir ? `PROGRAM · ${programOnAir.name}` : 'PROGRAM'} onAir={!!programOnAir || desk.otherOnAir > 0} since={programOnAir?.since} />
-            {programAway ? (
+          <div className={`mon ${previewInBig ? 'preview big' : 'program'}`}>
+            {previewInBig ? (
+              <MonitorHead title={tr("PREVIEW · DRAFT")} onAir={false} tools={<button type="button" onClick={() => call('window:openMonitor', 'preview')}>{tr("Pop out ↗")}</button>} />
+            ) : (
+              <MonitorHead title={programOnAir ? `PROGRAM · ${programOnAir.name}` : 'PROGRAM'} onAir={!!programOnAir || desk.otherOnAir > 0} since={programOnAir?.since} />
+            )}
+            {previewInBig ? <PreviewVideo /> : programAway ? (
               <div className="mon-away">
                 <h3>{tr("Program in separate window")}</h3>
                 <div className="row">
@@ -746,6 +753,18 @@ export function LiveDesk() {
               <p>{tr("Space shows / hides the selected graphic. U applies draft changes to it on air. Shortcuts are off while you type in a field or the palette.")}</p>
               {desk.otherOnAir > 0 && <p>{desk.otherOnAir}  {tr("other graphic")}{desk.otherOnAir === 1 ? '' : 's'}  {tr("on air (e.g. the output test pattern) · Force hide all clears everything.")}</p>}
             </div>
+            {previewInBig ? (
+              <div className="mon program">
+                <MonitorHead title={programOnAir ? `PROGRAM · ${programOnAir.name}` : 'PROGRAM'} onAir={!!programOnAir || desk.otherOnAir > 0} since={programOnAir?.since} />
+                <div className="mon-away">
+                  <h3>{tr("Program in separate window")}</h3>
+                  <div className="row">
+                    <button type="button" className="d-btn sm" onClick={() => call('window:openMonitor', 'program')}>{tr("Focus window ↗")}</button>
+                    <button type="button" className="d-btn sm" onClick={() => call('window:closeMonitor', 'program')}>{tr("Re-dock")}</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
             <div className="mon preview">
               <MonitorHead title={tr("PREVIEW · DRAFT")} onAir={false} tools={!previewAway && <button type="button" onClick={() => call('window:openMonitor', 'preview')}>{tr("Pop out ↗")}</button>} />
               {previewAway ? (
@@ -758,6 +777,7 @@ export function LiveDesk() {
                 </div>
               ) : <PreviewVideo />}
             </div>
+            )}
           </div>
         </section>
       </div>
@@ -848,7 +868,7 @@ function CommandsDialog({ map, templates, onClose, onSave }: {
           <thead><tr><th>{tr("No.")}</th><th>{tr("Graphic")}</th><th>{tr("Then")}</th></tr></thead>
           <tbody>{templates.map(t => (
             <tr key={t.key}>
-              <td><input className="d-input mono" aria-label={`Number for ${t.label}`} value={nums[t.key]} onChange={e => setNums(n => ({ ...n, [t.key]: e.target.value.replace(/\D/g, '').slice(0, 2) }))} /></td>
+              <td><input className={`d-input mono${nums[t.key] && dupes.includes(nums[t.key]) ? ' is-invalid' : ''}`} aria-invalid={(!!nums[t.key] && dupes.includes(nums[t.key])) || undefined} aria-label={`Number for ${t.label}`} value={nums[t.key]} onChange={e => setNums(n => ({ ...n, [t.key]: e.target.value.replace(/\D/g, '').slice(0, 2) }))} /></td>
               <td>{tr(t.label)}{t.available ? '' : ' (not in this look)'}</td>
               <td className="d-note">{t.params.join(' · ') || '—'}</td>
             </tr>

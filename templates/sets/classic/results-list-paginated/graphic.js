@@ -1,6 +1,16 @@
+import { CLASSIC_MODERN_CSS } from '../modern.js';
 import { eventLogoHtml, updateEventLogo } from '../../_core/util.js';
 import { broadcastControlLabel } from '../../_core/labels.js';
-import { livePatch, FLASH_CSS } from '../../_core/live.js';
+import { livePatch, FLASH_CSS, applyThemeColors } from '../../_core/live.js';
+
+// The set's bundled Inter: @font-face does not work inside shadow roots, so it goes into the document once
+const CLASSIC_FONTS = new URL('../fonts/fonts.css', import.meta.url).href;
+if (typeof document !== 'undefined' && !document.querySelector(`link[href="${CLASSIC_FONTS}"]`)) {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = CLASSIC_FONTS;
+  document.head.appendChild(link);
+}
 
 const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 /**
@@ -10,6 +20,10 @@ const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt
  */
 
 export default class ResultsListPaginated extends HTMLElement {
+  // event theme colours follow the data (Settings → theme colours)
+  get data() { return this._data; }
+  set data(value) { this._data = value; applyThemeColors(this, value, ['--red', '--teal', '--mint']); }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -301,7 +315,7 @@ export default class ResultsListPaginated extends HTMLElement {
           padding: 40px 300px;
           width: 100%;
           height: 100%;
-          background: radial-gradient(100% 100% at 0% 100%, rgba(84, 136, 137, 0.8) 0%, rgba(84, 136, 137, 0) 100%);
+          background: radial-gradient(100% 100% at 0% 100%, color-mix(in srgb, var(--teal, #548889) 80%, transparent) 0%, color-mix(in srgb, var(--teal, #548889) 0%, transparent) 100%);
           opacity: 0;
           transition: opacity 180ms cubic-bezier(.2, 0, 0, 1);
         }
@@ -328,12 +342,12 @@ export default class ResultsListPaginated extends HTMLElement {
           justify-content: space-between;
           text-align: right;
           align-items: center;
-          background-color: #B14340;
+          background-color: var(--red, #B14340);
           font-size: 1.5rem;
           padding-right: 20px;
           color: white;
           font-weight: 600;
-          border-bottom: 2px solid #B14340;
+          border-bottom: 2px solid var(--red, #B14340);
           height: 60px;
           opacity: 0;
           transform: translateY(-16px);
@@ -385,11 +399,12 @@ export default class ResultsListPaginated extends HTMLElement {
         }
 
         .runner .place {
+          font-variant-numeric: tabular-nums;
           font-weight: bold;
           min-width: 60px;
           padding: 0 1.25rem;
           text-align: center;
-          border-right: 2px solid #B14340;
+          border-right: 2px solid var(--red, #B14340);
         }
 
         .runner .name {
@@ -413,25 +428,27 @@ export default class ResultsListPaginated extends HTMLElement {
         }
 
         .runner .time {
+          font-variant-numeric: tabular-nums;
           width: 8rem;
           font-weight: bold;
           text-align: right;
-          background-color: #548889;
+          background-color: var(--teal, #548889);
           color: white;
           padding: 1rem 0.625rem;
         }
 
         .runner.leader {
-          border-bottom: 2px solid #89B6A5;
+          border-bottom: 2px solid var(--mint, #89B6A5);
         }
 
         .runner.leader .time {
-          background-color: #89B6A5;
+          background-color: var(--mint, #89B6A5);
         }
         /* exits are shorter and accelerate away; entries keep the decelerating curve above */
         .runner:not(.visible), .header:not(.visible) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
         .runner { will-change: transform, opacity; }
         ${FLASH_CSS}
+      ${CLASSIC_MODERN_CSS}
       </style>
 
       <div class="container">

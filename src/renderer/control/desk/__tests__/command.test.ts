@@ -2,8 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { applySuggestion, nextStarter, parseCommand, type PaletteData } from '../command';
 import { DEFAULT_DESK_COMMANDS, DESK_TEMPLATES } from '../../../../shared/desk';
 
+// The grammar tests use their own fixed numbering, independent of the default order
+const GRAMMAR_ORDER = ['runner-identity', 'runner-start', 'start-group', 'start-list', 'live-feed', 'results', 'runner-splits',
+  'position-history', 'podium', 'event-title', 'course-info', 'weather', 'free-text', 'speaker', 'timer'];
+const GRAMMAR_COMMANDS = Object.fromEntries(GRAMMAR_ORDER.map((key, i) => [String(i), key]));
+
 const data: PaletteData = {
-  commands: DEFAULT_DESK_COMMANDS,
+  commands: GRAMMAR_COMMANDS,
   available: new Set(DESK_TEMPLATES.map(t => t.key)),
   classes: ['Women Elite', 'Men Elite', 'H21'],
   runners: [
@@ -136,3 +141,13 @@ describe('command palette grammar', () => {
     expect(parseCommand('5 2', custom).error).toBe('No graphic has number 5');
   });
 });
+
+describe('default command numbers', () => {
+  it('follow the built-in order', () => {
+    expect(Object.entries(DEFAULT_DESK_COMMANDS).map(([n, key]) => `${n} ${key}`)).toEqual([
+      '0 event-title', '1 live-feed', '2 runner-identity', '3 runner-start', '4 results', '5 runner-splits', '6 start-list',
+      '7 free-text', '8 course-info', '9 timer', '10 weather', '11 podium', '12 position-history', '13 speaker', '14 start-group'
+    ]);
+  });
+});
+

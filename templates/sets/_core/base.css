@@ -47,6 +47,10 @@
 .hdr-logo, .ftr-logo, .clk-logo, .title-logo { display: flex; align-items: center; justify-content: center; }
 .hdr-logo img, .ftr-logo img, .clk-logo img, .title-logo img { max-height: 100%; max-width: 100%; object-fit: contain; }
 .hdr-logo--empty, .ftr-logo--empty, .clk-logo--empty, .title-logo--empty { display: none; }
+/* logos sit straight on the graphic with their own transparency; Settings can put one on the white plate */
+:is(.hdr-logo, .ftr-logo, .clk-logo, .title-logo):has(> img[data-clear]) {
+  background: transparent !important; border-color: transparent !important; box-shadow: none !important; outline: 0 !important;
+}
 .ftr-page { margin-left: auto; font-variant-numeric: tabular-nums; }
 
 .rows { display: flex; flex-direction: column; position: relative; }
@@ -64,6 +68,11 @@
 .id-flag { height: 1.05em; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .id-logo { height: 1.3em; width: 1.3em; object-fit: contain; display: block; }
 .id-club { max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+/* Straps: the club shares the row with the name, so both can be fitted (see fit.js) */
+.panel--strap .row > .c-id { flex: 0 1 auto; min-width: 0; }
+.panel--strap .id { min-width: 0; max-width: 100%; }
+.panel--strap .id > * { flex: none; }
+.panel--strap .id > .id-club { flex: 0 1 auto; min-width: 0; max-width: none; }
 
 .c-change.up::before { content: "▲"; margin-right: 4px; font-size: .7em; }
 .c-change.down::before { content: "▼"; margin-right: 4px; font-size: .7em; }
@@ -74,6 +83,22 @@
 .gfx--course-info .panel, .gfx--weather .panel { width: auto; min-width: var(--side-w, 440px); max-width: 760px; }
 .panel--info .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
 .panel--info .row > .c-value { justify-content: flex-end; }
+
+/* Multi-row panels share one set of columns: every place, flag, club and time lines up
+   with the rows above and below it, whatever its text. Rows are subgrids of .rows. */
+.panel--table > .rows,
+.panel--lower:not(.panel--strap) > .rows,
+.panel--splits > .rows { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; }
+:is(.panel--table, .panel--lower:not(.panel--strap)) > .rows:has(> .row > .c-change) { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+.panel--startlist > .rows { grid-template-columns: auto auto minmax(0, 1fr) auto; }
+.panel--startgroup > .rows { grid-template-columns: auto minmax(0, 1fr) auto; }
+.panel--splits > .rows { grid-template-columns: minmax(0, 1fr) auto auto auto; }
+:is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
+:is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row--empty > .c-name { grid-column: 1 / -1; }
+/* identity (flag, club) starts at the same x in every row */
+:is(.panel--table, .panel--lower:not(.panel--strap)) .row > .c-id { justify-content: flex-start; }
+/* with flags, the flags form the column (codes sit right next to them) */
+:is(.panel--table, .panel--lower:not(.panel--strap)) > .rows:has(.id-flag) > .row > .c-id { justify-content: flex-end; }
 
 /* position change (optional column) */
 .row > .c-change { flex: 0 0 auto; min-width: 52px; justify-content: center; font-size: .75em; }

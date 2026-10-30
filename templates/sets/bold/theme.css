@@ -1,0 +1,225 @@
+/*
+ * Bold: typography first.
+ * Huge condensed uppercase type on flat ink bands, one hot accent, outlined numerals.
+ * Motion is kinetic type: the ink band wipes open, then every word slides up out of its
+ * own mask (rows clip their cells). Transform and opacity only.
+ *
+ * Three colours (Settings → theme colours):
+ *   --hot    the accent: places, leader time, the stripe, highlights
+ *   --ink    the band colour
+ *   --paper  the type colour
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --hot: #ff3d17;
+  --ink: #0d0d0f;
+  --paper: #f4f1ea;
+
+  --band: var(--ink);
+  --band-2: color-mix(in oklab, var(--ink), var(--paper) 7%);
+  --rule: color-mix(in srgb, var(--paper) 14%, transparent);
+  --text: var(--paper);
+  --muted: color-mix(in oklab, var(--paper) 58%, var(--ink));
+  --on-hot: oklch(from var(--hot) round(1.24 - l) 0 0);
+  --gain: #3ddc84;
+  --loss: var(--hot);
+  --chart-grid: var(--rule);
+  --chart-axis: var(--muted);
+
+  --display: Anton, "Impact", "Arial Narrow", sans-serif;
+  --font: Oswald, "Arial Narrow", sans-serif;
+  --fs: 30px;
+  --margin-x: 96px;
+  --margin-y: 90px;
+  --table-top: 210px;
+  --table-x: 380px;
+  --lower-w: 900px;
+  --side-w: 500px;
+  --podium-x: 240px;
+  --title-x: 240px;
+  --line-0: var(--hot); --line-1: var(--paper); --line-2: #ffc21a; --line-3: #59c7ff;
+  --line-4: #b18cff; --line-5: #3ddc84; --line-6: #ff7ab8; --line-7: var(--muted);
+
+  font-feature-settings: "tnum" 1;
+}
+
+/* --- the band (painted on ::before so it can wipe open) and the hot stripe ----------- */
+.panel { color: var(--text); isolation: isolate; }
+.gfx .panel::before, .gfx .panel::after { content: ""; position: absolute; z-index: -1; pointer-events: none; }
+.gfx .panel::before { inset: 0; background: var(--band); transform-origin: 0 50%; box-shadow: 0 30px 60px -20px rgb(0 0 0 / .55); }
+.gfx .panel::after { left: 0; top: 0; bottom: 0; width: 10px; background: var(--hot); transform-origin: 50% 100%; z-index: 0; }
+.panel--clock::after, .panel--podium::after { display: none; }
+
+/* --- header ----------------------------------------------------------------------------- */
+.hdr, .ftr { padding: 0 26px 0 34px; gap: 16px; }
+.hdr { min-height: 88px; border-bottom: 1px solid var(--rule); overflow: hidden; }
+.hdr-mark, .ftr-mark { display: none; }
+.hdr-title { font: 400 52px/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.hdr-sub { margin-left: auto; font: 500 22px var(--font); letter-spacing: .22em; text-transform: uppercase; color: var(--hot); }
+.hdr-logo, .ftr-logo { height: 52px; width: 104px; padding: 6px 10px; background: var(--paper); align-self: center; }
+.ftr { min-height: 50px; border-top: 1px solid var(--rule); overflow: hidden; color: var(--muted); font: 500 20px var(--font); letter-spacing: .18em; text-transform: uppercase; }
+.ftr-class { color: var(--paper); }
+.ftr-ctrl { color: var(--hot); }
+.ftr-sep { margin: 0 .4em; }
+.ftr-page { margin-left: auto; color: var(--hot); font-weight: 700; letter-spacing: .08em; }
+.panel--table .ftr:not(:has(.ftr-page)) { display: none; }
+.panel--table .ftr .ftr-label { display: none; }
+.panel--table .ftr { justify-content: flex-end; border-top: 0; }
+
+/* --- rows: every row is a mask, its cells rise out of it ---------------------------- */
+.rows { padding: 4px 0 8px; }
+.row { min-height: 58px; overflow: hidden; }
+.row + .row { box-shadow: inset 0 1px 0 var(--rule); }
+.c-place {
+  width: 82px; padding-left: 24px; justify-content: flex-start !important;
+  font: 400 38px/1 var(--display); color: transparent; -webkit-text-stroke: 1.5px var(--paper);
+}
+.row--leader .c-place { color: var(--hot); -webkit-text-stroke: 0; }
+.c-name { padding: 0 18px 0 4px; font: 400 36px/1.1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.c-name .nm-given { font-family: var(--font); font-weight: 500; font-size: .72em; letter-spacing: .06em; color: var(--muted); }
+.c-id { gap: 10px; padding-right: 20px; font: 500 22px var(--font); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.id-flag { height: 24px; }
+.c-time, .c-start, .c-value { min-width: 170px; padding: 0 26px 0 12px; font: 700 34px var(--font); color: var(--paper); letter-spacing: .01em; }
+.row--leader .c-time { color: var(--hot); }
+.c-start { justify-content: flex-start; padding-left: 34px; color: var(--hot); }
+.c-bib { min-width: 84px; padding-left: 16px; font: 700 26px var(--font); color: var(--muted); }
+.row--status { color: var(--muted); }
+.row--status .c-time { color: var(--muted); font-size: 24px; letter-spacing: .14em; }
+.row--empty .c-name { padding: 0 34px; color: var(--muted); }
+.c-change { font: 700 22px var(--font); }
+
+/* --- lower thirds --------------------------------------------------------------------- */
+.panel--lower .hdr { display: none; }
+.panel--lower .row--hl { min-height: 84px; background: linear-gradient(90deg, color-mix(in srgb, var(--hot) 22%, transparent), transparent 75%); }
+.panel--lower .row--hl .c-name { font-size: 46px; }
+.panel--lower .row--hl .c-place { font-size: 48px; color: var(--hot); -webkit-text-stroke: 0; }
+.panel--lower .row--hl .c-time { font-size: 42px; }
+.panel--runner .row--ref { min-height: 50px; }
+.panel--runner .row--ref .c-name { font-size: 26px; color: var(--muted); }
+.panel--runner .row--ref .c-place { font-size: 28px; }
+.panel--runner .row--ref .c-time { font-size: 26px; color: var(--muted); }
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--gain); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--hot); }
+.panel--runner .row--hl.is-running .c-time { color: var(--hot); }
+
+.gfx .panel--strap { width: auto; min-width: 640px; max-width: calc(var(--lower-w) * 1.1); }
+.panel--strap .row { min-height: 112px; }
+.panel--strap .row--hl { background: transparent; }
+.panel--strap .row .c-place {
+  align-self: stretch !important; width: auto; min-width: 110px; padding: 0 26px 0 34px; justify-content: center !important;
+  background: var(--hot); color: var(--on-hot); -webkit-text-stroke: 0; font-size: 64px;
+}
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; padding-left: 30px; font-size: 68px; line-height: 1; }
+.panel--strap .row:not(:has(.c-place)) .c-name { padding-left: 34px; }
+.panel--strap .row .c-id { padding-left: 28px; font-size: 26px; }
+.panel--strap .id-flag { height: 32px; }
+.panel--strap .row .c-time { min-width: 0; padding: 0 30px; font-size: 48px; }
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { color: var(--hot); }
+.panel--extended .row--bio { min-height: 44px; }
+.panel--extended .row--bio .c-name { font: 500 26px var(--font); letter-spacing: .04em; color: var(--muted); text-transform: none; padding-left: 34px; }
+.panel--freetext .c-name { font-size: 54px; }
+
+.panel--startgroup .hdr { display: flex; }
+.panel--startgroup .hdr-sub { display: none; }
+.hdr-clock { margin-left: auto; font: 700 44px var(--font); color: var(--hot); }
+.panel--startgroup .ftr { display: none; }
+
+/* --- side panels -------------------------------------------------------------------- */
+.panel--side .hdr { display: none; }
+.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 76px; }
+.panel--info .hdr-title, .panel--splits .hdr-title { font-size: 42px; }
+.panel--side .row { min-height: 54px; }
+.panel--side .c-label { padding: 0 20px 0 34px; font: 500 24px var(--font); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.panel--side .c-value { min-width: 140px; font-size: 32px; }
+.panel--side .ftr { display: none; }
+.panel--splits .c-label { font-family: var(--display); font-size: 30px; letter-spacing: .02em; color: var(--paper); }
+.panel--splits .c-place { width: 56px; padding-left: 0; font-size: 28px; }
+.panel--splits .c-change { width: 56px; justify-content: center; }
+.panel--splits .c-time { min-width: 130px; font-size: 28px; }
+.panel--splits .c-time.is-best { color: var(--gain); }
+.panel--splits .c-time.is-behind { color: var(--paper); }
+
+/* --- podium ---------------------------------------------------------------------------- */
+.panel--podium::before { display: none; }
+.panel--podium > .hdr { background: var(--band); border: 0; margin-bottom: 10px; box-shadow: inset 10px 0 0 var(--hot); }
+.panel--podium .podium { gap: 10px; }
+.panel--podium .pod { background: var(--band); }
+.panel--podium .pod > .c-place { font: 400 72px/1 var(--display); color: transparent; -webkit-text-stroke: 2px var(--paper); background: transparent; padding-left: 20px; }
+.panel--podium .pod--1 { background: var(--hot); }
+.panel--podium .pod--1 > .c-place { color: var(--on-hot); -webkit-text-stroke: 0; font-size: 96px; }
+.panel--podium .pod--1 .c-name, .panel--podium .pod--1 .c-id, .panel--podium .pod--1 .pod-time { color: var(--on-hot); }
+.panel--podium .pod .row { min-height: 96px; overflow: visible; }
+.panel--podium .pod--1 .row { min-height: 136px; }
+.pod .pod-time { padding: 0; min-width: 0; justify-content: flex-start; font-size: 24px; }
+.panel--podium .ftr { display: none; }
+
+/* --- clock ----------------------------------------------------------------------------- */
+.panel--clock::before { box-shadow: 0 20px 40px -16px rgb(0 0 0 / .6); }
+.clk-label { display: flex; align-items: center; padding: 0 20px; background: var(--hot); color: var(--on-hot); font: 400 30px var(--display); text-transform: uppercase; letter-spacing: .02em; }
+.clk-time { padding: 8px 26px; min-width: 180px; text-align: center; font: 700 52px/1.1 var(--font); color: var(--paper); }
+.clk-logo { width: 96px; padding: 8px; background: var(--paper); }
+
+/* --- title card ----------------------------------------------------------------------- */
+.panel--title .hdr { min-height: 60px; }
+.panel--title .hdr-title { font: 500 22px var(--font); letter-spacing: .26em; color: var(--hot); }
+.title-body { min-height: 200px; overflow: hidden; }
+.title-logo { width: 220px; margin: 22px 0 22px 34px; padding: 18px; background: var(--paper); }
+.title-text { padding: 20px 36px 26px; overflow: hidden; }
+.title-main { font: 400 104px/.92 var(--display); text-transform: uppercase; letter-spacing: .005em; }
+.title-sub { margin-top: 14px; font: 500 26px var(--font); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.title-sub .sep { color: var(--hot); }
+
+/* --- chart ----------------------------------------------------------------------------- */
+.chart-body { padding: 10px 30px 24px 40px; }
+.chart .ax { font: 500 24px var(--font); letter-spacing: .08em; }
+.chart .gap { font-family: var(--font); }
+.chart .ln path { stroke-width: 7; }
+.chart .ln-label { font: 400 26px var(--display); letter-spacing: .02em; text-transform: uppercase; }
+.panel--chart .ftr { display: none; }
+
+/* --- motion: band wipes open, stripe rises, words slide up out of their masks -------- */
+.gfx {
+  --bt-ease: cubic-bezier(.19, 1, .22, 1);
+  --bt-out: cubic-bezier(.7, 0, .84, 0);
+}
+@keyframes bt-band { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes bt-band-out { from { transform: none; } to { transform: scaleX(0); transform-origin: 100% 50%; } }
+@keyframes bt-stripe { from { transform: scaleY(0); } to { transform: none; } }
+@keyframes bt-up { from { transform: translateY(110%); } to { transform: none; } }
+@keyframes bt-down { from { transform: none; opacity: 1; } to { transform: translateY(-110%); opacity: 0; } }
+
+.gfx[data-state="in"] .panel::before { animation: bt-band 620ms var(--bt-ease) both; }
+.gfx[data-state="in"] .panel::after { animation: bt-stripe 520ms var(--bt-ease) 120ms both; }
+.gfx[data-state="in"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod > .c-place, .pod-names) {
+  animation: bt-up 680ms var(--bt-ease) calc(260ms + min(var(--i, 0), 10) * 50ms) both;
+}
+.gfx[data-state="in"] :is(.hdr, .ftr) > * { animation-delay: 220ms; }
+.gfx[data-state="in"] .row > :is(.c-time, .c-value, .c-start) { animation-delay: calc(330ms + min(var(--i, 0), 10) * 50ms); }
+.gfx[data-state="in"] .title-sub { animation-delay: 420ms; }
+.gfx[data-state="in"] .pod { animation: fade-in 1ms both; }
+.gfx[data-state="in"] :is(.pod--2, .pod--3) { animation: bt-stripe 560ms var(--bt-ease) 200ms both; transform-origin: 50% 100%; }
+.gfx[data-state="in"] .pod--1 { animation: bt-stripe 600ms var(--bt-ease) 120ms both; transform-origin: 50% 100%; }
+.gfx[data-state="in"] .chart { animation: fade-in 400ms linear 300ms both; }
+.gfx[data-state="in"] .clk-time { animation-delay: 340ms; }
+
+/* the masks: header, footer, titles and clock cells clip what rises inside them */
+.hdr, .ftr, .clk-label, .clk-time, .title-text, .title-body, .pod { overflow: hidden; }
+
+.gfx[data-state="leave"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod, .chart) { animation: bt-down 220ms var(--bt-out) both; }
+.gfx[data-state="leave"] .panel::before { animation: bt-band-out 300ms var(--bt-out) 80ms both; }
+.gfx[data-state="leave"] .panel::after { animation: fade-out 160ms linear both; }
+.gfx[data-state="step-out"] .row > * { animation: bt-down 200ms var(--bt-out) both; }
+.gfx[data-state="step"] .row > * { animation: bt-up 560ms var(--bt-ease) calc(min(var(--i, 0), 10) * 35ms) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gfx[data-state="in"] .panel::before, .gfx[data-state="in"] .panel::after { animation: none !important; }
+  .gfx[data-state="in"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod, .pod > .c-place, .pod-names, .chart),
+  .gfx[data-state="step"] .row > * { animation: fade-in 150ms linear both !important; }
+  .gfx[data-state="leave"] *, .gfx[data-state="step-out"] .row > * { animation: fade-out 150ms linear both !important; }
+}
+.panel--podium .pod--1 .nm-given { color: var(--on-hot); opacity: .75; }
+
+/* Anton's capitals fill the whole line, so accents (Å, Ä, Ö, Ø, Æ) sit above the line box.
+   Boxes that clip for their ellipsis get room above and below, without moving the layout. */
+.c-name, .hdr-title, .panel--splits .c-label, .id-club { padding-block: .24em; margin-block: -.24em; }

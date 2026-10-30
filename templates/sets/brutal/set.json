@@ -1,0 +1,12 @@
+{
+  "id": "brutal",
+  "name": "Brutal (Neubrutalism)",
+  "description": "Neubrutalism: flat bright fills, thick black outlines, hard offset shadows and snappy, bouncy motion. Space Grotesk names, Space Mono times.",
+  "author": "Split Control",
+  "colors": [
+    "#ffd23f",
+    "#ff6fa3",
+    "#4dc3ff"
+  ],
+  "fonts": "Space Grotesk, Space Mono (OFL)"
+}

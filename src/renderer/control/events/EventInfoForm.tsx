@@ -3,6 +3,7 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import type { SPXProject } from "../../../shared/types/spx";
 import type { EventFolder } from "../../../shared/types/event";
 import { call } from "./api";
+import { RETIRED_LOGO_URLS, TYR_LOGO_URL } from "../../../shared/branding";
 
 export function EventInfoForm({
   event,
@@ -29,13 +30,13 @@ export function EventInfoForm({
   const [weatherBusy, setWeatherBusy] = useState(false);
   const [weatherError, setWeatherError] = useState("");
   const [logoError, setLogoError] = useState("");
-  const logoUrl = event.settings?.presentation?.logoUrl || "";
+  const storedLogo = event.settings?.presentation?.logoUrl || "";
+  // the retired IOF logo reads as "no logo" (graphics no longer show it)
+  const logoUrl = RETIRED_LOGO_URLS.includes(storedLogo) ? "" : storedLogo;
   const logoChoice = !logoUrl
     ? "none"
-    : logoUrl === "/built-in-assets/tyr-logo.png"
+    : logoUrl === TYR_LOGO_URL
       ? "tyr"
-    : logoUrl === "/built-in-assets/iof-logo.svg"
-      ? "iof"
       : "custom";
   const setLogo = (nextLogoUrl?: string) => {
     onDirtyChange?.(true);
@@ -103,18 +104,8 @@ export function EventInfoForm({
              {tr("Used in the logo areas of start lists, start groups, title cards, and other supported graphics.")} </p>
         </div>
         <div className="logo-choice-grid" role="radiogroup" aria-label={tr("Event logo")}>
-          <label className={logoChoice === "iof" ? "selected" : ""}>
-            <input
-              type="radio"
-              name="event-logo"
-              checked={logoChoice === "iof"}
-              onChange={() => setLogo("/built-in-assets/iof-logo.svg")}
-            />
-            <img src="/assets/iof-logo.svg" alt="" />
-            <span><strong>{tr("IOF logo")}</strong><small>{tr("Included with Split Control")}</small></span>
-          </label>
           <label className={logoChoice === "tyr" ? "selected" : ""}>
-            <input type="radio" name="event-logo" checked={logoChoice === "tyr"} onChange={() => setLogo("/built-in-assets/tyr-logo.png")} />
+            <input type="radio" name="event-logo" checked={logoChoice === "tyr"} onChange={() => setLogo(TYR_LOGO_URL)} />
             <img src="/assets/tyr-logo.png" alt="" />
             <span><strong>{tr("OK Tyr logo")}</strong><small>{tr("Included with Split Control")}</small></span>
           </label>
@@ -161,8 +152,22 @@ export function EventInfoForm({
           }}
         />
         {logoChoice === "custom" && (
-          <button type="button" className="studio-button" onClick={() => document.getElementById("event-logo-file")?.click()}>
-             {tr("Replace custom logo")} </button>
+          <>
+            <button type="button" className="studio-button" onClick={() => document.getElementById("event-logo-file")?.click()}>
+               {tr("Replace custom logo")} </button>
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={!!event.settings?.presentation?.logoPlate}
+                onChange={(e) => {
+                  onDirtyChange?.(true);
+                  setEvent({ ...event, settings: { ...event.settings, presentation: { ...event.settings?.presentation, logoPlate: e.target.checked || undefined } } });
+                }}
+              />
+              {tr("White box behind the logo")}
+              <small className="muted"> {tr("For dark logos, or logos without a transparent background")}</small>
+            </label>
+          </>
         )}
         {logoError && <p className="field-error" role="alert">{logoError}</p>}
       </section>
@@ -251,14 +256,14 @@ export function EventInfoForm({
               }
             })()}
           >
-            {weatherBusy ? "Checking…" : tr("Check weather now")}
+            {weatherBusy ? tr("Checking…") : tr("Check weather now")}
           </button>
           {event.info?.weather && (
             <p className="weather-reading" role="status">
-              <strong>{event.info.weather.condition}</strong>
+              <strong>{tr(event.info.weather.condition)}</strong>
               {event.info.weather.temperature != null && ` · ${event.info.weather.temperature}°C`}
-              {event.info.weather.windSpeed != null && ` · Wind ${event.info.weather.windSpeed} km/h`}
-              {event.info.weather.humidity != null && ` · ${event.info.weather.humidity}% humidity`}
+              {event.info.weather.windSpeed != null && ` · ${tr("Wind")} ${event.info.weather.windSpeed} km/h`}
+              {event.info.weather.humidity != null && ` · ${event.info.weather.humidity}% ${tr("humidity")}`}
             </p>
           )}
         </div>

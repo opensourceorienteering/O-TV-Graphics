@@ -11,9 +11,12 @@ import { WebSocketServer, SocketRoom } from '../data/WebSocketServer';
 import { getDataStore } from '../data/DataStore';
 import type { OGrafResultsData } from '../data/LiveResultsTransformer';
 import { getProjectManager } from '../projects/ProjectManager';
+import { getClubLogoService, shortClubName } from '../data/ClubLogoService';
 import { applyStartList } from '../events/EventService';
+import { clubNameLibrary } from '../data/clubNames';
 import { assertTemplateInProjectSet } from '../templates/templateSets';
-import { zonesClash, type GraphicZone } from '../../shared/types/ograf';
+import { presentationForGraphics } from '../../shared/branding';
+import { isMultiStep, zonesClash, type GraphicZone } from '../../shared/types/ograf';
 import type { ProjectPresentation, SPXRundown } from '../../shared/types/spx';
 
 const logger = getLogger();
@@ -40,7 +43,10 @@ export class PlaybackEngine {
   private activeGraphics: Map<string, ActiveGraphic> = new Map();
   private removalTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private autoPageTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  /** Waiting commands by request id (unique per command, echoed by the renderers) */
   private pendingResponses: Map<string, {
+    /** `${command}:${graphicId}`, for renderers that do not echo the request id */
+    key: string;
     resolve: (value: any) => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
@@ -49,6 +55,7 @@ export class PlaybackEngine {
   }> = new Map();
   // Track timed-out commands to suppress late response warnings
   private timedOutCommands: Set<string> = new Set();
+  private requestSeq = 0;
   // Track in-progress play operations to prevent race conditions
   private playInProgress: Set<string> = new Set();
   // Live-results polls currently running, keyed by `${sourceId}|${competitionId}|${className}`
@@ -76,6 +83,11 @@ export class PlaybackEngine {
     const graphicId = `${projectId}-${rundownId}-${itemId}`;
     this.cancelAutoPage(graphicId);
     if (!seconds || seconds <= 0) return;
+    // Single-page graphics stay on air until the operator takes them off
+    const active = this.activeGraphics.get(graphicId);
+    const manifest = active?.manifest
+      ?? getTemplateManager().getAllTemplates().find(t => t.manifest.id === active?.templateId)?.manifest;
+    if (!isMultiStep(manifest)) return;
     const timeout = setTimeout(async () => {
       this.autoPageTimeouts.delete(graphicId);
       const graphic = this.activeGraphics.get(graphicId);
@@ -152,7 +164,11 @@ export class PlaybackEngine {
    */
   private handleGraphicsResponse(data: any): void {
     const { command, id, result } = data;
-    const responseKey = `${command}:${id}`;
+    const commandKey = `${command}:${id}`;
+    // The request id says which command this answers. Without one (an older renderer),
+    // the oldest waiting command for this graphic gets it.
+    const responseKey: string = data.requestId
+      || ([...this.pendingResponses].find(([, p]) => p.key === commandKey)?.[0] ?? commandKey);
 
     logger.info('Received graphics response', { command, id, success: result?.success });
 
@@ -548,13 +564,14 @@ export class PlaybackEngine {
     let info: import('../../shared/types/event').EventInfo = {};
     try {
       const project = await getProjectManager().loadProject(projectId);
-      presentation = project.settings?.presentation ?? {};
+      presentation = presentationForGraphics(project.settings?.presentation);
       info = project.info ?? {};
     } catch {
       // project file unreadable: defaults
     }
     // Bibs (real or virtual) and favourites from the event's start list
     data = applyStartList(projectId, data);
+    data = shortClubNames(data, clubNameLibrary());
     return {
       ...data,
       presentation: { identity: 'auto', clubLogos: true, clearClashing: true, ...presentation },
@@ -1298,7 +1315,9 @@ export class PlaybackEngine {
 
     // Normalize graphicId to empty string if undefined (for commands like 'clear')
     const graphicId = payload.id || '';
-    const responseKey = `${command}:${graphicId}`;
+    const commandKey = `${command}:${graphicId}`;
+    // Unique per command: two quick page turns on one graphic must not share a waiting slot
+    const responseKey = `${commandKey}#${++this.requestSeq}`;
 
     // Critical commands that need confirmation (SPX-GC pattern: only track critical commands)
     const criticalCommands = ['load', 'play'];
@@ -1386,6 +1405,7 @@ export class PlaybackEngine {
       // CRITICAL: Register pending response BEFORE broadcasting command
       // to avoid race condition where response arrives before registration
       this.pendingResponses.set(responseKey, {
+        key: commandKey,
         resolve,
         reject,
         timeout,
@@ -1405,7 +1425,7 @@ export class PlaybackEngine {
     this.wsServer.broadcastToRoom(SocketRoom.PROGRAM_OUTPUT, {
       spxcmd: 'graphics:command',
       command,
-      payload
+      payload: { ...payload, requestId: responseKey }
     });
 
     // Wait for response from graphics renderer
@@ -1447,6 +1467,16 @@ interface ActiveGraphic {
   totalSteps?: number;
   /** Live updates are held for this graphic and newer results have arrived */
   newData?: boolean;
+}
+
+/** Graphics show clubs by the club name library's names, else their short names from the club lists */
+function shortClubNames(data: Record<string, any>, overrides: Record<string, string>): Record<string, any> {
+  const clubs = getClubLogoService();
+  const name = (club: string) => (clubs ? clubs.shortName(club, overrides) : shortClubName(club, overrides)) ?? club;
+  const out = { ...data };
+  if (Array.isArray(data.results)) out.results = data.results.map((r: any) => (r?.club ? { ...r, club: name(r.club) } : r));
+  if (typeof data.runnerClub === 'string') out.runnerClub = name(data.runnerClub);
+  return out;
 }
 
 /** What a graphic shows from live data, for telling whether held data is out of date */

@@ -191,6 +191,9 @@
 .desk-controls .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .desk-controls p { margin: 0; font-size: 12px; color: var(--d-muted); line-height: 1.5; }
 .mon.preview .mon-video { margin: 0; }
+/* Program popped out: Preview fills the big monitor slot */
+.mon.preview.big .mon-video { margin: 8px 30px; }
+.mon.preview.big .mon-head { border-top-color: var(--d-line); }
 
 /* --- footer --- */
 .desk-footer {
@@ -293,3 +296,4 @@
 .d-next.on { box-shadow: inset 3px 0 0 var(--d-accent); }
 .d-next small { color: var(--d-muted); }
 .d-next .d-note { flex-basis: 100%; }
+.d-input.is-invalid { border-color: var(--status-danger-text, #ff6b6b); box-shadow: 0 0 0 1px var(--status-danger-text, #ff6b6b); }

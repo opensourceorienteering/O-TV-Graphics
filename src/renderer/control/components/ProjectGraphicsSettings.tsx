@@ -404,9 +404,13 @@ export function ProjectGraphicsSettings({
                   onChange={(e) => setColorDraft(colors => colors.map((color, i) => i === index ? e.target.value : color))}
                 />
               </span>
+              <span className="theme-color-tints" aria-hidden="true" style={{ "--c": /^#[0-9a-f]{6}$/i.test(colorDraft[index] || "") ? colorDraft[index] : fallback } as React.CSSProperties}>
+                {[75, 50, 25, 0, -30].map(m => <i key={m} style={{ "--m": `${Math.abs(m)}%`, "--to": m < 0 ? "#000" : "#fff" } as React.CSSProperties} />)}
+              </span>
             </label>
           ))}
         </div>
+        <p className="muted">{tr("The graphics mix their tints, gradients and dividers from these three colors, so every shade follows your choice.")}</p>
         <p className="muted">{tr("Changes appear in Preview after you apply them. Save the event theme to keep them.")}</p>
         <footer className="dialog-footer">
           <button type="button" className="studio-button" onClick={() => setColorDraft(defaultColors)}>{tr("Reset to theme defaults")}</button>

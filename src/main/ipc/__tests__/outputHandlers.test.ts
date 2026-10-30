@@ -7,6 +7,8 @@ const mock = vi.hoisted(() => ({
   active: false,
   capturing: false,
   stop: vi.fn(async () => {}),
+  webRunning: true,
+  webStart: vi.fn(async () => {}),
 }));
 vi.mock("electron", () => ({
   ipcMain: {
@@ -14,9 +16,11 @@ vi.mock("electron", () => ({
   },
 }));
 vi.mock("../../utils/logger", () => ({
-  getLogger: () => ({ info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
+  getLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
-vi.mock("../../output/WebServer", () => ({ getWebServer: () => ({}) }));
+vi.mock("../../output/WebServer", () => ({
+  getWebServer: () => ({ isRunning: () => mock.webRunning, start: mock.webStart }),
+}));
 vi.mock("../../utils/config", () => ({ getConfig: () => ({}) }));
 vi.mock("../../utils/ndi-check", () => ({
   checkNDIAvailability: () => ({ available: true }),
@@ -39,8 +43,16 @@ vi.mock("../../output/FrameCaptureService", () => ({
     getStatus: () => ({ isCapturing: mock.capturing }),
   },
 }));
-import { registerOutputHandlers } from "../outputHandlers";
-beforeEach(() => {
+import {
+  registerOutputHandlers,
+  activateLiveOutputs,
+  deactivateLiveOutputs,
+} from "../outputHandlers";
+beforeEach(async () => {
+  mock.webRunning = true;
+  mock.webStart.mockReset().mockImplementation(async () => {
+    mock.webRunning = true;
+  });
   mock.stop.mockClear();
   mock.captureStart.mockReset().mockResolvedValue(false);
   mock.captureStop.mockClear();
@@ -102,5 +114,61 @@ describe("Starting NDI with frame capture", () => {
     expect(response.success).toBe(false);
     expect(response.error).toContain("cancelled");
     expect(mock.captureStart).not.toHaveBeenCalled();
+  });
+});
+
+describe("Outputs chosen for Live", () => {
+  // Frame capture starts, so NDI start succeeds; the sender reports active once started
+  const ndiStarts = () => {
+    mock.captureStart.mockResolvedValue(true);
+    mock.senderStart.mockImplementation(async () => {
+      mock.active = true;
+      mock.capturing = true;
+      return true;
+    });
+  };
+
+  it("starts NDI on entering Live and stops it again when Live ends", async () => {
+    ndiStarts();
+    const result = await activateLiveOutputs({ web: true, ndi: true });
+    expect(result).toEqual({ web: true, ndi: true, errors: [] });
+    expect(mock.senderStart).toHaveBeenCalledOnce();
+    await deactivateLiveOutputs();
+    expect(mock.stop).toHaveBeenCalledOnce();
+    expect(mock.captureStop).toHaveBeenCalled();
+  });
+
+  it("starts the web server when the event uses web output and it is down", async () => {
+    mock.webRunning = false;
+    const result = await activateLiveOutputs({ web: true, ndi: false });
+    expect(mock.webStart).toHaveBeenCalledOnce();
+    expect(result.web).toBe(true);
+  });
+
+  it("turns NDI off when the event does not use it", async () => {
+    mock.active = true;
+    mock.capturing = true;
+    const result = await activateLiveOutputs({ web: true, ndi: false });
+    expect(mock.stop).toHaveBeenCalledOnce();
+    expect(result.errors).toEqual([]);
+  });
+
+  it("enters Live with an error instead of failing when NDI cannot start", async () => {
+    const result = await activateLiveOutputs({ web: true, ndi: true });
+    expect(result.ndi).toBe(false);
+    expect(result.errors[0]).toContain("NDI output could not start");
+    // Nothing was started by Live, so ending Live stops nothing more
+    mock.stop.mockClear();
+    await deactivateLiveOutputs();
+    expect(mock.stop).not.toHaveBeenCalled();
+  });
+
+  it("leaves NDI alone at the end of Live when the operator already stopped it", async () => {
+    ndiStarts();
+    await activateLiveOutputs({ web: true, ndi: true });
+    await mock.handlers.get("output:stopNDI")();
+    mock.stop.mockClear();
+    await deactivateLiveOutputs();
+    expect(mock.stop).not.toHaveBeenCalled();
   });
 });

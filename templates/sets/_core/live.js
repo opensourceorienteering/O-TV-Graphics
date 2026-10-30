@@ -125,3 +125,17 @@ export function imagesReady(root, ms = 400) {
 /** CSS for the value flash, for graphics that do not use base.css */
 export const FLASH_CSS = `@keyframes value-flash { 0%, 50% { filter: brightness(1.35); } 25%, 100% { filter: none; } }
 .is-changed { animation: value-flash 1000ms ease-in-out both; }`;
+
+/**
+ * Event theme colours for graphics that do not use the shared graphic class (the hand-made
+ * Classic graphics). Sets the theme's colour variables on the host; they inherit into the
+ * shadow root. Nothing is written until the event has custom colours.
+ */
+export function applyThemeColors(host, data, names) {
+  const colors = Array.isArray(data?.presentation?.themeColors) ? data.presentation.themeColors : [];
+  names.forEach((name, i) => {
+    const v = colors[i];
+    if (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) host.style.setProperty(name, v);
+    else if (host.hasAttribute('style')) host.style.removeProperty(name);
+  });
+}

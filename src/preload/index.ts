@@ -41,7 +41,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'templates:getCacheStats',
       'folder:list', 'folder:create', 'folder:update', 'folder:delete',
       'event:list', 'event:create', 'event:get', 'event:update', 'event:delete', 'event:test', 'event:classes', 'event:controls',
-      'startlist:get', 'startlist:refresh', 'startlist:import', 'startlist:assignBibs', 'startlist:clearBibs', 'startlist:update', 'startlist:updatePreferences', 'startlist:exportPdf',
+      'startlist:get', 'startlist:refresh', 'startlist:import', 'startlist:assignBibs', 'startlist:clearBibs', 'startlist:update', 'startlist:updatePreferences', 'startlist:exportPdf', 'startlist:clubs',
       'live:enter', 'live:exit', 'live:state', 'live:prepared',
       'control:openModule',
       'desk:templates', 'desk:state', 'desk:show', 'desk:update', 'desk:hide', 'desk:hideAll', 'desk:page',
@@ -51,6 +51,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'window:openMonitor', 'window:closeMonitor', 'window:monitors',
       'templates:getSets',
       'clubLogos:status',
+      'clubNames:list',
+      'clubNames:set',
       'clubLogos:openFolder',
       'director:getUrl',
       'data:getCompetitions',
@@ -130,6 +132,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     if (validChannels.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }
+    // Say so instead of failing silently when a new channel is missing from this list
+    return Promise.reject(new Error(`IPC channel not allowed: ${channel}`));
   }
 });
 

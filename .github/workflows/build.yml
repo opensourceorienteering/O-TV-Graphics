@@ -1,0 +1,71 @@
+# Builds the macOS and Windows packages, each on its own platform so the NDI addon
+# (@stagetimerio/grandiose) is compiled for it. Runs on pushes to main, on version tags
+# (v1.2.0) and from the Actions tab. The installers are attached to the run as artifacts.
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            target: --mac --arm64
+            artifact: split-control-mac-arm64
+          - name: Windows (x64)
+            os: windows-latest
+            target: --win --x64
+            artifact: split-control-windows-x64
+    env:
+      # Fail the package step if NDI is missing instead of shipping without it
+      REQUIRE_NDI: "1"
+      # No signing certificates in CI yet: build unsigned packages
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Also compiles the NDI addon for this platform (downloads the NDI 6 SDK)
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check NDI bindings
+        run: node scripts/verify-grandiose.js
+
+      - name: Test
+        run: npx vitest run
+
+      - name: Package the Companion module
+        run: |
+          npm ci --prefix companion
+          npm run companion:package
+
+      - name: Type-check and bundle
+        run: |
+          npx tsc
+          npx vite build
+
+      - name: Package
+        run: npx electron-builder ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          if-no-files-found: error
+          path: |
+            release/*/*.dmg
+            release/*/*.zip
+            release/*/*.exe

@@ -1,5 +1,6 @@
 import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   DESK_TEMPLATES,
   liveUpdatesDefault,
@@ -9,18 +10,13 @@ import {
 } from "../../../shared/desk";
 import type { SPXProject } from "../../../shared/types/spx";
 import { call } from "./api";
+import { DragHandle, useSortable } from "../components/useSortable";
 
 type TemplateInfo = (typeof DESK_TEMPLATES)[number] & {
   templateId: string | null;
   available: boolean;
   schema: Record<string, any>;
 };
-type Part = "output" | "theme" | "templates";
-const PARTS: [Part, string, string][] = [
-  ["output", "Output", "Resolution, NDI name and frame rate, web output (app-wide)"],
-  ["theme", "Theme", "Look, colours, logos, language and identity rules of this event"],
-  ["templates", "Templates", "These template settings and the command numbers"],
-];
 
 /** Settings → Templates: per-graphic defaults, visibility in Live, numbers, export / import */
 export function EventTemplates({
@@ -28,27 +24,33 @@ export function EventTemplates({
   event,
   onSaved,
   onDirtyChange,
+  onBlockedChange,
 }: {
   eventId: string;
   event: SPXProject;
   onSaved: () => void;
   onDirtyChange: (dirty: boolean) => void;
+  /** Two graphics share a command number: Plan must not move on until it is fixed */
+  onBlockedChange?: (blocked: boolean) => void;
 }) {
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [settings, setSettings] = useState<DeskTemplateSettingsMap>(event.settings?.templates ?? {});
   const [nums, setNums] = useState<Record<string, string>>({});
-  const [open, setOpen] = useState("");
+  /** Template keys in the order of the Live list */
+  const [order, setOrder] = useState<string[]>([]);
+  const [open, setOpen] = useState<Set<string>>(new Set());
+
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [exportParts, setExportParts] = useState<Part[]>(["output", "theme", "templates"]);
-  const [pending, setPending] = useState<{ file: any; parts: Part[]; path: string; chosen: Part[] }>();
 
   useEffect(() => {
     Promise.all([call<TemplateInfo[]>("desk:templates", eventId), call<DeskCommandMap>("desk:commands")])
       .then(([list, map]) => {
         setTemplates(list);
+        // desk:templates is already in the event's saved order
+        setOrder(list.map((t) => t.key));
         setNums(Object.fromEntries(list.map((t) => [t.key, Object.entries(map).find(([, k]) => k === t.key)?.[0] ?? ""])));
       })
       .catch((e) => setError(e.message));
@@ -66,7 +68,27 @@ export function EventTemplates({
     else fields[field] = value;
     change(key, { fields });
   };
+  const byKey = useMemo(() => new Map(templates.map((t) => [t.key, t])), [templates]);
+  const ordered = order.map((k) => byKey.get(k)).filter((t): t is TemplateInfo => !!t);
+  const toggleOpen = (key: string) =>
+    setOpen((o) => {
+      const next = new Set(o);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const sortable = useSortable({
+    order,
+    onChange: (next) => {
+      setOrder(next);
+      setDirty(true);
+    },
+    labelOf: (key) => tr(byKey.get(key)?.label ?? key),
+    onMoved: setNotice,
+  });
   const dupes = useMemo(() => Object.values(nums).filter((n, i, a) => n !== "" && a.indexOf(n) !== i), [nums]);
+  const isDupe = (key: string) => !!nums[key] && dupes.includes(nums[key]);
+  useEffect(() => onBlockedChange?.(dupes.length > 0), [dupes.length, onBlockedChange]);
 
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -87,32 +109,13 @@ export function EventTemplates({
           .map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined && !(typeof x === "object" && !Object.keys(x).length)))])
           .filter(([, v]) => Object.keys(v as object).length),
       );
-      await call("event:update", eventId, { settings: { templates: clean } });
+      const defaultOrder = DESK_TEMPLATES.map((t) => t.key);
+      const templateOrder = order.join() === defaultOrder.join() ? undefined : order;
+      await call("event:update", eventId, { settings: { templates: clean, templateOrder } });
       const map = Object.fromEntries(Object.entries(nums).filter(([, n]) => n !== "").map(([k, n]) => [n, k]));
       await call("desk:saveCommands", map);
       setDirty(false);
       setNotice("Template settings saved");
-      onSaved();
-    });
-
-  const exportFile = () =>
-    run(async () => {
-      if (dirty) throw new Error("Save your template changes first");
-      const res = await call<{ saved: string | null }>("event:exportSettings", eventId, exportParts);
-      if (res.saved) setNotice(`Exported to ${res.saved}`);
-    });
-  const pickImport = () =>
-    run(async () => {
-      const res = await call<{ file: any; parts: Part[]; path: string } | null>("event:pickSettingsFile");
-      if (res) setPending({ ...res, chosen: res.parts });
-    });
-  const applyImport = () =>
-    run(async () => {
-      if (!pending) return;
-      const res = await call<{ applied: Part[]; requiresRestart: boolean }>("event:importSettings", eventId, pending.file, pending.chosen);
-      setPending(undefined);
-      setDirty(false);
-      setNotice(`Imported ${res.applied.join(", ")}${res.requiresRestart ? " · restart Split Control to apply the output changes" : ""}`);
       onSaved();
     });
 
@@ -121,67 +124,110 @@ export function EventTemplates({
       {error && <p role="alert" className="studio-error">{error}</p>}
       {notice && <p role="status">{tr(notice)}</p>}
       <p className="muted">
-        {tr("Defaults fill the operator's draft in Live; they can still change any field there. Numbers pick a graphic in the command palette. Hidden graphics are left out of the Live list.")}
+        {tr("Drag graphics into the order you want in the Live list. Open a graphic for its settings: defaults fill the operator's draft in Live, where any field can still be changed.")}
       </p>
-      <ul className="template-list">
-        {templates.map((t) => {
+      <ul className="template-list" {...sortable.listProps}>
+        {ordered.map((t, index) => {
           const s = settings[t.key] ?? {};
           const live = t.live ? liveUpdatesDefault(t.key, settings) : undefined;
           const fields = [...(t.fields ?? []), ...(t.settingsFields ?? [])].filter((f) => t.schema?.[f]);
           const rowsPartner = t.key === "start-list" ? "Results table" : t.key === "results" ? "Start list" : "";
+          const isOpen = open.has(t.key);
+          const bodyId = `template-body-${t.key}`;
+          const dupe = isDupe(t.key);
           return (
-            <li key={t.key} className={`template-row ${s.hidden ? "is-hidden" : ""}`}>
-              <div className="template-row-head">
-                <input
-                  className="template-num"
-                  aria-label={`${tr("Number for")} ${t.label}`}
-                  value={nums[t.key] ?? ""}
-                  inputMode="numeric"
-                  onChange={(e) => {
-                    setNums((n) => ({ ...n, [t.key]: e.target.value.replace(/\D/g, "").slice(0, 2) }));
-                    setDirty(true);
-                  }}
-                />
-                <b className="template-name">{tr(t.label)}{t.available ? "" : ` · ${tr("not in this look")}`}</b>
-                <label className="inline-check">
-                  <input type="checkbox" checked={!s.hidden} onChange={(e) => change(t.key, { hidden: e.target.checked ? undefined : true })} />
-                  {tr("Show in Live")}
-                </label>
-                {live !== undefined && (
-                  <label className="inline-check">
-                    <input
-                      type="checkbox"
-                      checked={live}
-                      onChange={(e) => change(t.key, { liveUpdates: e.target.checked === (t.liveUpdates ?? true) ? undefined : e.target.checked })}
-                    />
-                    {tr("Live updates on air")}
-                  </label>
-                )}
-                {fields.length > 0 && (
-                  <button type="button" className="studio-button" aria-expanded={open === t.key} onClick={() => setOpen(open === t.key ? "" : t.key)}>
-                    {open === t.key ? tr("Close") : tr("Defaults")}
-                  </button>
-                )}
+            <li
+              key={t.key}
+              className={`template-item${s.hidden ? " is-hidden" : ""}${isOpen ? " is-open" : ""}${dupe ? " has-dupe" : ""}${sortable.itemClass(t.key)}`}
+              {...sortable.itemProps(t.key)}
+            >
+              <div className="template-item-head">
+                <DragHandle {...sortable.handleProps(t.key, index)} />
+                <button
+                  type="button"
+                  className="template-toggle"
+                  aria-expanded={isOpen}
+                  aria-controls={bodyId}
+                  onClick={() => toggleOpen(t.key)}
+                >
+                  <span className={`template-num-badge${dupe ? " is-invalid" : ""}`} aria-label={nums[t.key] ? `${tr("Number")} ${nums[t.key]}` : tr("No number")}>
+                    {nums[t.key] || "–"}
+                  </span>
+                  <span className="template-name">
+                    {tr(t.label)}
+                    {dupe && <span className="template-tag warn">{tr("Number")} {nums[t.key]} {tr("is used twice")}</span>}
+                    {!t.available && <span className="template-tag warn">{tr("not in this look")}</span>}
+                    {s.hidden && <span className="template-tag">{tr("Hidden in Live")}</span>}
+                    {live === false && <span className="template-tag">{tr("Live updates off")}</span>}
+                    {s.fields && Object.keys(s.fields).length > 0 && <span className="template-tag">{tr("Defaults set")}</span>}
+                  </span>
+                  <svg className="template-chevron" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                    <path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
               </div>
-              {open === t.key && (
-                <div className="field-grid template-fields">
-                  {fields.map((f) => (
-                    <StudioField
-                      key={f}
-                      schema={t.schema[f]}
-                      name={f}
-                      value={s.fields?.[f]}
-                      disabled={f === "rowsPerPage" && !!s.linkRows}
-                      onChange={(v) => setField(t.key, f, v)}
-                      settingsOnly={t.settingsFields?.includes(f)}
-                    />
-                  ))}
-                  {rowsPartner && (
+              {isOpen && (
+                <div className="template-item-body" id={bodyId}>
+                  <div className="template-item-section">
+                    <h4>{tr("In Live")}</h4>
                     <label className="inline-check">
-                      <input type="checkbox" checked={!!s.linkRows} onChange={(e) => change(t.key, { linkRows: e.target.checked || undefined })} />
-                      {tr("Same rows per page as")} {tr(rowsPartner)}
+                      <input type="checkbox" checked={!s.hidden} onChange={(e) => change(t.key, { hidden: e.target.checked ? undefined : true })} />
+                      {tr("Show in Live")}
                     </label>
-                  )}
+                    {live !== undefined && (
+                      <label className="inline-check">
+                        <input
+                          type="checkbox"
+                          checked={live}
+                          onChange={(e) => change(t.key, { liveUpdates: e.target.checked === (t.liveUpdates ?? true) ? undefined : e.target.checked })}
+                        />
+                        {tr("Live updates on air")}
+                      </label>
+                    )}
+                    <label className="template-num-field">
+                      {tr("Command number")}
+                      <input
+                        className={`template-num${dupe ? " is-invalid" : ""}`}
+                        aria-invalid={dupe || undefined}
+                        value={nums[t.key] ?? ""}
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          setNums((n) => ({ ...n, [t.key]: e.target.value.replace(/\D/g, "").slice(0, 2) }));
+                          setDirty(true);
+                        }}
+                      />
+                      <small>
+                        {tr("Picks this graphic in the command palette, in every event.")}{" "}
+                        <Link to="/settings?tab=controls">{tr("Order all numbers in Settings")}</Link>
+                      </small>
+                    </label>
+                  </div>
+                  <div className="template-item-section">
+                    <h4>{tr("Defaults")}</h4>
+                    {fields.length > 0 ? (
+                      <div className="field-grid template-fields">
+                        {fields.map((f) => (
+                          <StudioField
+                            key={f}
+                            schema={t.schema[f]}
+                            name={f}
+                            value={s.fields?.[f]}
+                            disabled={f === "rowsPerPage" && !!s.linkRows}
+                            onChange={(v) => setField(t.key, f, v)}
+                            settingsOnly={t.settingsFields?.includes(f)}
+                          />
+                        ))}
+                        {rowsPartner && (
+                          <label className="inline-check">
+                            <input type="checkbox" checked={!!s.linkRows} onChange={(e) => change(t.key, { linkRows: e.target.checked || undefined })} />
+                            {tr("Same rows per page as")} {tr(rowsPartner)}
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="muted">{tr("This graphic has no default fields.")}</p>
+                    )}
+                  </div>
                 </div>
               )}
             </li>
@@ -198,72 +244,14 @@ export function EventTemplates({
           className="studio-button"
           disabled={busy}
           onClick={() => {
-            setNums(Object.fromEntries(DESK_TEMPLATES.map((t, i) => [t.key, String(i)])));
+            setOrder(DESK_TEMPLATES.map((t) => t.key).filter((k) => byKey.has(k)));
             setDirty(true);
           }}
         >
-          {tr("Reset numbers")}
+          {tr("Reset order")}
         </button>
       </div>
 
-      <section className="connection-card">
-        <div className="connection-card-heading">
-          <div>
-            <h3>{tr("Export / import settings")}</h3>
-            <p>{tr("Take your setup to another event or computer as one JSON file.")}</p>
-          </div>
-        </div>
-        <div className="part-checks">
-          {PARTS.map(([id, label, hint]) => (
-            <label key={id} className="inline-check" title={tr(hint)}>
-              <input
-                type="checkbox"
-                checked={exportParts.includes(id)}
-                onChange={(e) => setExportParts((p) => (e.target.checked ? [...p, id] : p.filter((x) => x !== id)))}
-              />
-              {tr(label)}
-            </label>
-          ))}
-        </div>
-        <div className="form-actions">
-          <button type="button" className="studio-button" disabled={busy || !exportParts.length} onClick={() => void exportFile()}>
-            {tr("Export settings…")}
-          </button>
-          <button type="button" className="studio-button" disabled={busy} onClick={() => void pickImport()}>
-            {tr("Import settings…")}
-          </button>
-        </div>
-        {pending && (
-          <div className="import-review" role="group" aria-label={tr("Import")}>
-            <p>
-              <b>{pending.path.split(/[\\/]/).pop()}</b>
-              {pending.file.from ? ` · ${tr("from")} ${pending.file.from}` : ""}
-              {pending.file.exportedAt ? ` · ${new Date(pending.file.exportedAt).toLocaleString()}` : ""}
-            </p>
-            <div className="part-checks">
-              {PARTS.filter(([id]) => pending.parts.includes(id)).map(([id, label, hint]) => (
-                <label key={id} className="inline-check" title={tr(hint)}>
-                  <input
-                    type="checkbox"
-                    checked={pending.chosen.includes(id)}
-                    onChange={(e) =>
-                      setPending((p) => p && { ...p, chosen: e.target.checked ? [...p.chosen, id] : p.chosen.filter((x) => x !== id) })
-                    }
-                  />
-                  {tr(label)}
-                </label>
-              ))}
-            </div>
-            <p className="muted">{tr("Importing replaces those settings for this event. Output settings apply to the whole app.")}</p>
-            <div className="form-actions">
-              <button type="button" className="studio-button primary" disabled={busy || !pending.chosen.length} onClick={() => void applyImport()}>
-                {tr("Import")}
-              </button>
-              <button type="button" className="studio-button" onClick={() => setPending(undefined)}>{tr("Cancel")}</button>
-            </div>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

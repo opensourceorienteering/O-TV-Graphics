@@ -16,6 +16,7 @@
 import { renderView } from './views.js';
 import { clock, now, timeOfDay } from './util.js';
 import { livePatch, imagesReady } from './live.js';
+import { fitLowerThird } from './fit.js';
 
 const loadedFonts = new Set();
 
@@ -50,6 +51,51 @@ const wait = (ms) => new Promise(r => setTimeout(r, ms));
  * @param kind  view name (see views.js)
  * @param set   { id, theme, fonts, durations: { in, out, step }, labels, nameStyle, rowsPerPage, ... }
  */
+/**
+ * A running clock must never change the size of its graphic. Each ticking element reserves
+ * the width of the widest text its format can reach ("9:59" reserves "00:00", "-0:16"
+ * reserves "+00:00"); the reservation only grows, so the panel stays put while it runs.
+ * Measured with offsetWidth (layout size), so entry transforms do not disturb it.
+ */
+function clockShape(text, mode) {
+  let shape = text.replace(/\d/g, '0').replace(/^[-−]/, '+');
+  // one-digit minutes will become two: reserve that now (hours stay one digit)
+  shape = shape.replace(/^(\+?)0:(?=00$)/, '$100:');
+  // running times (race clock, a runner's time) pass the hour in most races
+  if ((mode === 'elapsed' || mode === 'run') && /^\+?00:00$/.test(shape)) shape = shape.replace('00:00', '0:00:00');
+  return shape;
+}
+// a web font that finishes loading changes every measurement: measure again once
+let fontEpoch = 0;
+document.fonts?.addEventListener?.('loadingdone', () => { fontEpoch++; });
+function reserveWidth(el, text, mode) {
+  if (!text) return;
+  if (el._epoch !== fontEpoch) { el._epoch = fontEpoch; el._shape = ''; el._reserved = 0; }
+  const shape = clockShape(text, mode);
+  // a live patch may drop the inline style: put the reservation back
+  if (el._shape === shape && el.style.minWidth) return;
+  el._shape = shape;
+  const probe = el.cloneNode(false);
+  probe.removeAttribute('data-tick');
+  probe.textContent = shape;
+  probe.style.cssText += ';position:absolute;visibility:hidden;width:max-content;min-width:0;max-width:none;left:0;top:0';
+  el.parentNode.appendChild(probe);
+  const w = probe.offsetWidth;
+  probe.remove();
+  el._reserved = Math.max(w, el._reserved || 0);
+  const cs = getComputedStyle(el);
+  if (cs.display === 'inline') el.style.display = 'inline-block';
+  // keep the text where the cell puts it (right-aligned times stay right-aligned)
+  if (/^(start|left)$/.test(cs.textAlign)) {
+    const j = getComputedStyle(el.parentNode).justifyContent;
+    if (/end|right/.test(j)) el.style.textAlign = 'right';
+    else if (/center/.test(j)) el.style.textAlign = 'center';
+  }
+  el.style.fontVariantNumeric = 'tabular-nums';
+  el.style.boxSizing = 'border-box';
+  el.style.minWidth = `${el._reserved}px`;
+}
+
 export function createGraphic(kind, set) {
   return class OLGrafikGraphic extends HTMLElement {
     constructor() {
@@ -78,6 +124,10 @@ export function createGraphic(kind, set) {
       this.fit();
       this.resizeObserver = new ResizeObserver(() => this.fit());
       this.resizeObserver.observe(this);
+      // Lower thirds fit their text again when a font or a logo changes the measurements
+      this.refit = () => fitLowerThird(this.root);
+      this.root.addEventListener('load', this.refit, true);
+      document.fonts?.addEventListener?.('loadingdone', this.refit);
       this.render();
       return { statusCode: 200, message: 'Loaded' };
     }
@@ -115,6 +165,7 @@ export function createGraphic(kind, set) {
       const code = String(this.data?.controlCode ?? '').trim();
       this.root.classList.toggle('is-finish', !code || /^(f|finish|1000)$/i.test(code));
       this.tick();
+      fitLowerThird(this.root);
     }
 
     patch(html) {
@@ -154,6 +205,7 @@ export function createGraphic(kind, set) {
           el.classList.toggle('is-counting', left > 0);
         }
         if (el.textContent !== text) el.textContent = text;
+        reserveWidth(el, text, mode);
       }
       // Views that change with time (next start group, a runner on the way climbing the
       // standings) re-render when their key changes; on air the change is animated in place
@@ -239,6 +291,7 @@ export function createGraphic(kind, set) {
 
     async dispose() {
       this.stopTicker();
+      document.fonts?.removeEventListener?.('loadingdone', this.refit);
       this.resizeObserver?.disconnect();
       this.shadowRoot.innerHTML = '';
       return { statusCode: 200 };
@@ -246,6 +299,7 @@ export function createGraphic(kind, set) {
 
     disconnectedCallback() {
       this.stopTicker();
+      document.fonts?.removeEventListener?.('loadingdone', this.refit);
       this.resizeObserver?.disconnect();
     }
   };

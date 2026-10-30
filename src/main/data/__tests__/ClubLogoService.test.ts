@@ -22,7 +22,7 @@ describe('ClubLogoService (bundled + manual logos)', () => {
     fs.writeFileSync(path.join(set, 'index.json'), JSON.stringify({
       source: 'https://eventor.orientering.se', downloadedAt: 1793000000000, logoType: 'LargeIcon',
       organisations: [
-        { id: '321', name: 'OK Linné', shortName: 'OK Linné', file: '321.png' },
+        { id: '321', name: 'OK Linné', shortName: 'OK Linné', mediaName: 'Orienteringsklubben Linné', file: '321.png' },
         { id: '654', name: 'Järfälla OK', shortName: 'Järfälla', file: '654.png' },
         { id: '999', name: 'No Logo IF' }
       ]
@@ -45,6 +45,23 @@ describe('ClubLogoService (bundled + manual logos)', () => {
     expect(service.lookup('Järfälla')).toBe('/club-logos/bundled/eventor.orientering.se/logos/654.png'); // short name
     expect(service.lookup('No Logo IF')).toBeUndefined();
     expect(service.status()).toMatchObject({ bundled: [{ folder: 'eventor.orientering.se', clubs: 3, logos: 2 }], manualLogos: 0 });
+  });
+
+  it('gives clubs their short names, keeping relay team numbers', () => {
+    const service = new ClubLogoService(bundled, user);
+    expect(service.shortName('Orienteringsklubben Linné')).toBe('OK Linné');
+    expect(service.shortName('Orienteringsklubben Linné 2')).toBe('OK Linné 2');
+    expect(service.shortName('Järfälla OK')).toBe('Järfälla');
+    expect(service.shortName('Unknown Club')).toBe('Unknown Club');
+  });
+
+  it("uses the event's own club names first", () => {
+    const service = new ClubLogoService(bundled, user);
+    const overrides = { 'Orienteringsklubben Linné': 'Linné', 'Unknown Club': 'UC' };
+    expect(service.shortName('Orienteringsklubben Linné', overrides)).toBe('Linné');
+    expect(service.shortName('Orienteringsklubben Linné 2', overrides)).toBe('Linné 2'); // relay team
+    expect(service.shortName('unknown club', overrides)).toBe('UC');
+    expect(service.shortName('Järfälla OK', overrides)).toBe('Järfälla'); // no override: club list
   });
 
   it('prefers logos added by hand', () => {

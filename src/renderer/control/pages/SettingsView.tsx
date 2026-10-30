@@ -1,5 +1,6 @@
 import { setAppLanguage, t as tr } from "../i18n";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Database,
   HardDrive,
@@ -8,9 +9,12 @@ import {
   Save,
   Settings2,
   Sliders,
+  Tag,
 } from "lucide-react";
 import { DataSourceManager } from "../components/DataSourceManager";
 import { KeyboardShortcutsList } from "../components/KeyboardShortcuts";
+import { ClubNameLibrary } from "../components/ClubNameLibrary";
+import { CommandNumbersPanel } from "../components/CommandNumbersPanel";
 
 interface AppConfig {
   general: {
@@ -35,7 +39,7 @@ interface AppConfig {
   };
 }
 
-type TabId = "general" | "outputs" | "controls" | "sources" | "storage";
+type TabId = "general" | "outputs" | "controls" | "sources" | "clubs" | "storage";
 
 const tabs: Array<{
   id: TabId;
@@ -58,7 +62,7 @@ const tabs: Array<{
   {
     id: "controls",
     label: "Controls",
-    detail: "Keyboard shortcuts",
+    detail: "Command numbers and keys",
     icon: Keyboard,
   },
   {
@@ -66,6 +70,12 @@ const tabs: Array<{
     label: "Data sources",
     detail: "Timing connections",
     icon: Database,
+  },
+  {
+    id: "clubs",
+    label: "Club names",
+    detail: "Short names on air",
+    icon: Tag,
   },
   {
     id: "storage",
@@ -76,7 +86,10 @@ const tabs: Array<{
 ];
 
 export function SettingsView() {
-  const requestedTab = new URLSearchParams(window.location.search).get("tab");
+  // The app uses hash routing: read ?tab= (or ?section=) from the router, not window.location
+  const [params] = useSearchParams();
+  const requested = params.get("tab") ?? params.get("section");
+  const requestedTab = requested === "output" ? "outputs" : requested;
   const [tab, setTab] = useState<TabId>(
     tabs.some(({ id }) => id === requestedTab)
       ? (requestedTab as TabId)
@@ -426,13 +439,30 @@ export function SettingsView() {
             </SettingsSection>
           )}
 
-          {tab === "controls" && (
+          {tab === "clubs" && (
             <SettingsSection
-              title={tr("Controls")}
-              intro={tr("Keys for the Live desk. You can also open this list from Plan or Live.")}
+              title={tr("Club names")}
+              intro={tr("Names graphics use instead of the club name the data source sends, in every event. Clubs without a name here use the short name from the downloaded club lists, or the name as sent.")}
             >
-              <KeyboardShortcutsList />
+              <ClubNameLibrary />
             </SettingsSection>
+          )}
+
+          {tab === "controls" && (
+            <>
+              <SettingsSection
+                title={tr("Command numbers")}
+                intro={tr("The first number of a palette command picks a graphic, in every event. Drag the graphics into order: the first is 0, the next 1, and so on. Each event orders its own Live list in Plan → Templates.")}
+              >
+                <CommandNumbersPanel />
+              </SettingsSection>
+              <SettingsSection
+                title={tr("Keyboard shortcuts")}
+                intro={tr("Keys for the Live desk. You can also open this list from Plan or Live.")}
+              >
+                <KeyboardShortcutsList />
+              </SettingsSection>
+            </>
           )}
 
           {tab === "storage" && (

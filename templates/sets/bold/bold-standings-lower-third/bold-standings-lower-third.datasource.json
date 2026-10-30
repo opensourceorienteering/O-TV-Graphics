@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "mode": "api",
+  "api": {
+    "provider": "liveresults",
+    "fieldMappings": [
+      {
+        "templateField": "className",
+        "apiPath": "className",
+        "required": true,
+        "autoPopulated": true,
+        "allowOverride": true,
+        "showInUI": true,
+        "uiLabel": "Class name",
+        "uiHelpText": "Override the class name shown"
+      },
+      {
+        "templateField": "results",
+        "apiPath": "results",
+        "required": true,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
+      },
+      {
+        "templateField": "controlName",
+        "apiPath": "controlName",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": true,
+        "showInUI": true,
+        "uiLabel": "Control name"
+      }
+    ],
+    "uiControls": [
+      {
+        "type": "class-selector",
+        "label": "Class",
+        "helpText": "Class to show",
+        "required": true,
+        "storeAs": "className",
+        "compact": true
+      },
+      {
+        "type": "control-point-selector",
+        "label": "Timing point",
+        "helpText": "Finish or a radio control",
+        "required": false,
+        "storeAs": "controlCode",
+        "multiple": false,
+        "includeFinish": true
+      },
+      {
+        "type": "runner-search",
+        "label": "Runner",
+        "helpText": "Search by name or bib",
+        "required": false,
+        "storeAs": "runnerId",
+        "searchBy": "both",
+        "placeholder": "Name or bib...",
+        "populateFields": {
+          "runnerName": "name",
+          "runnerClub": "club",
+          "runnerBib": "bib"
+        }
+      }
+    ],
+    "autoUpdate": {
+      "defaultEnabled": true
+    }
+  }
+}

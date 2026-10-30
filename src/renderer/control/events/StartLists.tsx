@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/types/event";
 import { call } from "./api";
 import { ask } from "./ask";
+import { ClubNames } from "./ClubNames";
 
 export function StartLists({
   eventId,
@@ -344,6 +345,7 @@ export function StartLists({
       </div>
       <p className="muted">
         {entries.length}  {tr("of")} {list.entries.length}  {tr("runners")} </p>
+      <ClubNames eventId={eventId} version={list.updated} />
     </div>
   );
 }

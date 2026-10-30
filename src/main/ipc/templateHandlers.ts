@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron';
 import { getTemplateManager } from '../templates/OGrafManager';
 import { logger } from '../utils/logger';
+import { SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 
 /**
  * Register all template IPC handlers
@@ -17,7 +18,8 @@ export function registerTemplateHandlers(): void {
   ipcMain.handle('templates:getAll', async () => {
     try {
       const manager = getTemplateManager();
-      const templates = manager.getAllTemplates();
+      // system tools (the output test pattern) are not graphics to pick from
+      const templates = manager.getAllTemplates().filter(t => t.setId !== SYSTEM_TEMPLATE_SET);
 
       // Debug: Check if datasource configs are present
       const templatesWithDataSource = templates.filter(t => t.dataSourceConfig).length;

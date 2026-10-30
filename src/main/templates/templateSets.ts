@@ -3,7 +3,7 @@
  * (different looks) can never be mixed in one production.
  */
 
-import type { OGrafTemplateInfo } from '../../shared/types/ograf';
+import { SYSTEM_TEMPLATE_SET, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import { DEFAULT_TEMPLATE_SET, type SPXProject } from '../../shared/types/spx';
 
 /** Semantic roles for Classic graphics created before v_olgrafik_kind existed. */
@@ -41,6 +41,8 @@ export function templateForGraphicKind(
 /** Throws a readable error when a graphic is not part of the project's set */
 export function assertTemplateInProjectSet(project: Pick<SPXProject, 'templateSet' | 'name'>, template: OGrafTemplateInfo): void {
   const setId = projectTemplateSet(project);
+  // system tools (the output test pattern) work with every look
+  if (template.setId === SYSTEM_TEMPLATE_SET) return;
   if (template.setId !== setId) {
     throw new Error(
       `"${template.manifest.name}" belongs to the "${template.setId}" template set, but project "${project.name}" uses "${setId}". ` +

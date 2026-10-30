@@ -5,18 +5,32 @@ import { WebOutputPanel } from "../components/WebOutputPanel";
 import { NDIOutputPanel } from "../components/NDIOutputPanel";
 import { Monitor } from "./Monitor";
 import { call } from "./api";
+import type { EventLiveOutputs, EventSummary } from "../../../shared/types/event";
 
-export function EventOutput({ eventId }: { eventId: string }) {
+export function EventOutput({ eventId, onChange }: { eventId: string; onChange?: () => void }) {
+  const [liveOutputs, setLiveOutputs] = useState<EventLiveOutputs>();
   const [resolution, setResolution] = useState("HD");
-  const [webEnabled, setWebEnabled] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
+    call<{ summary: EventSummary }>("event:get", eventId)
+      .then((state) => setLiveOutputs(state.summary.liveOutputs))
+      .catch((e) => setError(e.message));
+  }, [eventId]);
+  const chooseOutput = (key: keyof EventLiveOutputs, on: boolean) => {
+    if (!liveOutputs) return;
+    const next = { ...liveOutputs, [key]: on };
+    setLiveOutputs(next);
+    void run(async () => {
+      await call("event:update", eventId, { liveOutputs: next });
+      onChange?.();
+    });
+  };
+  useEffect(() => {
     call("settings:get")
       .then((config) => {
         setResolution(config.general.resolution);
-        setWebEnabled(config.output.web.enabled);
       })
       .catch((e) => setError(e.message));
   }, []);
@@ -39,12 +53,45 @@ export function EventOutput({ eventId }: { eventId: string }) {
         </p>
       )}
       {notice && <p role="status">{tr(notice)}</p>}
+      <section className="connection-card">
+        <div className="connection-card-heading">
+          <div>
+            <h3>{tr("Outputs in Live")}</h3>
+            <p>
+               {tr("The outputs chosen here turn on automatically when this event opens in Live. NDI turns off again when Live ends.")} </p>
+          </div>
+        </div>
+        <div className="field-grid">
+          <label className="inline-label">
+            <input
+              type="checkbox"
+              disabled={!liveOutputs || busy}
+              checked={!!liveOutputs?.web}
+              onChange={(e) => chooseOutput("web", e.target.checked)}
+            />
+             {tr("Web output (browser source)")} </label>
+          <label className="inline-label">
+            <input
+              type="checkbox"
+              disabled={!liveOutputs || busy}
+              checked={!!liveOutputs?.ndi}
+              onChange={(e) => chooseOutput("ndi", e.target.checked)}
+            />
+             {tr("NDI output")} </label>
+        </div>
+        {liveOutputs && !liveOutputs.web && !liveOutputs.ndi && (
+          <p className="muted">{tr("Choose at least one output to go live.")}</p>
+        )}
+      </section>
       <section className="connection-card output-basics">
         <div className="connection-card-heading">
           <div>
             <h3>{tr("Output format")}</h3>
             <p>
-               {tr("These app-wide settings are shared by every event. Changing the resolution or web server requires a restart.")} </p>
+               {tr("The resolution is shared by every event. Changing it requires a restart.")}{" "}
+              {tr("Server ports, the NDI name and other app-wide defaults are in")}{" "}
+              <Link to="/settings?tab=outputs">{tr("Output settings")}</Link>.
+            </p>
           </div>
         </div>
         <div className="field-grid">
@@ -58,33 +105,18 @@ export function EventOutput({ eventId }: { eventId: string }) {
               <option value="AUTO">{tr("Match graphics display")}</option>
             </select>
           </label>
-          <label className="inline-label">
-            <input
-              type="checkbox"
-              checked={webEnabled}
-              onChange={(e) => setWebEnabled(e.target.checked)}
-            />
-             {tr("Enable web output")} </label>
         </div>
         <button
           className="studio-button"
           disabled={busy}
           onClick={() =>
             void run(async () => {
-              await call("settings:update", {
-                general: { resolution },
-                output: { web: { enabled: webEnabled } },
-              });
-              setNotice(
-                "Output settings saved. Restart Split Control to apply server or resolution changes.",
-              );
+              await call("settings:update", { general: { resolution } });
+              setNotice("Resolution saved. Restart Split Control to apply it.");
             })
           }
         >
            {tr("Save output format")} </button>
-        <p className="muted output-settings-link">
-           {tr("Need server ports or advanced defaults?")} <Link to="/settings?section=output">{tr("Open output settings")}</Link>.
-        </p>
       </section>
       <WebOutputPanel />
       <NDIOutputPanel />

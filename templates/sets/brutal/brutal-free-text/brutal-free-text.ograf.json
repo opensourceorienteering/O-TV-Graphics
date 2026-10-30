@@ -1,0 +1,47 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "brutal-free-text",
+  "version": "1.0.0",
+  "name": "Brutal – Free text",
+  "description": "A general text lower third.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "title": "Text",
+        "description": "The text to show"
+      },
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Optional line under the text"
+      }
+    },
+    "required": [
+      "text"
+    ]
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "brutal",
+  "v_olgrafik_kind": "free-text",
+  "v_olgrafik_zone": "lower"
+}

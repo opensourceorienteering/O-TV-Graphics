@@ -682,6 +682,8 @@ button:disabled {
 .theme-color-control { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; }
 .theme-color-control input[type="color"] { width: 48px; height: 40px; padding: 3px; background: var(--surface-control); border: 1px solid var(--color-border); border-radius: 4px; cursor: pointer; }
 .theme-color-control input[type="text"] { min-width: 0; font-family: var(--ui-font-mono); text-transform: uppercase; }
+.theme-color-tints { grid-column: 2; display: flex; gap: 4px; margin-top: -6px; }
+.theme-color-tints i { flex: 1; height: 14px; border-radius: 3px; background: color-mix(in oklab, var(--c), var(--to) var(--m)); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); }
 .dialog-heading,
 .dialog-footer {
   display: flex;
@@ -808,7 +810,7 @@ progress {
   gap: 8px;
 }
 .plan-layout {
-  grid-template-columns: 185px minmax(340px, 1fr) minmax(260px, 0.65fr);
+  grid-template-columns: 185px minmax(0, 1fr);
   gap: 24px;
 }
 .plan-checklist {
@@ -942,17 +944,6 @@ progress {
   font-size: 13px;
   color: #b8c0cd;
 }
-.plan-context {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  position: sticky;
-  top: 24px;
-  min-width: 0;
-}
-.plan-context .monitor-caption {
-  font-size: 11px;
-}
 .settings-disclosure {
   border-top: 1px solid #414751;
   padding: 8px 0;
@@ -981,39 +972,6 @@ progress {
 .preview-options {
   padding: 8px 16px;
   font-size: 12px;
-}
-.readiness-summary {
-  padding: 10px 14px;
-}
-.readiness-summary h2 {
-  font-size: 14px;
-  margin: 0 0 12px;
-}
-.readiness-summary ul {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-}
-.readiness-summary li {
-  border-top: 1px solid #383e48;
-  padding: 8px 0;
-}
-.readiness-summary button {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  border: 0;
-  background: none;
-  color: #d4d9e1;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  padding: 5px 0;
-  text-align: left;
-}
-.readiness-summary p {
-  font-size: 12px;
-  margin: 5px 0;
 }
 .workspace-menu {
   position: relative;
@@ -1055,17 +1013,13 @@ progress {
 }
 @media (min-width: 1500px) {
   .plan-layout {
-    grid-template-columns: 195px minmax(440px, 1fr) minmax(320px, 0.8fr);
+    grid-template-columns: 195px minmax(0, 1fr);
   }
 }
 @media (max-width: 1150px) {
   .plan-layout {
     grid-template-columns: 160px minmax(0, 1fr);
     gap: 16px;
-  }
-  .plan-context {
-    grid-column: 2;
-    position: static;
   }
   .live-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1120,9 +1074,6 @@ progress {
   }
   .setup-progress {
     width: 100%;
-  }
-  .plan-context {
-    grid-column: auto;
   }
   .plan-checklist button {
     padding: 8px;
@@ -2326,15 +2277,154 @@ progress {
 .competition-chosen small { color: var(--muted, #9aa3ad); }
 
 /* Settings → Templates */
+/* Plan → Theme: the preview sits at the top of the step */
+.theme-preview { gap: 12px; }
+.theme-preview .monitor-panel { padding: 0; border: 0; background: transparent; }
 .template-list { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 6px; }
-.template-row { border: 1px solid var(--line, #2c2c2c); border-radius: 6px; padding: 8px 12px; }
-.template-row.is-hidden .template-name { opacity: .55; }
-.template-row-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.template-num { width: 3.2em; text-align: center; font-variant-numeric: tabular-nums; }
-.template-name { flex: 1 1 200px; min-width: 0; }
-.template-fields { margin-top: 10px; }
+/* Settings → Templates: one draggable, expandable item per graphic */
+.template-item {
+  position: relative;
+  background: var(--surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  transition: border-color .12s ease, opacity .12s ease;
+}
+.template-item.is-open { border-color: var(--color-border-strong); }
+.template-item.is-dragging { opacity: .45; }
+.template-item.drop-before::before,
+.template-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  pointer-events: none;
+}
+.template-item.drop-before::before { top: -5px; }
+.template-item.drop-after::after { bottom: -5px; }
+.template-item-head { display: flex; align-items: stretch; min-height: 48px; }
+.template-handle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px 0 0 8px;
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: grab;
+  touch-action: none;
+}
+.template-handle svg { fill: currentColor; }
+.template-handle:hover { color: var(--color-text-primary); background: var(--surface-control); }
+.template-handle:active { cursor: grabbing; }
+.template-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 8px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.template-num-badge {
+  flex: none;
+  min-width: 28px;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--surface-control);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.template-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  font-weight: 600;
+}
+.template-item.is-hidden .template-name { color: var(--color-text-secondary); }
+.template-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--surface-control);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.template-tag.warn { background: var(--status-danger-surface); color: var(--status-danger-text); }
+.template-chevron { flex: none; color: var(--color-text-tertiary); transition: transform .15s ease; }
+.template-item.is-open .template-chevron { transform: rotate(180deg); }
+.template-item-body {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
+  gap: 24px;
+  padding: 14px 18px 18px 40px;
+  border-top: 1px solid var(--color-border);
+}
+.template-item-section { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; min-width: 0; }
+.template-item-section h4 {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.template-item-section .template-fields { width: 100%; }
+.template-num-field { display: flex; flex-direction: column; gap: 4px; }
+/* Duplicate command numbers */
+.template-item.has-dupe { border-color: var(--status-danger-text); }
+.template-num-badge.is-invalid { background: var(--status-danger-surface); color: var(--status-danger-text); }
+.template-num.is-invalid { border-color: var(--status-danger-text); box-shadow: 0 0 0 1px var(--status-danger-text); }
+/* Settings → Controls: rows without an expandable body */
+.template-row-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 14px 8px 4px; }
+.template-params { flex: none; color: var(--color-text-tertiary); font-size: 12px; }
+.template-num-field small { color: var(--color-text-tertiary); font-size: 11px; }
+.template-num { width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; }
 .template-fields textarea { width: 100%; font: inherit; }
+@media (max-width: 760px) {
+  .template-item-body { grid-template-columns: 1fr; padding-left: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .template-item, .template-chevron { transition: none; }
+}
 .studio-form label.inline-check, .inline-check { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; white-space: nowrap; }
 .studio-form label.inline-check input { width: auto; margin: 0; }
 .part-checks { display: flex; gap: 18px; flex-wrap: wrap; margin: 8px 0; }
 .import-review { margin-top: 12px; padding: 12px; border-radius: 6px; background: rgb(255 255 255 / .04); }
+
+/* Start lists: club names on air */
+.club-names {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.club-names .table-scroll {
+  max-height: 420px;
+}
+.club-names td input[type="text"] {
+  width: min(320px, 100%);
+}
+.club-names small {
+  margin-left: 6px;
+}
+.club-names .warn {
+  color: var(--color-warning, #d9a35f);
+}

@@ -1,0 +1,232 @@
+/*
+ * Signal: chromatic aberration / RGB split.
+ * Dark glass cards whose red and cyan channels drift apart and lock back together. The split
+ * lives on two copies of the card (::before / ::after) that only move and fade, so every
+ * frame stays composited; text keeps a fixed, subtle fringe.
+ *
+ * Three colours (Settings → theme colours):
+ *   --chan-r  the red channel: places, leader, behind
+ *   --chan-c  the cyan channel: times, ahead, highlights
+ *   --ink     the card glass; surfaces, dividers and muted text are mixed from it
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --chan-r: #ff2b5e;
+  --chan-c: #19e3ff;
+  --ink: #0b0e14;
+
+  --glass: color-mix(in oklab, var(--ink), #fff 3%);
+  --glass-hi: color-mix(in oklab, var(--ink), #fff 8%);
+  --line: color-mix(in oklab, var(--ink), #fff 16%);
+  --text: #f3f6ff;
+  --muted: color-mix(in oklab, #fff 62%, var(--ink));
+  --r-soft: color-mix(in oklab, var(--chan-r) 24%, var(--ink));
+  --c-soft: color-mix(in oklab, var(--chan-c) 20%, var(--ink));
+  --fringe: -2px 0 0 color-mix(in srgb, var(--chan-r) 75%, transparent), 2px 0 0 color-mix(in srgb, var(--chan-c) 75%, transparent);
+  --fringe-sm: -1px 0 0 color-mix(in srgb, var(--chan-r) 70%, transparent), 1px 0 0 color-mix(in srgb, var(--chan-c) 70%, transparent);
+  --gain: var(--chan-c);
+  --loss: var(--chan-r);
+  --chart-grid: var(--line);
+  --chart-axis: var(--muted);
+
+  --font: "Chakra Petch", "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --fs: 30px;
+  --margin-x: 96px;
+  --margin-y: 90px;
+  --table-top: 196px;
+  --table-x: 400px;
+  --lower-w: 830px;
+  --side-w: 480px;
+  --podium-x: 260px;
+  --title-x: 300px;
+  --line-0: var(--chan-r); --line-1: var(--chan-c); --line-2: #ffe14d; --line-3: #b18cff;
+  --line-4: #6dff9a; --line-5: #ff9a3d; --line-6: #ff7ad9; --line-7: var(--muted);
+}
+
+/* --- the card and its two channel ghosts -------------------------------------------- */
+.panel {
+  color: var(--text);
+  box-shadow: 0 24px 48px -16px rgb(0 0 0 / .6);
+  outline: 1px solid var(--line); outline-offset: -1px;
+}
+/* the ghosts sit behind the card: a red copy left, a cyan copy right */
+.gfx .panel::before, .gfx .panel::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  opacity: .85;
+}
+.gfx .panel { isolation: isolate; overflow: visible; }
+.gfx .panel::before { background: var(--chan-r); transform: translate(-4px, 0); }
+.gfx .panel::after { background: var(--chan-c); transform: translate(4px, 0); }
+/* the glass is painted on the card's parts so the channel ghosts stay behind it */
+.panel > *, .panel--clock > * { background-color: var(--glass); }
+.panel > .hdr { background-image: linear-gradient(180deg, var(--glass-hi), var(--glass)); }
+/* a hairline scan texture on the glass */
+.rows, .chart-body, .title-body, .podium {
+  background-image: repeating-linear-gradient(180deg, rgb(255 255 255 / .025) 0 1px, transparent 1px 4px);
+}
+
+/* --- header & footer ------------------------------------------------------------------- */
+.hdr, .ftr { padding: 0 24px; gap: 14px; }
+.hdr { min-height: 66px; border-bottom: 1px solid var(--line); }
+.hdr-mark { display: block; width: 14px; height: 14px; background: var(--chan-c); box-shadow: -4px 0 0 var(--chan-r); transform: rotate(45deg); flex: none; }
+.ftr-mark { display: none; }
+.hdr-title { font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; text-shadow: var(--fringe); }
+.hdr-sub { margin-left: auto; font: 700 18px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--chan-c); }
+.hdr-logo, .ftr-logo { height: 46px; width: 96px; padding: 6px 10px; background: #fff; align-self: center; }
+.ftr { min-height: 46px; border-top: 1px solid var(--line); color: var(--muted); font: 700 18px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+.ftr-class { color: var(--text); }
+.ftr-ctrl { color: var(--chan-c); }
+.ftr-page { margin-left: auto; color: var(--chan-c); }
+.panel--table .ftr:not(:has(.ftr-page)) { display: none; }
+.panel--table .ftr .ftr-label { display: none; }
+.panel--table .ftr { justify-content: flex-end; border-top: 0; }
+
+/* --- rows ------------------------------------------------------------------------------ */
+.rows { padding: 6px 0; }
+.row { min-height: 54px; color: var(--text); }
+.row + .row { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--line) 60%, transparent); }
+.c-place { width: 64px; font: 700 26px var(--mono); color: var(--muted); }
+.row--leader .c-place { color: var(--chan-r); text-shadow: var(--fringe-sm); }
+.c-name { padding: 0 16px 0 6px; font-size: 30px; font-weight: 600; }
+.c-name .nm-family { font-weight: 700; text-transform: uppercase; letter-spacing: .02em; }
+.c-id { gap: 10px; padding-right: 18px; color: var(--muted); font-size: 22px; font-weight: 600; }
+.id-code { font-family: var(--mono); font-size: 20px; letter-spacing: .06em; }
+.id-flag { height: 24px; box-shadow: 0 0 0 1px rgb(255 255 255 / .15); }
+.c-time, .c-start, .c-value { min-width: 160px; padding: 0 22px 0 12px; font: 700 28px var(--mono); color: var(--chan-c); }
+.row--leader .c-time { color: var(--text); text-shadow: var(--fringe); }
+.c-start { justify-content: flex-start; padding-left: 22px; }
+.c-bib { min-width: 76px; font: 700 22px var(--mono); color: var(--chan-r); }
+.row--status { color: var(--muted); }
+.row--status .c-time { color: var(--muted); font-size: 22px; }
+.row--empty .c-name { padding: 0 22px; color: var(--muted); }
+.c-change { font: 700 20px var(--mono); }
+
+/* --- lower thirds ------------------------------------------------------------------- */
+.panel--lower .hdr { display: none; }
+.panel--lower .row--hl { background: linear-gradient(90deg, var(--r-soft), transparent 70%); min-height: 70px; }
+.panel--lower .row--hl .c-name { font-size: 34px; text-shadow: var(--fringe-sm); }
+.panel--lower .row--hl .c-place { color: var(--chan-r); }
+.panel--lower .row--hl .c-time { font-size: 32px; color: var(--text); text-shadow: var(--fringe); }
+.panel--runner .row--ref { min-height: 46px; font-size: 24px; color: var(--muted); }
+.panel--runner .row--ref .c-name { font-size: 24px; }
+.panel--runner .row--ref .c-time { font-size: 22px; color: var(--muted); }
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--chan-c); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--chan-r); }
+.panel--runner .row--hl.is-running .c-time { color: var(--chan-c); }
+
+.gfx .panel--strap { width: auto; min-width: 620px; max-width: calc(var(--lower-w) * 1.1); }
+.panel--strap .row { min-height: 88px; }
+.panel--strap .row--hl { background: transparent; }
+.panel--strap .row .c-place {
+  align-self: stretch; width: auto; min-width: 88px; padding: 0 22px;
+  background: var(--chan-r); color: #fff; font-size: 36px; text-shadow: none;
+}
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; padding-left: 22px; font-size: 44px; font-weight: 700; text-shadow: var(--fringe); }
+.panel--strap .row .c-name .nm-family { font-weight: 700; }
+.panel--strap .row .c-id { padding-left: 24px; font-size: 26px; }
+.panel--strap .row .c-time { font-size: 34px; color: var(--chan-c); min-width: 0; }
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { color: var(--chan-c); }
+.panel--extended .row--bio { min-height: 40px; }
+.panel--extended .row--bio .c-name { font-size: 24px; font-weight: 600; color: var(--muted); text-shadow: none; padding-left: 22px; }
+.c-mic { color: #fff; }
+
+.panel--startgroup .hdr { display: flex; }
+.panel--startgroup .hdr-sub { display: none; }
+.hdr-clock { margin-left: auto; font: 700 30px var(--mono); color: var(--chan-c); text-shadow: var(--fringe-sm); }
+.panel--startgroup .ftr { display: none; }
+
+/* --- side panels -------------------------------------------------------------------- */
+.panel--side .hdr { display: none; }
+.panel--info .hdr, .panel--splits .hdr { display: flex; }
+.panel--side .row { min-height: 50px; }
+.panel--side .c-label { padding: 0 20px; font-size: 24px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.panel--side .c-value { min-width: 140px; font-size: 26px; color: var(--text); }
+.panel--side .ftr { display: none; }
+.panel--splits .c-label { color: var(--text); }
+.panel--splits .c-place { width: 48px; font-size: 22px; }
+.panel--splits .c-change { width: 56px; justify-content: center; }
+.panel--splits .c-time { min-width: 130px; font-size: 24px; }
+.panel--splits .c-time.is-best { color: var(--chan-c); }
+.panel--splits .c-time.is-behind { color: var(--chan-r); }
+
+/* --- podium ---------------------------------------------------------------------------- */
+.panel--podium .podium { gap: 2px; }
+.panel--podium .pod { background: color-mix(in oklab, var(--ink), #fff 4%); }
+.panel--podium .pod > .c-place { font: 700 40px var(--mono); color: var(--muted); background: color-mix(in oklab, var(--ink), #000 30%); }
+.panel--podium .pod--1 { background: var(--r-soft); }
+.panel--podium .pod--1 > .c-place { background: var(--chan-r); color: #fff; font-size: 50px; }
+.panel--podium .pod .row { min-height: 84px; }
+.panel--podium .pod--1 .row { min-height: 116px; }
+.panel--podium .pod--1 .c-name { text-shadow: var(--fringe); }
+.pod .pod-time { color: var(--chan-c); padding: 0; min-width: 0; justify-content: flex-start; font-size: 22px; }
+.panel--podium .ftr { display: none; }
+
+/* --- clock ----------------------------------------------------------------------------- */
+.panel--clock { gap: 0; }
+.clk-label {
+  display: flex; align-items: center; padding: 0 18px; background: var(--glass); color: var(--muted);
+  font: 700 18px var(--mono); letter-spacing: .12em; text-transform: uppercase; box-shadow: inset 0 0 0 1px var(--line);
+}
+.clk-time { padding: 10px 22px; min-width: 170px; text-align: center; background: var(--ink); color: var(--text); font: 700 42px var(--mono); text-shadow: var(--fringe); box-shadow: inset 0 0 0 1px var(--line), 0 0 0 0 transparent; }
+.clk-logo { width: 90px; padding: 6px; background: #fff; }
+
+/* --- title card ----------------------------------------------------------------------- */
+.panel--title .hdr { min-height: 54px; }
+.panel--title .hdr-title { font-size: 22px; color: var(--chan-c); text-shadow: none; letter-spacing: .14em; }
+.title-body { min-height: 180px; }
+.title-logo { width: 210px; padding: 22px; background: #fff; margin: 18px 0 18px 18px; }
+.title-text { padding: 20px 32px; }
+.title-main { font-size: 64px; font-weight: 700; line-height: 1; text-transform: uppercase; letter-spacing: .01em; text-shadow: -3px 0 0 color-mix(in srgb, var(--chan-r) 80%, transparent), 3px 0 0 color-mix(in srgb, var(--chan-c) 80%, transparent); }
+.title-sub { margin-top: 14px; font: 700 22px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.title-sub .sep { color: var(--chan-r); }
+
+/* --- chart ----------------------------------------------------------------------------- */
+.chart-body { padding: 10px 28px 22px; }
+.chart .ax { font-family: var(--mono); font-weight: 700; fill: var(--muted); }
+.chart .gap { font-family: var(--mono); }
+.chart .ln-label { font-weight: 700; }
+.panel--chart .ftr { display: none; }
+
+/* --- motion: channels split and lock together, with a two-frame glitch ---------------- */
+.gfx {
+  --sig-ease: cubic-bezier(.16, 1, .3, 1);
+  --sig-out: cubic-bezier(.5, 0, .9, .3);
+}
+@keyframes sig-card { 0% { opacity: 0; transform: translateX(-30px) skewX(-8deg); } 30% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes sig-r { 0% { opacity: 0; transform: translate(-60px, 0); } 25% { opacity: 1; } 55% { transform: translate(-14px, 0); } 62% { transform: translate(-22px, 3px); } 70% { transform: translate(-6px, -2px); } 100% { transform: translate(-4px, 0); } }
+@keyframes sig-c { 0% { opacity: 0; transform: translate(60px, 0); } 25% { opacity: 1; } 55% { transform: translate(14px, 0); } 62% { transform: translate(22px, -3px); } 70% { transform: translate(6px, 2px); } 100% { transform: translate(4px, 0); } }
+@keyframes sig-row { 0% { opacity: 0; transform: translateX(-20px); } 40% { opacity: .6; transform: translateX(4px); } 48% { opacity: .2; } 56% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes sig-flick { 0%, 20% { opacity: 0; } 22% { opacity: 1; } 30% { opacity: .2; } 34%, 100% { opacity: 1; } }
+@keyframes sig-leave { 0% { opacity: 1; transform: none; } 30% { opacity: .7; transform: translateX(6px); } 36% { opacity: 1; transform: translateX(-4px); } 100% { opacity: 0; transform: translateX(26px) skewX(8deg); } }
+@keyframes sig-r-out { to { opacity: 0; transform: translate(-50px, 0); } }
+@keyframes sig-c-out { to { opacity: 0; transform: translate(50px, 0); } }
+/* after entry the ghosts breathe very slightly so the look stays alive on air */
+@keyframes sig-idle { 0%, 92%, 100% { transform: translate(-4px, 0); } 94% { transform: translate(-9px, 1px); } 96% { transform: translate(-2px, 0); } }
+@keyframes sig-idle-c { 0%, 92%, 100% { transform: translate(4px, 0); } 94% { transform: translate(9px, -1px); } 96% { transform: translate(2px, 0); } }
+
+.gfx:not(.gfx--position-history)[data-state="in"] .panel { animation: sig-card 620ms var(--sig-ease) both; }
+.gfx--position-history[data-state="in"] .panel { animation: fade-in 300ms linear both; }
+.gfx[data-state="in"] .panel::before { animation: sig-r 820ms var(--sig-ease) both; }
+.gfx[data-state="in"] .panel::after { animation: sig-c 820ms var(--sig-ease) both; }
+.gfx[data-state="on"] .panel::before { animation: sig-idle 7s linear infinite; }
+.gfx[data-state="on"] .panel::after { animation: sig-idle-c 7s linear infinite; }
+.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: sig-flick 600ms linear 120ms both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: sig-row 500ms var(--sig-ease) calc(200ms + min(var(--i, 0), 10) * 38ms) both; }
+.gfx[data-state="in"] :is(.title-main, .title-sub, .clk-time, .clk-label) { animation: sig-flick 700ms linear 150ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 300ms linear calc(280ms + var(--i, 0) * 50ms) both; }
+
+.gfx:not(.gfx--position-history)[data-state="leave"] .panel { animation: sig-leave 340ms var(--sig-out) both; }
+.gfx--position-history[data-state="leave"] .panel { animation: fade-out 240ms linear both; }
+.gfx[data-state="leave"] .panel::before { animation: sig-r-out 320ms var(--sig-out) both; }
+.gfx[data-state="leave"] .panel::after { animation: sig-c-out 320ms var(--sig-out) both; }
+.gfx[data-state="step-out"] .rows { animation: fade-out 180ms linear both; }
+.gfx[data-state="step"] .row { animation: sig-row 420ms var(--sig-ease) calc(min(var(--i, 0), 10) * 26ms) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gfx .panel::before, .gfx .panel::after { animation: none !important; }
+  .gfx[data-state="in"] :is(.panel, .row, .pod, .hdr > span, .ftr > span, .title-main, .title-sub, .clk-time, .clk-label, .chart .ln),
+  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
+  .gfx[data-state="leave"] .panel, .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
+}

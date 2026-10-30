@@ -6,7 +6,7 @@
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as path from 'path';
-import { OGrafManifest, OGrafTemplateInfo, TemplateSetInfo, GraphicZone, CUSTOM_TEMPLATE_SET } from '../../shared/types/ograf';
+import { OGrafManifest, OGrafTemplateInfo, TemplateSetInfo, GraphicZone, CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
 import { validateAndCastManifest, ValidationError } from './OGrafValidator';
 import { logger } from '../utils/logger';
@@ -89,13 +89,19 @@ export class OGrafManager {
 
     try {
       // Graphics live in template sets (templates/sets/<set>/<graphic>/); graphics directly in
-      // templates/ form the "custom" set.
+      // templates/ form the "custom" set; templates/system/ holds tools that belong to no set.
+      const systemDir = path.join(this.templatesDir, SYSTEM_TEMPLATE_SET);
       this.sets.clear();
       const candidates: Array<{ dir: string; name: string; setId: string }> = [];
       const entries = await fs.readdir(this.templatesDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name === 'sets' || entry.name.startsWith('_')) continue;
+        if (!entry.isDirectory() || entry.name === 'sets' || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_')) continue;
         candidates.push({ dir: path.join(this.templatesDir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET });
+      }
+      if (fsSync.existsSync(systemDir)) {
+        for (const g of await fs.readdir(systemDir, { withFileTypes: true })) {
+          if (g.isDirectory() && !g.name.startsWith('_')) candidates.push({ dir: path.join(systemDir, g.name), name: g.name, setId: SYSTEM_TEMPLATE_SET });
+        }
       }
       const setsDir = path.join(this.templatesDir, 'sets');
       if (fsSync.existsSync(setsDir)) {

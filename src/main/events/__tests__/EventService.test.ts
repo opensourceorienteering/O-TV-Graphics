@@ -55,11 +55,11 @@ vi.mock("../../templates/OGrafManager", () => ({
       },
       {
         manifest: {
-          id: "classic-test-pattern",
+          id: "output-test-pattern",
           v_olgrafik_kind: "test-pattern",
         },
-        setId: "classic",
-        directoryName: "sets/classic/classic-test-pattern",
+        setId: "system",
+        directoryName: "system/output-test-pattern",
       },
     ],
   }),
@@ -124,6 +124,19 @@ describe("Events over existing project files", () => {
     const copied = JSON.parse(fs.readFileSync(path.join(pm.getRundownsDir(second.id), "..", "desk-favorites.json"), "utf8"));
     expect(copied["free-text"][0].label).toBe("Welcome");
   });
+  it("lists the start list's clubs for the club name review", async () => {
+    const event = await events.createEvent({ name: "Club names" });
+    const file = path.join(mock.root, "clubs.csv");
+    fs.writeFileSync(
+      file,
+      "class;name;club;start\nH21;Runner One;IFK Göteborg Orientering;10:00:00\nH21;Runner Two;IFK Göteborg Orientering;10:02:00\nD21;Runner Three;OK Tyr;10:04:00\n",
+    );
+    await events.importStartListCsv(event.id, file);
+    expect(events.startListClubs(event.id)).toEqual([
+      { name: "IFK Göteborg Orientering", runners: 2, automatic: "IFK Göteborg Orientering" },
+      { name: "OK Tyr", runners: 1, automatic: "OK Tyr" },
+    ]);
+  });
   it("imports start lists, preserves stars and virtual bibs on refresh, and includes them in PDF HTML", async () => {
     const event = await events.createEvent({ name: "Race" });
     await events.updateEvent(event.id, {
@@ -168,6 +181,15 @@ describe("Events over existing project files", () => {
     expect(
       (await events.getPages(event.id)).some((p) => p.id === first.pageId),
     ).toBe(false);
+  });
+  it("drops the old per-set test pattern cue in favour of the system one", async () => {
+    const event = await events.createEvent({ name: "Old event" });
+    const { pageId, itemId } = await events.testPatternCue(event.id);
+    await rm.addItem(event.id, pageId, { templateId: "classic-test-pattern", templatePath: "sets/classic/classic-test-pattern", fields: {} } as any);
+    expect((await rm.loadRundown(event.id, pageId)).items).toHaveLength(2);
+    expect((await events.testPatternCue(event.id)).itemId).toBe(itemId);
+    const items = (await rm.loadRundown(event.id, pageId)).items;
+    expect(items.map((i) => i.templateId)).toEqual(["output-test-pattern"]);
   });
   it("does not reuse virtual bibs when numbering a selected class again", async () => {
     const event = await events.createEvent({ name: "Bib safety" });
@@ -284,5 +306,12 @@ describe("Events over existing project files", () => {
     expect((await events.loadEvent(event.id)).settings?.presentation?.logoUrl).toBe('/assets/one.png');
     mock.onAir = [];
     expect((await events.loadEvent(event.id)).settings?.presentation?.logoUrl).toBe('/assets/two.png');
+  });
+});
+
+describe("Outputs in Live", () => {
+  it("follows the app's output settings until the event chooses its own", () => {
+    expect(events.liveOutputsFor({})).toEqual({ web: true, ndi: false });
+    expect(events.liveOutputsFor({ liveOutputs: { web: false, ndi: true } })).toEqual({ web: false, ndi: true });
   });
 });

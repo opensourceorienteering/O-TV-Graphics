@@ -39,7 +39,21 @@ function initRenderer() {
 /**
  * Send response back to server
  */
+/**
+ * Request id of the command being handled, per command and graphic. Commands for one graphic
+ * run one at a time, so the id set when a command starts belongs to the response it sends.
+ */
+const requestIds = new Map<string, string>();
+function withRequestId(data: any, run: () => Promise<void>) {
+  const requestId = data?.payload?.requestId;
+  if (requestId) requestIds.set(`${data.command}:${data.payload?.id || ""}`, requestId);
+  return run();
+}
+
 function sendResponse(command: string, id: string, result: any) {
+  const requestKey = `${command}:${id}`;
+  const requestId = requestIds.get(requestKey);
+  requestIds.delete(requestKey);
   if (!socket || !readyForResponses) {
     console.warn("[Graphics] Cannot send response - socket not connected");
     return;
@@ -50,6 +64,7 @@ function sendResponse(command: string, id: string, result: any) {
     command,
     id,
     result,
+    ...(requestId ? { requestId } : {}),
   });
 
   console.log("[Graphics] 📤 Sent response:", { command, id, result });
@@ -105,10 +120,10 @@ function initWebSocket() {
   // Listen for playback commands (all messages come through SPXMessage2Client)
   socket.on("SPXMessage2Client", async (data) => {
     if (data.command === "clear")
-      await commands.barrier(() => handlePlaybackCommand(data));
+      await commands.barrier(() => withRequestId(data, () => handlePlaybackCommand(data)));
     else
       await commands.enqueue(data.payload?.id || "__control__", () =>
-        handlePlaybackCommand(data),
+        withRequestId(data, () => handlePlaybackCommand(data)),
       );
   });
   console.log("[Graphics] 👂 Listening for SPXMessage2Client events");

@@ -95,6 +95,8 @@ function mergeConfig(current: AppConfig, updates: Partial<AppConfig>): AppConfig
       updates.dataSources !== undefined ? updates.dataSources : current.dataSources,
     ),
     eventor: updates.eventor !== undefined ? updates.eventor : current.eventor,
+    // Changed only through clubNames:set, so a settings page saving a stale copy cannot drop names
+    clubNames: current.clubNames,
     output: {
       ndi: { ...current.output.ndi, ...updates.output?.ndi },
       web: { ...current.output.web, ...updates.output?.web }

@@ -12,11 +12,13 @@ import * as events from "../events/EventService";
 import * as live from "../events/LiveControl";
 import * as desk from "../events/Desk";
 import * as transfer from "../events/SettingsTransfer";
+import * as clubNames from "../data/clubNames";
 import { lookupWeather } from "../data/Weather";
 import type { DeskDraft } from "../../shared/desk";
 import { DataSourceFieldMapper } from "../data/DataSourceFieldMapper";
 import { zonedWallTimeToEpochMs } from "../data/liveTime";
 import { getTemplateManager } from "../templates/OGrafManager";
+import { activateLiveOutputs, deactivateLiveOutputs } from "./outputHandlers";
 import type { StartListEntry } from "../../shared/types/event";
 
 const logger = getLogger();
@@ -276,6 +278,11 @@ export function registerEventHandlers(): void {
   handle("startlist:updatePreferences", (id: string, updates: any) =>
     events.updateStartListPreferences(id, updates),
   );
+  /** Clubs in the start list and the names graphics will show for them */
+  handle("startlist:clubs", (id: string) => events.startListClubs(id));
+  /** The app-wide club name library (app settings) */
+  handle("clubNames:list", () => clubNames.libraryRows());
+  handle("clubNames:set", (updates: Record<string, string>) => clubNames.setClubNames(updates));
   handle("startlist:exportPdf", async (id: string, classes?: string[]) => {
     const project = await events.loadEvent(id);
     const list = events.loadStartList(id);
@@ -311,17 +318,21 @@ export function registerEventHandlers(): void {
   // --- live ---
   handle("live:enter", async (id: string) => {
     const version = ++liveEntryVersion;
-    await events.loadEvent(id);
+    const project = await events.loadEvent(id);
+    let outputErrors: string[] = [];
     if (version === liveEntryVersion) {
       events.setLiveEvent(id);
       keepDataTested(id);
+      // The outputs chosen in Plan → Output turn on with Live, however the desk was opened
+      outputErrors = (await activateLiveOutputs(events.liveOutputsFor(project))).errors;
     }
-    return live.controlState();
+    return { ...(await live.controlState()), outputErrors };
   });
-  handle("live:exit", () => {
+  handle("live:exit", async () => {
     liveEntryVersion++;
     events.setLiveEvent(null);
     keepDataTested(null);
+    await deactivateLiveOutputs();
     return null;
   });
   handle("live:state", () => live.controlState());

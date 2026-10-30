@@ -2,7 +2,7 @@
  * Tests for PlaybackEngine rundown-level data source and settings
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SPXRundown, SPXRundownItem } from '../../../shared/types/spx';
 import { LiveResultsClient } from '../../data/LiveResultsClient';
 
@@ -357,3 +357,73 @@ describe('PlaybackEngine - Rundown-Level Configuration', () => {
   });
 });
 
+
+describe('PlaybackEngine - automatic pagination', () => {
+  const onAir = async (stepCount: number, currentStep: number, totalSteps: number) => {
+    const { PlaybackEngine } = await import('../PlaybackEngine');
+    const engine = new PlaybackEngine() as any;
+    engine.activeGraphics.set('p-r-i', {
+      itemId: 'i', templateId: 't', isPlaying: true, manifest: { id: 't', stepCount }, currentStep, totalSteps
+    });
+    engine.stopItem = vi.fn(async () => true);
+    engine.nextItem = vi.fn(async () => true);
+    engine.scheduleAutoPage('p', 'r', 'i', 5);
+    await vi.advanceTimersByTimeAsync(10_000);
+    return engine;
+  };
+
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('leaves single-page graphics on air for the operator to take off', async () => {
+    const engine = await onAir(1, 1, 1);
+    expect(engine.stopItem).not.toHaveBeenCalled();
+    expect(engine.nextItem).not.toHaveBeenCalled();
+  });
+
+  it('hides a paginated graphic after its last page', async () => {
+    const engine = await onAir(-1, 2, 2);
+    expect(engine.stopItem).toHaveBeenCalledWith('p', 'r', 'i');
+  });
+});
+
+describe('PlaybackEngine - graphics command responses', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const setup = async () => {
+    const { PlaybackEngine } = await import('../PlaybackEngine');
+    const engine = new PlaybackEngine() as any;
+    const sent: any[] = [];
+    engine.wsServer = {
+      getRoomClientCount: () => 1,
+      broadcastToRoom: (_room: string, msg: any) => sent.push(msg),
+    };
+    return { engine, sent, respond: (data: any) => engine.handleGraphicsResponse(data) };
+  };
+
+  it('keeps quick page turns on one graphic apart', async () => {
+    const { engine, sent, respond } = await setup();
+    const first = engine.sendCommand('play', { id: 'g', delta: -1 });
+    await vi.advanceTimersByTimeAsync(1000);
+    const second = engine.sendCommand('play', { id: 'g', delta: 1 });
+    const [a, b] = sent.map(m => m.payload.requestId);
+    expect(a).not.toBe(b);
+    // the first command never gets an answer; its timeout must not take the second down
+    const failed = expect(first).rejects.toThrow(/timeout/);
+    await vi.advanceTimersByTimeAsync(4500);
+    await failed;
+    respond({ command: 'play', id: 'g', requestId: b, result: { success: true, currentStep: 2 } });
+    await expect(second).resolves.toMatchObject({ currentStep: 2 });
+  });
+
+  it('answers the oldest command when a renderer does not echo the request id', async () => {
+    const { engine, respond } = await setup();
+    const first = engine.sendCommand('play', { id: 'g' });
+    const second = engine.sendCommand('play', { id: 'g' });
+    respond({ command: 'play', id: 'g', result: { success: true, currentStep: 1 } });
+    respond({ command: 'play', id: 'g', result: { success: true, currentStep: 2 } });
+    await expect(first).resolves.toMatchObject({ currentStep: 1 });
+    await expect(second).resolves.toMatchObject({ currentStep: 2 });
+  });
+});

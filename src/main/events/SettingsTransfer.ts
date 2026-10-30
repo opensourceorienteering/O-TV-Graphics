@@ -5,10 +5,11 @@
  */
 
 import { getConfig, saveConfig, type AppConfig } from '../utils/config';
-import { loadEvent, updateEvent } from './EventService';
+import { liveOutputsFor, loadEvent, updateEvent } from './EventService';
 import { loadDeskCommands, saveDeskCommands } from './Desk';
 import type { DeskCommandMap, DeskTemplateSettingsMap } from '../../shared/desk';
 import type { ProjectPresentation } from '../../shared/types/spx';
+import type { EventLiveOutputs } from '../../shared/types/event';
 
 export type SettingsPart = 'output' | 'theme' | 'templates';
 export const SETTINGS_PARTS: SettingsPart[] = ['output', 'theme', 'templates'];
@@ -24,9 +25,11 @@ export interface SettingsFile {
     resolution: AppConfig['general']['resolution'];
     ndi: Pick<AppConfig['output']['ndi'], 'enabled' | 'name' | 'fps' | 'colorFormat'>;
     web: AppConfig['output']['web'];
+    /** The event's outputs in Live (absent in files from older versions) */
+    live?: EventLiveOutputs;
   };
   theme?: { templateSet?: string; presentation?: ProjectPresentation };
-  templates?: { settings: DeskTemplateSettingsMap; commands: DeskCommandMap };
+  templates?: { settings: DeskTemplateSettingsMap; commands: DeskCommandMap; order?: string[] };
 }
 
 export async function buildSettingsExport(projectId: string, parts: SettingsPart[] = SETTINGS_PARTS): Promise<SettingsFile> {
@@ -35,10 +38,14 @@ export async function buildSettingsExport(projectId: string, parts: SettingsPart
   const file: SettingsFile = { app: 'Split Control', kind: 'settings', version: 1, exportedAt: new Date().toISOString(), from: project.name };
   if (parts.includes('output')) {
     const { enabled, name, fps, colorFormat } = config.output.ndi;
-    file.output = { resolution: config.general.resolution, ndi: { enabled, name, fps, colorFormat }, web: { ...config.output.web } };
+    file.output = {
+      resolution: config.general.resolution, ndi: { enabled, name, fps, colorFormat }, web: { ...config.output.web },
+      live: liveOutputsFor(project)
+    };
   }
   if (parts.includes('theme')) file.theme = { templateSet: project.templateSet, presentation: project.settings?.presentation ?? {} };
-  if (parts.includes('templates')) file.templates = { settings: project.settings?.templates ?? {}, commands: loadDeskCommands() };
+  if (parts.includes('templates'))
+    file.templates = { settings: project.settings?.templates ?? {}, commands: loadDeskCommands(), order: project.settings?.templateOrder };
   return file;
 }
 
@@ -81,9 +88,12 @@ export async function applySettingsImport(projectId: string, raw: unknown, only?
   }
   if (apply.includes('templates') && file.templates) {
     settings.templates = file.templates.settings ?? {};
+    if (Array.isArray(file.templates.order)) settings.templateOrder = file.templates.order.filter((k) => typeof k === 'string');
     if (file.templates.commands && Object.keys(file.templates.commands).length) saveDeskCommands(file.templates.commands);
   }
   if (apply.includes('theme') || apply.includes('templates')) await updateEvent(projectId, { templateSet, settings });
+  if (apply.includes('output') && file.output?.live)
+    await updateEvent(projectId, { liveOutputs: { web: !!file.output.live.web, ndi: !!file.output.live.ndi } });
   return { applied: apply, requiresRestart };
 }
 

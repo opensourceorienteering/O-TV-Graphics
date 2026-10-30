@@ -12,8 +12,50 @@ import { frameCaptureService } from "../output/FrameCaptureService";
 import { checkNDIAvailability } from "../utils/ndi-check";
 import { getGraphicsDimensions } from "../windows";
 import os from "os";
+import type { EventLiveOutputs } from "../../shared/types/event";
 
 const logger = getLogger();
+
+/** Set when the output handlers are registered (NDI start/stop share their lifecycle guard) */
+let startNDIOutput: (() => Promise<{ success: boolean; error?: string }>) | null = null;
+let stopNDIOutput: (() => Promise<unknown>) | null = null;
+/** NDI was turned on by entering Live (so ending Live turns it off again) */
+let ndiStartedByLive = false;
+
+/**
+ * Turn on the outputs an event uses in Live. Failures do not stop Live; they are returned so
+ * the desk can tell the operator. NDI is stopped when the event does not use it.
+ */
+export async function activateLiveOutputs(
+  wanted: EventLiveOutputs,
+): Promise<{ web: boolean; ndi: boolean; errors: string[] }> {
+  const errors: string[] = [];
+  const webServer = getWebServer();
+  if (wanted.web && !webServer.isRunning()) {
+    try {
+      await webServer.start();
+    } catch (error) {
+      errors.push(`Web output could not start: ${(error as Error).message}`);
+    }
+  }
+  const ndiActive = () => ndiOutputManager.getStatus().active;
+  if (wanted.ndi && !ndiActive() && startNDIOutput) {
+    const result = await startNDIOutput();
+    if (result.success) ndiStartedByLive = true;
+    else errors.push(`NDI output could not start: ${result.error || "unknown error"}`);
+  } else if (!wanted.ndi && ndiActive() && stopNDIOutput) {
+    await stopNDIOutput();
+    ndiStartedByLive = false;
+  }
+  if (errors.length) logger.warn("Live outputs did not all start", { errors });
+  return { web: wanted.web && webServer.isRunning(), ndi: ndiActive(), errors };
+}
+
+/** Ending Live: stop NDI if Live started it. The web server stays up (it also serves the control API). */
+export async function deactivateLiveOutputs(): Promise<void> {
+  if (ndiStartedByLive && stopNDIOutput) await stopNDIOutput();
+  ndiStartedByLive = false;
+}
 
 /**
  * Register output-related IPC handlers
@@ -194,6 +236,7 @@ export function registerOutputHandlers() {
     return startingNDI;
   };
   ipcMain.handle("output:startNDI", ensureNDIStarted);
+  startNDIOutput = ensureNDIStarted as () => Promise<{ success: boolean; error?: string }>;
 
   ipcMain.handle("output:startLive", async () => {
     try {
@@ -229,13 +272,19 @@ export function registerOutputHandlers() {
   /**
    * Stop NDI output
    */
+  const stopNDI = async () => {
+    ndiLifecycleVersion++;
+    frameCaptureService.stop();
+    await ndiOutputManager.stop();
+  };
+  stopNDIOutput = stopNDI;
+
   ipcMain.handle("output:stopNDI", async () => {
     try {
       logger.debug("IPC: output:stopNDI");
-      ndiLifecycleVersion++;
-
-      frameCaptureService.stop();
-      await ndiOutputManager.stop();
+      await stopNDI();
+      // Stopped by hand: ending Live has nothing left to stop
+      ndiStartedByLive = false;
 
       return {
         success: true,

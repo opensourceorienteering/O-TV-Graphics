@@ -26,13 +26,23 @@ describe('template set discovery', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('finds the four bundled sets', () => {
+  it('finds the seven bundled sets', () => {
     const sets = manager.getTemplateSets();
-    expect(sets.map(s => s.id).sort()).toEqual(['classic', 'cz', 'iof', 'standard']);
-    expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 18 });
-    expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 18 });
-    expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(18);
-    expect(sets.find(s => s.id === 'classic')?.templateCount).toBe(18); // 4 originals + 13 generated + output test pattern
+    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'cz', 'iof', 'signal', 'standard']);
+    for (const id of ['signal', 'brutal', 'bold']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
+    expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 17 });
+    expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
+    expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);
+    expect(sets.find(s => s.id === 'classic')?.templateCount).toBe(17); // 4 originals + 13 generated
+  });
+
+  it('keeps the output test pattern outside every set', () => {
+    const pattern = manager.getTemplateById('output-test-pattern')!;
+    expect(pattern).toMatchObject({ setId: 'system', zone: 'full', directoryName: 'system/output-test-pattern' });
+    expect(manager.getTemplateSets().map(s => s.id)).not.toContain('system');
+    expect(manager.getAllTemplates().filter(t => templateGraphicKind(t) === 'test-pattern')).toHaveLength(1);
+    // usable with any look
+    expect(() => assertTemplateInProjectSet({ name: 'Any', templateSet: 'iof' }, pattern)).not.toThrow();
   });
 
   it('records set, zone and URL path per graphic; originals keep their ids', () => {
@@ -52,9 +62,10 @@ describe('template set discovery', () => {
         .map(templateGraphicKind)
         .sort();
     const classic = roles('classic');
-    expect(classic).toHaveLength(18);
+    expect(classic).toHaveLength(17);
     expect(classic.every(Boolean)).toBe(true);
-    expect(new Set(classic).size).toBe(18);
+    expect(new Set(classic).size).toBe(17);
+    expect(classic).not.toContain('test-pattern');
     expect(roles('iof')).toEqual(classic);
     expect(roles('cz')).toEqual(classic);
     expect(roles('standard')).toEqual(classic);
@@ -120,13 +131,29 @@ describe('shared views (templates/sets/_core)', () => {
     }
   });
 
+  it('translates the weather service condition, but keeps text the operator typed', () => {
+    const render = (language: string, condition: string) =>
+      text(views.renderView('weather', { condition, presentation: { language } }, ctx()).html);
+    expect(render('sv', 'Partly cloudy')).toContain('Växlande molnighet');
+    expect(render('nb', 'Light rain')).toContain('Lett regn');
+    expect(render('cs', 'Thunderstorm')).toContain('Bouřka');
+    expect(render('en', 'Partly cloudy')).toContain('Partly cloudy');
+    expect(render('sv', 'Sol och vindstilla')).toContain('Sol och vindstilla');
+  });
+
   it('escapes and replaces event logos, including a no-logo selection', () => {
     const box = { innerHTML: '' };
     const root = { querySelector: () => box };
     util.updateEventLogo(root, { presentation: { logoUrl: 'data:image/png;base64,TYR' } });
     expect(box.innerHTML).toContain('base64,TYR');
-    util.updateEventLogo(root, { presentation: { logoUrl: '/built-in-assets/iof-logo.svg' } });
-    expect(box.innerHTML).toContain('iof-logo.svg');
+    util.updateEventLogo(root, { presentation: { logoUrl: '/built-in-assets/tyr-logo.png' } });
+    expect(box.innerHTML).toContain('tyr-logo.png');
+    // logos show with their own transparency by default; the white plate is opt-in
+    expect(box.innerHTML).toContain('data-clear');
+    util.updateEventLogo(root, { presentation: { logoUrl: '/assets/upload.png' } });
+    expect(box.innerHTML).toContain('data-clear');
+    util.updateEventLogo(root, { presentation: { logoUrl: '/assets/upload.png', logoPlate: true } });
+    expect(box.innerHTML).not.toContain('data-clear');
     expect(box.innerHTML).not.toContain('TYR');
     util.updateEventLogo(root, { presentation: {} });
     expect(box.innerHTML).toBe('');

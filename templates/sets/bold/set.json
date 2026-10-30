@@ -1,0 +1,12 @@
+{
+  "id": "bold",
+  "name": "Bold (Typography)",
+  "description": "Bold typography: huge condensed uppercase names on ink bands with one hot accent. Text slides up out of its mask like kinetic type. Anton display, Oswald times.",
+  "author": "Split Control",
+  "colors": [
+    "#ff3d17",
+    "#0d0d0f",
+    "#f4f1ea"
+  ],
+  "fonts": "Anton, Oswald (OFL)"
+}

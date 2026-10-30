@@ -70,12 +70,37 @@ export function normaliseClubName(name: string): string {
     .trim();
 }
 
+/**
+ * A club's name for graphics: the event's override, else the known short name, else as given.
+ * A relay team number is kept ("OK Linné 2" -> "Linné 2" when "OK Linné" -> "Linné").
+ */
+export function shortClubName(
+  club: string | undefined,
+  overrides: Record<string, string> | undefined,
+  known: (normalisedName: string) => string | undefined = () => undefined,
+): string | undefined {
+  if (!club) return club;
+  const trimmed = club.trim();
+  const [, base = trimmed, team = ''] = /^(.*?)(\s+\d+)?$/.exec(trimmed) ?? [];
+  if (overrides) {
+    const exact = overrides[trimmed]?.trim();
+    if (exact) return exact;
+    const key = normaliseClubName(base);
+    for (const [name, value] of Object.entries(overrides))
+      if (value?.trim() && normaliseClubName(name) === key && !/\s\d+$/.test(name.trim())) return `${value.trim()}${team}`;
+  }
+  const short = known(normaliseClubName(base));
+  return short ? `${short}${team}` : club;
+}
+
 const webPath = (rel: string) => `/club-logos/${rel.split('/').map(encodeURIComponent).join('/')}`;
 
 export class ClubLogoService {
   private readonly manualDir: string;
   private readonly bundled: BundledLogoSet[] = [];
   private byName = new Map<string, string>();
+  /** Any known form of a club's name -> its short name (null when two clubs share the form) */
+  private shortNames = new Map<string, string | null>();
   private manual = new Map<string, string>();
   private manualScannedAt = 0;
 
@@ -104,6 +129,15 @@ export class ClubLogoService {
         const index: ClubLogoIndex = JSON.parse(fs.readFileSync(indexPath, 'utf-8'));
         let logos = 0;
         for (const o of index.organisations ?? []) {
+          const short = o.shortName?.trim();
+          if (short) {
+            for (const n of [o.name, o.mediaName, short]) {
+              const key = n ? normaliseClubName(n) : '';
+              if (!key) continue;
+              const known = this.shortNames.get(key);
+              this.shortNames.set(key, known === undefined || known === short ? short : null);
+            }
+          }
           if (!o.file) continue;
           logos++;
           for (const n of [o.name, o.shortName, o.mediaName]) {
@@ -141,6 +175,16 @@ export class ClubLogoService {
     const key = normaliseClubName(club);
     const rel = this.manual.get(key) ?? this.byName.get(key);
     return rel ? webPath(rel) : undefined;
+  }
+
+  /**
+   * The club's short name ("Orienteringsklubben Linné" -> "OK Linné"), from the bundled club
+   * lists. A relay team number stays ("Orienteringsklubben Linné 2" -> "OK Linné 2").
+   * Unknown clubs, and names two clubs share, come back as given. `overrides` (the event's
+   * own names, keyed by the name as sent) win over the club lists.
+   */
+  shortName(club: string | undefined, overrides?: Record<string, string>): string | undefined {
+    return shortClubName(club, overrides, (key) => this.shortNames.get(key) ?? undefined);
   }
 
   status(): ClubLogoStatus {

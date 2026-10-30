@@ -1,7 +1,7 @@
 /**
  * Live desk: the operator's template list, the command palette grammar and drafts.
  *
- * The desk lists one entry per graphic type (numbered for the command palette, e.g. "0 2 101":
+ * The desk lists one entry per graphic type (numbered for the command palette, e.g. "2 2 101":
  * runner identity, class 2, bib 101). Each entry maps to a graphic kind in the event's template
  * set. Operators prepare a draft (class, runner, control, text ...), check it in Preview, and
  * send it to air with an explicit Show.
@@ -34,23 +34,35 @@ export interface DeskTemplate {
   liveUpdates?: boolean;
 }
 
+/** In the default command-number order: the first is 0 (Settings → Controls can reorder) */
 export const DESK_TEMPLATES: DeskTemplate[] = [
+  { key: 'event-title', kind: 'event-title', label: 'Race title', short: 'Race title', params: [], required: [], live: false, fields: ['series', 'title', 'place', 'date'] },
+  { key: 'live-feed', kind: 'standings-lower-third', fallbackIds: ['split-time-lower-third'], label: 'Live split', short: 'Live split', params: ['class', 'control', 'runner'], required: ['class'], live: true, fields: ['rows'], settingsFields: ['nameStyle', 'positionChange'] },
   { key: 'runner-identity', kind: 'runner-identity', label: 'Runner identity', short: 'Runner identity', params: ['class', 'runner'], required: ['runner'], live: true, fields: ['detail', 'bio', 'showBib'] },
   { key: 'runner-start', kind: 'runner-start', label: 'Runner focus', short: 'Runner focus', params: ['class', 'runner', 'control'], required: ['runner'], live: true, fields: ['detail', 'showBib', 'startTimeOnly'] },
-  { key: 'start-group', kind: 'start-group', label: 'Start group', short: 'Start group', params: ['class'], required: ['class'], live: true, fields: ['rows'] },
-  { key: 'start-list', kind: 'start-list', label: 'Start list', short: 'Start list', params: ['class', 'page'], required: ['class'], live: true, fields: ['rowsPerPage'] },
-  { key: 'live-feed', kind: 'standings-lower-third', fallbackIds: ['split-time-lower-third'], label: 'Live split', short: 'Live split', params: ['class', 'control', 'runner'], required: ['class'], live: true, fields: ['rows'], settingsFields: ['nameStyle', 'positionChange'] },
   { key: 'results', kind: 'results', fallbackIds: ['results-list-paginated'], label: 'Results table', short: 'Results table', params: ['class', 'control', 'page'], required: ['class'], live: true, liveUpdates: false, fields: ['title', 'rowsPerPage', 'positionChange'] },
   { key: 'runner-splits', kind: 'runner-splits', label: 'Runner split comparison', short: 'Runner splits', params: ['class', 'runner'], required: ['class', 'runner'], live: true, fields: ['maxControls'] },
-  { key: 'position-history', kind: 'position-history', label: 'Position history', short: 'Position history', params: ['class'], required: ['class'], live: true, fields: ['runners', 'runnerNames'] },
-  { key: 'podium', kind: 'podium', label: 'Podium / flowers', short: 'Podium', params: ['class'], required: ['class'], live: true, liveUpdates: false, fields: ['title'], settingsFields: ['showTime'] },
-  { key: 'event-title', kind: 'event-title', label: 'Race title', short: 'Race title', params: [], required: [], live: false, fields: ['series', 'title', 'place', 'date'] },
-  { key: 'course-info', kind: 'course-info', label: 'Course parameters', short: 'Course', params: ['class'], required: [], live: false, fields: ['title', 'legs', 'length', 'climb', 'controls', 'winningTime', 'startInterval', 'extra'] },
-  { key: 'weather', kind: 'weather', label: 'Weather', short: 'Weather', params: [], required: [], live: false, fields: ['title', 'condition', 'temperature', 'wind', 'humidity'] },
+  { key: 'start-list', kind: 'start-list', label: 'Start list', short: 'Start list', params: ['class', 'page'], required: ['class'], live: true, fields: ['rowsPerPage'] },
   { key: 'free-text', kind: 'free-text', label: 'Identity plate', short: 'Identity plate', params: [], required: [], live: false, fields: ['text', 'title'] },
+  { key: 'course-info', kind: 'course-info', label: 'Course parameters', short: 'Course', params: ['class'], required: [], live: false, fields: ['title', 'legs', 'length', 'climb', 'controls', 'winningTime', 'startInterval', 'extra'] },
+  { key: 'timer', kind: 'clock', fallbackIds: ['countdown-timer'], label: 'Elapsed timer', short: 'Timer', params: [], required: [], live: false, fields: ['label', 'mode', 'time'] },
+  { key: 'weather', kind: 'weather', label: 'Weather', short: 'Weather', params: [], required: [], live: false, fields: ['title', 'condition', 'temperature', 'wind', 'humidity'] },
+  { key: 'podium', kind: 'podium', label: 'Podium / flowers', short: 'Podium', params: ['class'], required: ['class'], live: true, liveUpdates: false, fields: ['title'], settingsFields: ['showTime'] },
+  { key: 'position-history', kind: 'position-history', label: 'Position history', short: 'Position history', params: ['class'], required: ['class'], live: true, fields: ['runners', 'runnerNames'] },
   { key: 'speaker', kind: 'speaker', label: 'Commentators / speaker', short: 'Commentators', params: [], required: [], live: false, fields: ['commentators', 'title'] },
-  { key: 'timer', kind: 'clock', fallbackIds: ['countdown-timer'], label: 'Elapsed timer', short: 'Timer', params: [], required: [], live: false, fields: ['label', 'mode', 'time'] }
+  { key: 'start-group', kind: 'start-group', label: 'Start group', short: 'Start group', params: ['class'], required: ['class'], live: true, fields: ['rows'] }
 ];
+
+/**
+ * Desk templates in an event's chosen order (Settings → Templates). Graphics missing from the
+ * order (e.g. added in a later version) keep their default place after the ordered ones.
+ */
+export function orderDeskTemplates<T extends { key: string }>(list: T[], order?: string[]): T[] {
+  if (!order?.length) return list;
+  const rank = new Map(order.map((key, i) => [key, i]));
+  const at = (t: T, i: number) => rank.get(t.key) ?? order.length + i;
+  return list.map((t, i) => [t, at(t, i)] as const).sort((a, b) => a[1] - b[1]).map(([t]) => t);
+}
 
 /** Command number -> desk template key. Configurable per installation (desk-commands.json). */
 export type DeskCommandMap = Record<string, string>;

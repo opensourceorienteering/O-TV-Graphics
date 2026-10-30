@@ -11,7 +11,8 @@ import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from "../utils/config";
 import { ndiOutputManager } from "../output/NDIOutputManager";
 import * as desk from "./Desk";
-import { getLiveEventId, loadEvent, loadStartList } from "./EventService";
+import { getLiveEventId, liveOutputsFor, loadEvent, loadStartList } from "./EventService";
+import { getWebServer } from "../output/WebServer";
 
 export interface PreviewSnapshot {
   version: number;
@@ -108,13 +109,12 @@ function draftName(draft: DeskDraft): string {
 export async function controlState(): Promise<ControlState> {
   const eventId = getLiveEventId();
   const config = getConfig();
-  const output = {
-    web: config.output.web.enabled,
-    ndi: ndiOutputManager.getStatus().active,
-  };
+  const ndi = ndiOutputManager.getStatus().active;
   if (!eventId)
-    return { eventId: null, onAir: [], otherOnAir: 0, prepared: null, favorites: [], data: null, output };
+    return { eventId: null, onAir: [], otherOnAir: 0, prepared: null, favorites: [], data: null, output: { web: config.output.web.enabled, ndi } };
   const [event, state] = await Promise.all([loadEvent(eventId), desk.deskState(eventId)]);
+  // Web output counts as on when the event uses it and the server is up
+  const output = { web: liveOutputsFor(event).web && getWebServer().isRunning(), ndi };
   const p = prepared.draft;
   return {
     eventId,

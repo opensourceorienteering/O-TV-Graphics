@@ -230,6 +230,12 @@ export interface TemplateSetInfo {
 export const CUSTOM_TEMPLATE_SET = 'custom';
 
 /**
+ * Built-in tools that belong to no look (templates/system/, e.g. the output test pattern).
+ * They are never listed as a set or offered in the live desk, and work with every event.
+ */
+export const SYSTEM_TEMPLATE_SET = 'system';
+
+/**
  * Which zones clash: playing a graphic takes clashing graphics off air first.
  * Tables in the upper centre reach down into the lower-third and side areas.
  */

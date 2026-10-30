@@ -1,3 +1,14 @@
+import { CLASSIC_TIMER_CSS } from '../modern.js';
+import { applyThemeColors } from '../../_core/live.js';
+
+// The set's bundled Inter: @font-face does not work inside shadow roots, so it goes into the document once
+const CLASSIC_FONTS = new URL('../fonts/fonts.css', import.meta.url).href;
+if (typeof document !== 'undefined' && !document.querySelector(`link[href="${CLASSIC_FONTS}"]`)) {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = CLASSIC_FONTS;
+  document.head.appendChild(link);
+}
 /**
  * Countdown/Countup Timer Template
  * Upper right corner timer that counts down to a target time, then switches to count up
@@ -5,6 +16,10 @@
  */
 
 export default class CountdownTimer extends HTMLElement {
+  // event theme colours follow the data (Settings → theme colours)
+  get data() { return this._data; }
+  set data(value) { this._data = value; applyThemeColors(this, value, ['--red', '--teal', '--mint']); }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -242,7 +257,7 @@ export default class CountdownTimer extends HTMLElement {
    * Render the component
    */
   render() {
-    const { title } = this.data;
+    const title = this.data?.title ?? '';
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -290,7 +305,7 @@ export default class CountdownTimer extends HTMLElement {
         }
 
         .timer-header {
-          background-color: #B14340;
+          background-color: var(--red, #B14340);
           color: white;
           padding: 0.75rem 1.25rem;
           font-size: 1.125rem;
@@ -311,6 +326,9 @@ export default class CountdownTimer extends HTMLElement {
           border-radius: 4px;
           font-variant-numeric: tabular-nums;
           letter-spacing: 0.05em;
+          /* room for H:MM:SS so the box never grows while the clock runs */
+          display: inline-block;
+          min-width: calc(8ch + 3rem);
           transition: background-color 0.3s ease;
         }
 
@@ -321,8 +339,9 @@ export default class CountdownTimer extends HTMLElement {
 
         /* Countup mode - green background */
         .timer-container.countup .timer-value {
-          background-color: #548889;
+          background-color: var(--teal, #548889);
         }
+      ${CLASSIC_TIMER_CSS}
       </style>
 
       <div class="container">

@@ -78,6 +78,8 @@ export interface AppConfig {
   dataSources?: DataSourceConfig[];
   /** Eventor access for club logos (downloaded on request, never polled) */
   eventor?: EventorLogoSettings;
+  /** Club name library: name as the data source sends it -> name on air (see data/clubNames.ts) */
+  clubNames?: Record<string, string>;
   output: {
     ndi: {
       enabled: boolean;
@@ -206,6 +208,7 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
       loaded.dataSources || defaults.dataSources || [],
     ),
     ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
+    ...(loaded.clubNames ? { clubNames: loaded.clubNames } : {}),
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }

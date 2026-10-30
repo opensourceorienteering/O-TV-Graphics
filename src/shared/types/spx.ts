@@ -245,6 +245,8 @@ export interface SPXProject {
   dataSource?: import('./event').EventDataSource;
   /** 'done' once the event is over (shown greyed in the overview) */
   status?: import('./event').EventStatus;
+  /** Outputs turned on automatically in Live (unset: the app's output settings) */
+  liveOutputs?: import('./event').EventLiveOutputs;
 
   /** Default settings */
   settings?: {
@@ -255,6 +257,8 @@ export interface SPXProject {
     presentation?: ProjectPresentation;
     /** Settings → Templates: per-graphic defaults, live updates and visibility in Live */
     templates?: import('../desk').DeskTemplateSettingsMap;
+    /** Settings → Templates: order of the graphics in the Live list (desk template keys) */
+    templateOrder?: string[];
   };
 
   /**
@@ -284,8 +288,10 @@ export interface ProjectPresentation {
   identity?: 'auto' | 'club' | 'flag' | 'both';
   /** Show downloaded Eventor club logos next to clubs (default true) */
   clubLogos?: boolean;
-  /** Logo shown in graphics' logo boxes, e.g. "/assets/iof-logo.png" (ASSETS folder) */
+  /** Logo shown in graphics' logo boxes, e.g. "/built-in-assets/tyr-logo.png" or an uploaded file */
   logoUrl?: string;
+  /** Put the logo on a white plate in logo boxes (for dark logos on dark looks). Default off: logos show with their own transparency. */
+  logoPlate?: boolean;
   /** Playing a graphic takes graphics in clashing screen zones off air first (default true) */
   clearClashing?: boolean;
   /** Seconds each page remains on air. Zero/unset keeps multi-page graphics manual. */

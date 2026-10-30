@@ -384,10 +384,6 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Evenemangslogotyp",
     "nb": "Arrangementslogo"
   },
-  "IOF logo": {
-    "sv": "IOF-logotyp",
-    "nb": "IOF-logo"
-  },
   "OK Tyr logo": {
     "sv": "OK Tyr-logotyp",
     "nb": "OK Tyr-logo"
@@ -407,6 +403,14 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Included with Split Control": {
     "sv": "Ingår i Split Control",
     "nb": "Inkludert i Split Control"
+  },
+  "White box behind the logo": {
+    "sv": "Vit ruta bakom logotypen",
+    "nb": "Hvit boks bak logoen"
+  },
+  "For dark logos, or logos without a transparent background": {
+    "sv": "För mörka logotyper, eller logotyper utan genomskinlig bakgrund",
+    "nb": "For mørke logoer, eller logoer uten gjennomsiktig bakgrunn"
   },
   "Replace custom logo": {
     "sv": "Byt egen logotyp",
@@ -1431,6 +1435,10 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Seconds per page · 0 = manual. Reset follows the event default. The final page uses the same hold, then animates off air.": {
     "sv": "Sekunder per sida · 0 = manuellt. Återställ följer evenemangets standard. Sista sidan visas lika länge och lämnar sedan sändningen.",
     "nb": "Sekunder per side · 0 = manuelt. Tilbakestill følger arrangementets standard. Siste side vises like lenge og forlater så sendingen."
+  },
+  "The graphics mix their tints, gradients and dividers from these three colors, so every shade follows your choice.": {
+    "sv": "Grafiken blandar sina nyanser, toningar och avdelare från de här tre färgerna, så varje nyans följer ditt val.",
+    "nb": "Grafikken blander nyanser, overganger og skillelinjer fra disse tre fargene, så hver nyanse følger valget ditt."
   },
   "Changes appear in Preview after you apply them. Save the event theme to keep them.": {
     "sv": "Ändringarna visas i förhandsvisningen när du använder dem. Spara evenemangstemat för att behålla dem.",
@@ -2527,5 +2535,397 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Follow next starter": {
     "sv": "Följ nästa startande",
     "nb": "Følg neste startende"
+  },
+  "Clear": {
+    "sv": "Klart",
+    "nb": "Klarvær"
+  },
+  "Mostly clear": {
+    "sv": "Mestadels klart",
+    "nb": "Stort sett klart"
+  },
+  "Partly cloudy": {
+    "sv": "Växlande molnighet",
+    "nb": "Delvis skyet"
+  },
+  "Overcast": {
+    "sv": "Mulet",
+    "nb": "Overskyet"
+  },
+  "Fog": {
+    "sv": "Dimma",
+    "nb": "Tåke"
+  },
+  "Freezing fog": {
+    "sv": "Underkyld dimma",
+    "nb": "Underkjølt tåke"
+  },
+  "Light drizzle": {
+    "sv": "Lätt duggregn",
+    "nb": "Lett yr"
+  },
+  "Drizzle": {
+    "sv": "Duggregn",
+    "nb": "Yr"
+  },
+  "Heavy drizzle": {
+    "sv": "Kraftigt duggregn",
+    "nb": "Kraftig yr"
+  },
+  "Freezing drizzle": {
+    "sv": "Underkylt duggregn",
+    "nb": "Underkjølt yr"
+  },
+  "Light rain": {
+    "sv": "Lätt regn",
+    "nb": "Lett regn"
+  },
+  "Rain": {
+    "sv": "Regn",
+    "nb": "Regn"
+  },
+  "Heavy rain": {
+    "sv": "Kraftigt regn",
+    "nb": "Kraftig regn"
+  },
+  "Freezing rain": {
+    "sv": "Underkylt regn",
+    "nb": "Underkjølt regn"
+  },
+  "Light snow": {
+    "sv": "Lätt snöfall",
+    "nb": "Lett snø"
+  },
+  "Snow": {
+    "sv": "Snöfall",
+    "nb": "Snø"
+  },
+  "Heavy snow": {
+    "sv": "Kraftigt snöfall",
+    "nb": "Kraftig snø"
+  },
+  "Snow grains": {
+    "sv": "Kornsnö",
+    "nb": "Kornsnø"
+  },
+  "Rain showers": {
+    "sv": "Regnskurar",
+    "nb": "Regnbyger"
+  },
+  "Heavy rain showers": {
+    "sv": "Kraftiga regnskurar",
+    "nb": "Kraftige regnbyger"
+  },
+  "Snow showers": {
+    "sv": "Snöbyar",
+    "nb": "Snøbyger"
+  },
+  "Heavy snow showers": {
+    "sv": "Kraftiga snöbyar",
+    "nb": "Kraftige snøbyger"
+  },
+  "Thunderstorm": {
+    "sv": "Åska",
+    "nb": "Torden"
+  },
+  "Thunderstorm with hail": {
+    "sv": "Åska med hagel",
+    "nb": "Torden med hagl"
+  },
+  "Current conditions": {
+    "sv": "Aktuellt väder",
+    "nb": "Aktuelt vær"
+  },
+  "last saved reading (service unreachable)": {
+    "sv": "senast sparade avläsning (tjänsten kan inte nås)",
+    "nb": "sist lagrede måling (tjenesten er utilgjengelig)"
+  },
+  "updated": {
+    "sv": "uppdaterad",
+    "nb": "oppdatert"
+  },
+  "No automatic weather:": {
+    "sv": "Inget automatiskt väder:",
+    "nb": "Ikke noe automatisk vær:"
+  },
+  "Checking…": {
+    "sv": "Kontrollerar…",
+    "nb": "Sjekker…"
+  },
+  "humidity": {
+    "sv": "luftfuktighet",
+    "nb": "luftfuktighet"
+  },
+  "Not available:": {
+    "sv": "Inte tillgängligt:",
+    "nb": "Ikke tilgjengelig:"
+  },
+  "Club names on air": {
+    "sv": "Klubbnamn i sändning",
+    "nb": "Klubbnavn på lufta"
+  },
+  "Graphics use the club's short name when Split Control knows one. Type a shorter name for any club that is too long; leave the field empty to use the automatic name.": {
+    "sv": "Grafiken använder klubbens kortnamn när Split Control känner till det. Skriv ett kortare namn för klubbar som är för långa; lämna fältet tomt för att använda det automatiska namnet.",
+    "nb": "Grafikken bruker klubbens kortnavn når Split Control kjenner det. Skriv et kortere navn for klubber som er for lange; la feltet stå tomt for å bruke det automatiske navnet."
+  },
+  "Clubs appear here once the start list is loaded.": {
+    "sv": "Klubbarna visas här när startlistan är inläst.",
+    "nb": "Klubbene vises her når startlisten er lastet inn."
+  },
+  "Find club": {
+    "sv": "Sök klubb",
+    "nb": "Finn klubb"
+  },
+  "Long names only": {
+    "sv": "Bara långa namn",
+    "nb": "Bare lange navn"
+  },
+  "clubs": {
+    "sv": "klubbar",
+    "nb": "klubber"
+  },
+  "with your own name": {
+    "sv": "med eget namn",
+    "nb": "med eget navn"
+  },
+  "Club (from the data source)": {
+    "sv": "Klubb (från datakällan)",
+    "nb": "Klubb (fra datakilden)"
+  },
+  "Name on air": {
+    "sv": "Namn i sändning",
+    "nb": "Navn på lufta"
+  },
+  "Name on air for": {
+    "sv": "Namn i sändning för",
+    "nb": "Navn på lufta for"
+  },
+  "not in the start list": {
+    "sv": "finns inte i startlistan",
+    "nb": "finnes ikke i startlisten"
+  },
+  "Automatic short name": {
+    "sv": "Automatiskt kortnamn",
+    "nb": "Automatisk kortnavn"
+  },
+  "Long": {
+    "sv": "Långt",
+    "nb": "Langt"
+  },
+  "No clubs match your filters.": {
+    "sv": "Inga klubbar matchar filtren.",
+    "nb": "Ingen klubber samsvarer med filtrene."
+  },
+  "Names are saved in the app's club name library (Settings → Club names) and used in every event.": {
+    "sv": "Namnen sparas i appens klubbnamnsbibliotek (Inställningar → Klubbnamn) och används i alla evenemang.",
+    "nb": "Navnene lagres i appens klubbnavnbibliotek (Innstillinger → Klubbnavn) og brukes i alle arrangementer."
+  },
+  "in the library": {
+    "sv": "i biblioteket",
+    "nb": "i biblioteket"
+  },
+  "Club names": {
+    "sv": "Klubbnamn",
+    "nb": "Klubbnavn"
+  },
+  "Short names on air": {
+    "sv": "Kortnamn i sändning",
+    "nb": "Kortnavn på lufta"
+  },
+  "Names graphics use instead of the club name the data source sends, in every event. Clubs without a name here use the short name from the downloaded club lists, or the name as sent.": {
+    "sv": "Namn som grafiken använder i stället för klubbnamnet från datakällan, i alla evenemang. Klubbar utan namn här använder kortnamnet från de nedladdade klubblistorna, eller namnet som det skickas.",
+    "nb": "Navn grafikken bruker i stedet for klubbnavnet fra datakilden, i alle arrangementer. Klubber uten navn her bruker kortnavnet fra de nedlastede klubblistene, eller navnet slik det sendes."
+  },
+  "Club (as the data source sends it)": {
+    "sv": "Klubb (som datakällan skickar den)",
+    "nb": "Klubb (slik datakilden sender den)"
+  },
+  "Add": {
+    "sv": "Lägg till",
+    "nb": "Legg til"
+  },
+  "Remove": {
+    "sv": "Ta bort",
+    "nb": "Fjern"
+  },
+  "No club names yet. Add them here, or review an event's clubs in Plan → Start lists.": {
+    "sv": "Inga klubbnamn ännu. Lägg till dem här, eller gå igenom ett evenemangs klubbar under Planera → Startlistor.",
+    "nb": "Ingen klubbnavn ennå. Legg dem til her, eller gå gjennom et arrangements klubber under Planlegg → Startlister."
+  },
+  "Outputs in Live": {
+    "sv": "Utgångar i Live",
+    "nb": "Utganger i Live"
+  },
+  "The outputs chosen here turn on automatically when this event opens in Live. NDI turns off again when Live ends.": {
+    "sv": "Utgångarna du väljer här startar automatiskt när evenemanget öppnas i Live. NDI stängs av igen när Live avslutas.",
+    "nb": "Utgangene du velger her starter automatisk når arrangementet åpnes i Live. NDI slås av igjen når Live avsluttes."
+  },
+  "Web output (browser source)": {
+    "sv": "Webbutgång (webbläsarkälla)",
+    "nb": "Webutgang (nettleserkilde)"
+  },
+  "Choose at least one output to go live.": {
+    "sv": "Välj minst en utgång för att gå live.",
+    "nb": "Velg minst én utgang for å gå live."
+  },
+  "Choose the outputs to use in Live": {
+    "sv": "Välj vilka utgångar som används i Live",
+    "nb": "Velg hvilke utganger som brukes i Live"
+  },
+  "On in Live": {
+    "sv": "På i Live",
+    "nb": "På i Live"
+  },
+  "Off": {
+    "sv": "Av",
+    "nb": "Av"
+  },
+  "Drag graphics into the order you want in the Live list. Open a graphic for its settings: defaults fill the operator's draft in Live, where any field can still be changed.": {
+    "sv": "Dra graferna i den ordning du vill ha dem i Live-listan. Öppna en grafik för dess inställningar: standardvärden fyller i operatörens utkast i Live, där alla fält fortfarande kan ändras.",
+    "nb": "Dra grafikkene i den rekkefølgen du vil ha dem i Live-listen. Åpne en grafikk for innstillingene: standardverdier fyller ut operatørens utkast i Live, der alle felt fortsatt kan endres."
+  },
+  "Move": {
+    "sv": "Flytta",
+    "nb": "Flytt"
+  },
+  "Drag, or use the arrow keys.": {
+    "sv": "Dra, eller använd piltangenterna.",
+    "nb": "Dra, eller bruk piltastene."
+  },
+  "Drag to reorder": {
+    "sv": "Dra för att ändra ordning",
+    "nb": "Dra for å endre rekkefølge"
+  },
+  "Number": {
+    "sv": "Nummer",
+    "nb": "Nummer"
+  },
+  "No number": {
+    "sv": "Inget nummer",
+    "nb": "Ingen nummer"
+  },
+  "Hidden in Live": {
+    "sv": "Dold i Live",
+    "nb": "Skjult i Live"
+  },
+  "Live updates off": {
+    "sv": "Liveuppdatering av",
+    "nb": "Liveoppdatering av"
+  },
+  "Defaults set": {
+    "sv": "Standardvärden satta",
+    "nb": "Standardverdier satt"
+  },
+  "In Live": {
+    "sv": "I Live",
+    "nb": "I Live"
+  },
+  "Command number": {
+    "sv": "Kommandonummer",
+    "nb": "Kommandonummer"
+  },
+  "Picks this graphic in the command palette, in every event.": {
+    "sv": "Väljer grafiken i kommandopaletten, i alla evenemang.",
+    "nb": "Velger grafikken i kommandopaletten, i alle arrangementer."
+  },
+  "Defaults": {
+    "sv": "Standardvärden",
+    "nb": "Standardverdier"
+  },
+  "This graphic has no default fields.": {
+    "sv": "Grafiken har inga standardfält.",
+    "nb": "Grafikken har ingen standardfelt."
+  },
+  "Reset order": {
+    "sv": "Återställ ordning",
+    "nb": "Tilbakestill rekkefølge"
+  },
+  "position": {
+    "sv": "position",
+    "nb": "posisjon"
+  },
+  "The resolution is shared by every event. Changing it requires a restart.": {
+    "sv": "Upplösningen delas av alla evenemang. En ändring kräver omstart.",
+    "nb": "Oppløsningen deles av alle arrangementer. En endring krever omstart."
+  },
+  "Server ports, the NDI name and other app-wide defaults are in": {
+    "sv": "Serverportar, NDI-namn och andra gemensamma standardvärden finns i",
+    "nb": "Serverporter, NDI-navn og andre felles standardverdier finnes i"
+  },
+  "Output settings": {
+    "sv": "Utgångsinställningar",
+    "nb": "Utgangsinnstillinger"
+  },
+  "Resolution saved. Restart Split Control to apply it.": {
+    "sv": "Upplösningen sparad. Starta om Split Control för att använda den.",
+    "nb": "Oppløsningen er lagret. Start Split Control på nytt for å bruke den."
+  },
+  "is used twice": {
+    "sv": "används två gånger",
+    "nb": "brukes to ganger"
+  },
+  "Order all numbers in Settings": {
+    "sv": "Ordna alla nummer i Inställningar",
+    "nb": "Ordne alle numre i Innstillinger"
+  },
+  "Two graphics have the same command number. Give each graphic its own number first.": {
+    "sv": "Två grafiker har samma kommandonummer. Ge varje grafik ett eget nummer först.",
+    "nb": "To grafikker har samme kommandonummer. Gi hver grafikk sitt eget nummer først."
+  },
+  "Command numbers and keys": {
+    "sv": "Kommandonummer och tangenter",
+    "nb": "Kommandonumre og taster"
+  },
+  "The first number of a palette command picks a graphic, in every event. Drag the graphics into order: the first is 0, the next 1, and so on. Each event orders its own Live list in Plan → Templates.": {
+    "sv": "Första numret i ett palettkommando väljer grafiken, i alla evenemang. Dra graferna i ordning: den första är 0, nästa 1 och så vidare. Varje evenemang ordnar sin egen Live-lista under Planera → Mallar.",
+    "nb": "Første nummer i en palettkommando velger grafikken, i alle arrangementer. Dra grafikkene i rekkefølge: den første er 0, neste 1 og så videre. Hvert arrangement ordner sin egen Live-liste under Planlegg → Maler."
+  },
+  "new number": {
+    "sv": "nytt nummer",
+    "nb": "nytt nummer"
+  },
+  "was": {
+    "sv": "var",
+    "nb": "var"
+  },
+  "Save command numbers": {
+    "sv": "Spara kommandonummer",
+    "nb": "Lagre kommandonumre"
+  },
+  "Reset to default order": {
+    "sv": "Återställ standardordning",
+    "nb": "Tilbakestill standardrekkefølge"
+  },
+  "Setup items remain": {
+    "sv": "Förberedelser återstår",
+    "nb": "Forberedelser gjenstår"
+  },
+  "Run the final check": {
+    "sv": "Kör slutkontrollen",
+    "nb": "Kjør sluttkontrollen"
+  },
+  "Add the event date": {
+    "sv": "Lägg till datum för evenemanget",
+    "nb": "Legg til dato for arrangementet"
+  },
+  "Choose a competition": {
+    "sv": "Välj en tävling",
+    "nb": "Velg et løp"
+  },
+  "Choose a data source": {
+    "sv": "Välj en datakälla",
+    "nb": "Velg en datakilde"
+  },
+  "Connection test is older than 15 minutes; test again": {
+    "sv": "Anslutningstestet är äldre än 15 minuter; testa igen",
+    "nb": "Tilkoblingstesten er eldre enn 15 minutter; test på nytt"
+  },
+  "Test the connection": {
+    "sv": "Testa anslutningen",
+    "nb": "Test tilkoblingen"
+  },
+  "Optional": {
+    "sv": "Valfritt",
+    "nb": "Valgfritt"
   }
 };

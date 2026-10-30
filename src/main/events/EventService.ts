@@ -17,14 +17,18 @@ import { getTemplateManager } from "../templates/OGrafManager";
 import { getDataSourceRegistry } from "../data/DataSourceRegistry";
 import { competitionClock, startTimeEpochMs } from "../data/liveTime";
 import { IofXmlBackend } from "../data/sources/IofXmlBackend";
+import { clubNameRows } from "../data/clubNames";
 import type {
   SPXProject,
   SPXRundown,
 } from "../../shared/types/spx";
 import { DEFAULT_TEMPLATE_SET } from "../../shared/types/spx";
+import { SYSTEM_TEMPLATE_SET } from "../../shared/types/ograf";
 import type {
   EventFolder,
+  EventLiveOutputs,
   EventStartList,
+  ClubNameRow,
   EventSummary,
   ReadinessItem,
   StartListEntry,
@@ -399,7 +403,7 @@ export async function summarize(projectId: string): Promise<EventSummary> {
   const setId = project.templateSet || DEFAULT_TEMPLATE_SET;
   const ds = project.dataSource;
   const sl = loadStartList(projectId);
-  const cfg = getConfig();
+  const outputs = liveOutputsFor(project);
   const stale = !!ds?.lastCheck && Date.now() - ds.lastCheck.at > 15 * 60_000;
   const readiness: ReadinessItem[] = [
     {
@@ -440,11 +444,10 @@ export async function summarize(projectId: string): Promise<EventSummary> {
     {
       section: "output",
       label: "Output",
-      ok: cfg.output.web.enabled || cfg.output.ndi.enabled,
+      ok: outputs.web || outputs.ndi,
       detail:
-        [cfg.output.web.enabled && "Web", cfg.output.ndi.enabled && "NDI"]
-          .filter(Boolean)
-          .join(" + ") || "No output enabled",
+        [outputs.web && "Web", outputs.ndi && "NDI"].filter(Boolean).join(" + ") ||
+        "Choose the outputs to use in Live",
     },
   ];
   const required = readiness.filter((r) => !r.optional);
@@ -463,6 +466,7 @@ export async function summarize(projectId: string): Promise<EventSummary> {
     dataSourceLabel,
     status: project.status || "planning",
     live: liveEventId === project.id,
+    liveOutputs: outputs,
     readiness,
     ready: required.filter((r) => r.ok).length,
     required: required.length,
@@ -521,6 +525,16 @@ export function updateStartListPreferences(
     ...loadStartList(projectId),
     ...updates,
   });
+}
+
+/** Every club in the start list with the name graphics will show, for the operator to review */
+export function startListClubs(projectId: string): ClubNameRow[] {
+  const runners = new Map<string, number>();
+  for (const e of loadStartList(projectId).entries) {
+    const club = e.club?.trim();
+    if (club) runners.set(club, (runners.get(club) ?? 0) + 1);
+  }
+  return clubNameRows(runners);
 }
 
 /** Merge fresh entries into the stored list, keeping favourites, notes and virtual bibs */
@@ -990,6 +1004,13 @@ export function startListHtml(
 
 let liveEventId: string | null = null;
 
+/** Outputs the event uses in Live: its own choice, or the app's output settings */
+export function liveOutputsFor(project: Pick<SPXProject, "liveOutputs">): EventLiveOutputs {
+  if (project.liveOutputs) return { web: !!project.liveOutputs.web, ndi: !!project.liveOutputs.ndi };
+  const cfg = getConfig();
+  return { web: !!cfg.output.web.enabled, ndi: !!cfg.output.ndi.enabled };
+}
+
 export function setLiveEvent(projectId: string | null): void {
   liveEventId = projectId;
 }
@@ -1006,21 +1027,29 @@ async function hiddenPage(projectId: string, name: string): Promise<SPXRundown> 
   return rm.createRundown({ projectId, name });
 }
 
-/** A hidden graphic for testing the real web/NDI output before going live. */
+/**
+ * A hidden graphic for testing the real web/NDI output before going live. The test pattern
+ * is one system graphic (templates/system/), the same for every look.
+ */
 export async function testPatternCue(
   projectId: string,
 ): Promise<{ pageId: string; itemId: string }> {
-  const project = await loadEvent(projectId);
+  await loadEvent(projectId);
   const template = getTemplateManager()
     .getAllTemplates()
     .find(
       (t) =>
-        t.setId === (project.templateSet || DEFAULT_TEMPLATE_SET) &&
+        t.setId === SYSTEM_TEMPLATE_SET &&
         (t.manifest as any).v_olgrafik_kind === "test-pattern",
     );
   if (!template)
     throw new Error("Reload graphics to install the output test pattern");
   const page = await hiddenPage(projectId, "__test__");
+  // Events from before the move hold a cue for their set's own copy: drop it
+  for (const stale of page.items.filter(
+    (i) => i.templateId !== template.manifest.id && /-test-pattern$/.test(i.templateId),
+  ))
+    await getRundownManager().removeItem(projectId, page.id, stale.id);
   const existing = page.items.find(
     (i) => i.templateId === template.manifest.id,
   );

@@ -8,6 +8,7 @@
  */
 
 import fs from 'fs';
+import { presentationForGraphics } from '../../shared/branding';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { getConfig } from '../utils/config';
@@ -21,7 +22,7 @@ import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
 import {
-  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, liveUpdatesDefault, type DeskCommandMap, type DeskDraft, type DeskFavorite,
+  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
   type DeskOnAir, type DeskState
 } from '../../shared/desk';
 import { applyStartList, loadEvent, loadStartList, syncPages } from './EventService';
@@ -48,7 +49,7 @@ export function deskTemplateInfo(project: SPXProject, key: string): OGrafTemplat
 /** Which desk templates the event's set provides */
 export async function deskTemplates(projectId: string) {
   const project = await loadEvent(projectId);
-  return DESK_TEMPLATES.map(def => {
+  return orderDeskTemplates(DESK_TEMPLATES, project.settings?.templateOrder).map(def => {
     const t = deskTemplateInfo(project, def.key);
     const settings = project.settings?.templates;
     return {
@@ -202,7 +203,8 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
   const requestedPageDuration = draft.autoPageDurationSeconds === undefined
     ? eventPageDuration
     : Math.max(0, Number(draft.autoPageDurationSeconds) || 0);
-  const autoPageDurationSeconds = requestedPageDuration > 0 ? requestedPageDuration : undefined;
+  // Only multi-page graphics page (and leave) on their own; the operator takes the rest off air
+  const autoPageDurationSeconds = isMultiStep(t.manifest) && requestedPageDuration > 0 ? requestedPageDuration : undefined;
   if (!item) {
     item = await rm.addItem(projectId, page.id, {
       templateId: t.manifest.id, templatePath: t.directoryName, fields, layer: '1', out: 'animate',
@@ -324,7 +326,7 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
   }
   data = {
     ...applyStartList(projectId, data),
-    presentation: project.settings?.presentation || {},
+    presentation: presentationForGraphics(project.settings?.presentation),
     event: { ...project.info, name: project.name, location: project.info?.location || '', date: project.info?.date || '' }
   };
   return { template, data };

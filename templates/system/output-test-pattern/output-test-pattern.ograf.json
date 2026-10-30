@@ -1,0 +1,17 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "output-test-pattern",
+  "name": "Output test pattern",
+  "description": "Colour bars and safe areas for checking the web / NDI output from Settings. Not part of any template set.",
+  "version": "1.0.0",
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {}
+  },
+  "v_olgrafik_kind": "test-pattern",
+  "v_olgrafik_zone": "full"
+}

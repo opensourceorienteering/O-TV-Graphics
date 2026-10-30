@@ -54,6 +54,17 @@ export interface EventDataSource {
 
 export type EventStatus = 'planning' | 'done';
 
+/**
+ * Outputs this event sends while it is in Live (Plan → Output). They turn on when the desk
+ * opens and NDI turns off again when Live ends. Unset: follow the app's output settings.
+ */
+export interface EventLiveOutputs {
+  /** Web output page (browser source) */
+  web: boolean;
+  /** NDI sender */
+  ndi: boolean;
+}
+
 // --- start lists ------------------------------------------------------------------------
 
 export interface StartListEntry {
@@ -86,6 +97,17 @@ export interface EventStartList {
     code: string | number;
     name: string;
   }>;
+}
+
+/** One club in the start list, for reviewing the names graphics will show */
+export interface ClubNameRow {
+  /** As the data source sends it */
+  name: string;
+  runners: number;
+  /** The short name from the bundled club lists (the name itself when none is known) */
+  automatic: string;
+  /** The name from the app's club name library */
+  override?: string;
 }
 
 /** How virtual bibs are numbered */
@@ -123,6 +145,8 @@ export interface EventSummary {
   dataSourceLabel?: string;
   status: EventStatus;
   live: boolean;
+  /** Outputs that turn on in Live (the event's choice, or the app's output settings) */
+  liveOutputs?: EventLiveOutputs;
   readiness: ReadinessItem[];
   ready: number;
   required: number;
@@ -145,6 +169,8 @@ export interface ControlState {
   favorites: { id: string; label: string; key: string; graphic: string }[];
   data?: { ok: boolean; at: number; message?: string } | null;
   output?: { web: boolean; ndi: boolean };
+  /** Outputs that did not start when the event entered Live */
+  outputErrors?: string[];
   polling?: Array<{ active: boolean; competitionId?: number; className?: string; interval?: number; lastPoll?: number; lastUpdate?: number; errorCount?: number; lastError?: string }>;
 
 }

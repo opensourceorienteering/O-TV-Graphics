@@ -1,4 +1,4 @@
-import { eventLabels } from './labels.js';
+import { eventLabels, weatherCondition } from './labels.js';
 /**
  * Views: data -> markup for every graphic kind. All sets share this markup; each set's
  * theme.css decides how it looks and animates. A view returns { html, steps }.
@@ -13,7 +13,7 @@ import { eventLabels } from './labels.js';
 
 import {
   esc, time, diff, clock, now, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
-  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock
+  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml
 } from './util.js';
 
 const L = (ctx, key, fallback) => ctx.labels?.[key] ?? fallback;
@@ -107,7 +107,7 @@ function leaderMs(data, leader) {
 
 function logoBox(data, cls = 'brand') {
   const url = data?.presentation?.logoUrl;
-  return url ? `<span class="${cls}"><img src="${esc(serverUrl(url))}" alt=""></span>` : `<span class="${cls} ${cls}--empty"></span>`;
+  return url ? `<span class="${cls}">${eventLogoHtml(data)}</span>` : `<span class="${cls} ${cls}--empty"></span>`;
 }
 
 function header(title, sub, data, extra = '') {
@@ -484,7 +484,7 @@ const views = {
   /** Weather conditions (text only, no icons, as IOF asks) */
   weather(data, ctx) {
     const rows = [
-      ['condition', L(ctx, 'condition', 'Conditions'), data.condition],
+      ['condition', L(ctx, 'condition', 'Conditions'), weatherCondition(data.condition, data.presentation?.language)],
       ['temperature', L(ctx, 'temperature', 'Temperature'), data.temperature !== undefined && data.temperature !== '' ? `${data.temperature} °C` : ''],
       ['wind', L(ctx, 'wind', 'Wind'), data.wind !== undefined && data.wind !== '' ? `${data.wind} km/h` : ''],
       ['humidity', L(ctx, 'humidity', 'Humidity'), data.humidity !== undefined && data.humidity !== '' ? `${data.humidity} %` : '']

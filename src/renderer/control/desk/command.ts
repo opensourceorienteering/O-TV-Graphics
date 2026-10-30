@@ -1,6 +1,6 @@
 /**
- * Command palette grammar: "<graphic> <param> <param> ...", e.g. "0 2 101" = runner identity,
- * class 2, bib 101; "4 2 213" = live feed, class 2, control 213. The graphic numbers come from
+ * Command palette grammar: "<graphic> <param> <param> ...", e.g. "2 2 101" = runner identity,
+ * class 2, bib 101; "1 2 213" = live split, class 2, control 213. The graphic numbers come from
  * the configurable command map; the parameters follow the graphic's order (see DESK_TEMPLATES).
  *
  * Classes are numbered 1..n in the competition's class order (or typed by name). Runners are

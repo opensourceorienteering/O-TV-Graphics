@@ -22,6 +22,9 @@ const SETS = {
   standard: { label: 'Standard', skip: [] },
   iof: { label: 'IOF', skip: [] },
   cz: { label: 'ČO', skip: [] },
+  signal: { label: 'Signal', skip: [] },
+  brutal: { label: 'Brutal', skip: [] },
+  bold: { label: 'Bold', skip: [] },
   // classic already has hand-made results, lower thirds and countdown templates
   classic: { label: 'Classic', skip: ['results', 'standings-lower-third', 'runner-lower-third', 'clock'] }
 };

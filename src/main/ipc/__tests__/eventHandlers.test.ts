@@ -8,6 +8,8 @@ const mock = vi.hoisted(() => ({
   play: vi.fn(),
   navigation: vi.fn(async (..._args: any[]) => {}),
   packaged: false,
+  activate: vi.fn(async (_wanted: any) => ({ web: true, ndi: false, errors: [] as string[] })),
+  deactivate: vi.fn(async () => {}),
   project: {
     id: "event",
     name: "Race",
@@ -99,7 +101,14 @@ vi.mock("../../templates/OGrafManager", () => ({
     ],
   }),
 }));
+vi.mock("../outputHandlers", () => ({
+  activateLiveOutputs: mock.activate,
+  deactivateLiveOutputs: mock.deactivate,
+}));
 vi.mock("../../events/EventService", () => ({
+  setLiveEvent: () => {},
+  getLiveEventId: () => null,
+  liveOutputsFor: (p: any) => p.liveOutputs ?? { web: true, ndi: false },
   loadEvent: async () => mock.project,
   loadStartList: () => mock.startList,
   applyStartList: (_id: string, data: any) => data,
@@ -285,3 +294,28 @@ describe("Event monitor and preview IPC", () => {
     expect(newest.data.payload.data.results[0].name).toBe("Newest");
   });
 });
+
+describe("Entering and leaving Live", () => {
+  beforeEach(() => {
+    mock.handlers.clear();
+    mock.activate.mockClear();
+    mock.deactivate.mockClear();
+    registerEventHandlers();
+  });
+
+  it("turns on the outputs the event chose in Plan and reports the ones that failed", async () => {
+    (mock.project as any).liveOutputs = { web: false, ndi: true };
+    mock.activate.mockResolvedValueOnce({ web: false, ndi: false, errors: ["NDI output could not start: no SDK"] });
+    const res = await invoke("live:enter", "event");
+    expect(mock.activate).toHaveBeenCalledWith({ web: false, ndi: true });
+    expect(res.success).toBe(true);
+    expect(res.data.outputErrors).toEqual(["NDI output could not start: no SDK"]);
+    delete (mock.project as any).liveOutputs;
+  });
+
+  it("turns Live outputs off when Live ends", async () => {
+    await invoke("live:exit");
+    expect(mock.deactivate).toHaveBeenCalledOnce();
+  });
+});
+

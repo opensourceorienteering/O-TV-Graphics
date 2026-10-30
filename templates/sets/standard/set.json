@@ -1,8 +1,12 @@
 {
   "id": "standard",
   "name": "Standard",
-  "description": "The Split Control interface translated to broadcast graphics: charcoal surfaces, crisp borders, orange accents, restrained status colours and highly legible Inter typography.",
+  "description": "Modern and playful: floating ink cards, a glowing gradient accent, number chips and springy motion. Bricolage Grotesque names with Inter tabular times.",
   "author": "Split Control",
-  "colors": ["#ff650f", "#191d22", "#85cba6"],
-  "fonts": "Inter (OFL)"
+  "colors": [
+    "#ff5b14",
+    "#14161d",
+    "#3ddc97"
+  ],
+  "fonts": "Bricolage Grotesque, Inter (OFL)"
 }
