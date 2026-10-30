@@ -69,7 +69,8 @@
 
 /* --- rows: every row is a mask, its cells rise out of it ---------------------------- */
 .rows { padding: 4px 0 8px; }
-.row { min-height: 58px; overflow: hidden; }
+/* a little clip margin: accents (Å, Ø) rise above the row; rising text shows only 6 px early */
+.row { min-height: 58px; overflow: clip; overflow-clip-margin: 6px; }
 .row + .row { box-shadow: inset 0 1px 0 var(--rule); }
 .c-place {
   width: 82px; padding-left: 24px; justify-content: flex-start !important;
@@ -165,7 +166,8 @@
 .panel--title .hdr-title { font: 500 22px var(--font); letter-spacing: .26em; color: var(--hot); }
 .title-body { min-height: 200px; overflow: hidden; }
 .title-logo { width: 220px; margin: 22px 0 22px 34px; padding: 18px; background: var(--paper); }
-.title-text { padding: 20px 36px 26px; overflow: hidden; }
+.title-text { padding: 36px 36px 10px; overflow: hidden; }
+/* Anton's capitals fill the line: Å, Ä, Ö need room above the title inside the mask */
 .title-main { font: 400 104px/.92 var(--display); text-transform: uppercase; letter-spacing: .005em; }
 .title-sub { margin-top: 14px; font: 500 26px var(--font); letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
 .title-sub .sep { color: var(--hot); }
