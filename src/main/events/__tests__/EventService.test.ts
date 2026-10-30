@@ -220,6 +220,16 @@ describe("Events over existing project files", () => {
     );
   });
 
+  it("never gives a virtual bib the number of a real bib, so it can be typed without its V", async () => {
+    const event = await events.createEvent({ name: "Mixed bibs" });
+    const file = path.join(mock.root, "mixed.csv");
+    fs.writeFileSync(file, "class,name,club,bib\nH21,Has Bib,Club,101\nH21,No Bib A,Club,\nH21,No Bib B,Club,\n");
+    await events.importStartListCsv(event.id, file);
+    const list = events.assignVirtualBibs(event.id, { start: 101, perClassBlock: 0 });
+    const virtual = list.entries.filter((e) => e.virtualBib).map((e) => e.virtualBib).sort();
+    expect(virtual).toEqual(["V102", "V103"]);
+  });
+
   it("updates linked events, preserves overrides and defers folder changes in Live", async () => {
     const folder = events.createFolder("Linked series");
     await events.updateFolder(folder.id, {

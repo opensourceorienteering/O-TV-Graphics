@@ -129,6 +129,8 @@ export interface DeskDraft {
 
 export interface DeskFavorite {
   id: string;
+  /** F-number within its graphic (F1, F2 ...). It stays fixed; a deleted favourite's number goes to the next new one. */
+  n: number;
   label: string;
   draft: DeskDraft;
   created: number;

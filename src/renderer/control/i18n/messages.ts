@@ -2927,5 +2927,77 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Optional": {
     "sv": "Valfritt",
     "nb": "Valgfritt"
+  },
+  "Command for": {
+    "sv": "Kommando för",
+    "nb": "Kommando for"
+  },
+  "no parameters": {
+    "sv": "inga parametrar",
+    "nb": "ingen parametere"
+  },
+  "or favourite": {
+    "sv": "eller favorit",
+    "nb": "eller favoritt"
+  },
+  "optional, Enter loads without it": {
+    "sv": "valfritt, Enter laddar utan",
+    "nb": "valgfritt, Enter laster uten"
+  },
+  "class": {
+    "sv": "klass",
+    "nb": "klasse"
+  },
+  "runner": {
+    "sv": "löpare",
+    "nb": "løper"
+  },
+  "control": {
+    "sv": "kontroll",
+    "nb": "post"
+  },
+  "page": {
+    "sv": "sida",
+    "nb": "side"
+  },
+  "number or name": {
+    "sv": "nummer eller namn",
+    "nb": "nummer eller navn"
+  },
+  "bib or name": {
+    "sv": "nummerlapp eller namn",
+    "nb": "startnummer eller navn"
+  },
+  "S start · radio code · F finish": {
+    "sv": "S start · radiokod · F mål",
+    "nb": "S start · radiokode · F mål"
+  },
+  "radio code · F finish": {
+    "sv": "radiokod · F mål",
+    "nb": "radiokode · F mål"
+  },
+  "page number": {
+    "sv": "sidnummer",
+    "nb": "sidenummer"
+  },
+  "Page": {
+    "sv": "Sida",
+    "nb": "Side"
+  },
+  "API": {
+    "sv": "API",
+    "nb": "API"
+  },
+  "REST (api.orienteering.services, replay server)": {
+    "sv": "REST (api.orienteering.services, replayserver)",
+    "nb": "REST (api.orienteering.services, replay-server)"
+  },
+  "Legacy (api.php)": {
+    "sv": "Äldre (api.php)",
+    "nb": "Eldre (api.php)"
+  },
+  "Automatic uses REST for api.orienteering.services and the legacy api.php for other addresses.": {
+    "sv": "Automatiskt använder REST för api.orienteering.services och äldre api.php för andra adresser.",
+    "nb": "Automatisk bruker REST for api.orienteering.services og eldre api.php for andre adresser."
   }
 };

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySuggestion, nextStarter, parseCommand, type PaletteData } from '../command';
+import { applySuggestion, commandSyntax, nextStarter, parseCommand, type PaletteData } from '../command';
 import { DEFAULT_DESK_COMMANDS, DESK_TEMPLATES } from '../../../../shared/desk';
 
 // The grammar tests use their own fixed numbering, independent of the default order
@@ -148,6 +148,83 @@ describe('default command numbers', () => {
       '0 event-title', '1 live-feed', '2 runner-identity', '3 runner-start', '4 results', '5 runner-splits', '6 start-list',
       '7 free-text', '8 course-info', '9 timer', '10 weather', '11 podium', '12 position-history', '13 speaker', '14 start-group'
     ]);
+  });
+});
+
+describe('favourites in the palette', () => {
+  const fav = (n: number, label: string, runnerName: string) =>
+    ({ id: `f${n}`, n, label, created: 0, draft: { key: 'runner-identity', values: { className: 'Men Elite', runnerName }, fields: {} } });
+  const withFavs: PaletteData = { ...data, favorites: { 'runner-identity': [fav(2, 'Petr', 'Petr Svoboda'), fav(1, 'Jan', 'Jan Novák')] } };
+
+  it('"0 F1" loads favourite F1 of the graphic as a complete draft', () => {
+    const p = parseCommand('0 F1', withFavs);
+    expect(p.complete).toBe(true);
+    expect(p.draft).toMatchObject({ key: 'runner-identity', values: { runnerName: 'Jan Novák' } });
+    expect(parseCommand('0 f2', withFavs).draft?.values.runnerName).toBe('Petr Svoboda');
+  });
+
+  it('offers the favourites right after the graphic, F1 first', () => {
+    const p = parseCommand('0 ', withFavs);
+    expect(p.suggestions.slice(0, 2).map(s => s.token)).toEqual(['F1', 'F2']);
+    expect(parseCommand('0 F', withFavs).suggestions.map(s => s.token)).toEqual(['F1', 'F2']);
+  });
+
+  it('rejects a missing favourite and parameters after a favourite', () => {
+    expect(parseCommand('0 F9 ', withFavs).error).toContain('no favourite F9');
+    expect(parseCommand('0 F1 2', withFavs).error).toContain('takes no parameters');
+  });
+
+  it('leaves "F" alone for graphics without favourites', () => {
+    expect(parseCommand('0 F', data).next).not.toBe('favourite');
+  });
+});
+
+describe('syntax line', () => {
+  const syntax = (input: string, d: PaletteData = data) => commandSyntax(input, parseCommand(input, d), d);
+
+  it('shows nothing until the graphic number is recognised', () => {
+    expect(syntax('')).toBeNull();
+    expect(syntax('99')).toBeNull();
+  });
+
+  it('marks done parts with their values, the part being typed, and what comes next', () => {
+    const s = syntax('0 2 ')!;
+    expect(s.number).toBe('0');
+    expect(s.parts.map(p => `${p.param}:${p.state}`)).toEqual(['class:done', 'runner:current']);
+    expect(s.label).toBe('Runner identity');
+    expect(s.parts[0]).toMatchObject({ token: '2', value: 'Men Elite', label: 'Class', range: '1–3' });
+    expect(s.parts[1].hint).toBe('bib or name');
+  });
+
+  it('shows optional parts and the timing point choices of runner focus', () => {
+    const s = syntax('1 ')!; // runner-start in the grammar numbering: class, runner, control
+    expect(s.parts.map(p => `${p.param}${p.optional ? '?' : ''}`)).toEqual(['class?', 'runner', 'control?']);
+    expect(s.parts.find(p => p.param === 'control')?.hint).toContain('S start');
+  });
+
+  it("lists the graphic's favourites, and shows the favourite once one is chosen", () => {
+    const fav = (n: number) => ({ id: `f${n}`, n, label: `Fav ${n}`, created: 0, draft: { key: 'runner-identity', values: { runnerName: 'Jan Novák' }, fields: {} } });
+    const withFavs = { ...data, favorites: { 'runner-identity': [fav(2), fav(1)] } };
+    expect(syntax('0 ', withFavs)!.favorites).toEqual(['F1', 'F2']);
+    const chosen = syntax('0 F2', withFavs)!;
+    expect(chosen.favorite).toBe(2);
+    expect(chosen.parts).toEqual([]);
+  });
+});
+
+describe('virtual bibs', () => {
+  it('are found by their number alone, and a real bib with the same number wins', () => {
+    expect(parseCommand('0 3 7', data).draft?.values.runnerName).toBe('Jens Berg'); // V7
+    const clash: PaletteData = { ...data, runners: [...data.runners, { name: 'Real Seven', club: 'X', className: 'H21', bib: '7' }] };
+    // A finished entry (followed by a space): the real bib 7 wins over V7
+    expect(parseCommand('0 3 7 ', clash).draft?.values.runnerName).toBe('Real Seven');
+    expect(parseCommand('0 3 V7 ', clash).draft?.values.runnerName).toBe('Jens Berg');
+  });
+
+  it('shows the typed numbers and what they matched on the syntax line', () => {
+    const p = parseCommand('0 3 7', data);
+    const s = commandSyntax('0 3 7', p, data)!;
+    expect(s.parts.map(x => `${x.token} ${x.value}`)).toEqual(['3 H21', 'V7 Jens Berg']);
   });
 });
 

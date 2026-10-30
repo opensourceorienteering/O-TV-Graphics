@@ -7,6 +7,7 @@ import { t as tr } from "../i18n";
  * Show / Update / Hide / Hide all. Editing never changes the output; only those actions do.
  */
 
+import { bibMatch, bibStartsWith } from '../../../shared/bibs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BrandMark } from '../components/BrandMark';
@@ -60,10 +61,10 @@ function RunnerSearch({ runners, value, onPick, onClear, id }: {
     const fold = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     return runners
       .map(r => {
-        const bib = (r.bib || r.virtualBib || '').toLowerCase();
         const n = fold(r.name);
         const f = fold(q);
-        const score = bib === f ? 0 : bib.startsWith(f) ? 1 : n.startsWith(f) ? 2 : n.includes(f) ? 3 : -1;
+        // "101" also finds virtual bib V101
+        const score = bibMatch(r, f) >= 0 ? 0 : bibStartsWith(r, f) ? 1 : n.startsWith(f) ? 2 : n.includes(f) ? 3 : -1;
         return { r, score };
       })
       .filter(x => x.score >= 0)
@@ -389,7 +390,9 @@ export function LiveDesk() {
       // Everything else is a single key, and never fires while typing
       if (isTyping(e.target) || e.repeat || mod || e.altKey) return;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (key === ' ' && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); void actions.current.show(); return; }
+      // Space always shows / hides, also when a clicked graphic, favourite or button has focus
+      // (preventDefault stops that button from being pressed too); Enter activates buttons
+      if (key === ' ') { e.preventDefault(); void actions.current.show(); return; }
       if (key === 'u') { e.preventDefault(); void actions.current.update(); return; }
       if (key === 'h') { e.preventDefault(); void actions.current.hideActive(); return; }
       if (key === 'f') { e.preventDefault(); void actions.current.addFavorite(); return; }
@@ -423,8 +426,9 @@ export function LiveDesk() {
     hidden: new Set(templates.filter(t => t.hidden).map(t => t.key)),
     classes,
     runners,
-    controls: (cls: string) => controls[cls]
-  }), [commands, templates, classes, runners, controls]);
+    controls: (cls: string) => controls[cls],
+    favorites
+  }), [commands, templates, classes, runners, controls, favorites]);
 
   const tz = event?.info?.timeZone;
   const clock = (() => { try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', ...(tz ? { timeZone: tz } : {}) }).format(now); } catch { return new Date(now).toTimeString().slice(0, 8); } })();
@@ -705,11 +709,12 @@ export function LiveDesk() {
               <div className="d-sep" />
               <div className="favs">
                 <div className="favs-head"><span className="desk-label">{tr("Favourites ·")} {tr(def.label)}</span></div>
-                {(favorites[selected] || []).length ? (favorites[selected] || []).map(f => (
+                {(favorites[selected] || []).length ? [...(favorites[selected] || [])].sort((a, b) => a.n - b.n).map(f => (
                   <div key={f.id} className="fav" role="button" tabIndex={0}
                     onClick={() => recall(f)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); recall(f); } }}>
-                    <span className="star">☆</span><span className="name">{f.label}</span><span className="hint">{tr("Prepare only")}</span>
+                    aria-keyshortcuts={`${numberOf(selected) ?? ''} F${f.n}`.trim()}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); recall(f); } }}>
+                    <span className="fav-n" title={numberOf(selected) !== undefined ? `${tr("Palette:")} ${numberOf(selected)} F${f.n}` : undefined}>F{f.n}</span><span className="name">{f.label}</span><span className="hint">{tr("Prepare only")}</span>
                     <button type="button" className="del" aria-label={`Delete favourite ${f.label}`} onClick={e => { e.stopPropagation(); void removeFavorite(f.id); }}>×</button>
                   </div>
                 )) : <span className="d-note">{tr("Save the current fields to recall them later. Recalling only prepares; Show sends it.")}</span>}

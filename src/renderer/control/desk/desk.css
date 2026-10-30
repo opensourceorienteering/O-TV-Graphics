@@ -154,6 +154,7 @@
 }
 .fav:hover { border-color: var(--d-line); }
 .fav .star { color: var(--d-accent); font-size: 20px; }
+.fav .fav-n { min-width: 28px; color: var(--d-accent); font-weight: 700; font-variant-numeric: tabular-nums; }
 .fav .name { flex: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fav .hint { font-size: 11px; color: var(--d-muted); }
 .fav .del { background: none; border: 0; color: var(--d-muted); cursor: pointer; padding: 4px; font-size: 16px; }
@@ -240,6 +241,19 @@
 .palette .interp .bad { background: var(--d-air-bg); color: var(--d-air); font: 12px var(--d-mono); padding: 3px 7px; border-radius: 4px; }
 .palette .interp .done { color: var(--d-ok); }
 .palette .msg { font-size: 13px; font-weight: 600; margin: 0; }
+/* Syntax line: the chosen graphic's whole command */
+.palette .syntax { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; background: var(--d-surface); border: 1px solid var(--d-line); border-radius: 4px; }
+.palette .syntax-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+.palette .syn-part { display: inline-flex; align-items: baseline; gap: 6px; padding: 2px 8px; border: 1px solid var(--d-line); border-radius: 4px; color: var(--d-muted); }
+.palette .syn-tok { font: 600 13px var(--d-mono); color: var(--d-accent); }
+.palette .syn-graphic { border-color: transparent; background: var(--d-raised); color: var(--d-text); font-weight: 600; }
+.palette .syn-part.done { border-color: transparent; background: var(--d-raised); color: var(--d-text); }
+.palette .syn-part.current { border-color: var(--d-accent); background: var(--d-accent-bg); color: var(--d-text); font-weight: 600; }
+/* Optional parts still to come are greyed out */
+.palette .syn-part.optional.todo { border-style: dashed; opacity: 0.6; }
+.palette .syn-or, .palette .syn-none { color: var(--d-muted); font-size: 12px; }
+.palette .syn-hint { margin: 0; font-size: 12px; color: var(--d-muted); }
+.palette .syn-hint b { color: var(--d-text); font-weight: 600; }
 .palette .msg.bad { color: var(--d-air); }
 .palette ul { list-style: none; margin: 0; padding: 0 2px 0 0; display: flex; flex-direction: column; gap: 7px; flex: 0 1 auto; min-height: 120px; max-height: 46vh; overflow-y: auto; overscroll-behavior: contain; }
 /* Only the list scrolls: the command line and the Load button stay in view */

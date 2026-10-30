@@ -93,6 +93,8 @@ export function createControlApiRouter(): express.Router {
     read(() =>
       live.favorites().map((f) => ({
         id: f.id,
+        /** F-number within the graphic: "<graphic number> F<n>" in the palette */
+        n: f.n,
         label: f.label,
         key: f.key,
         graphic: f.graphic,

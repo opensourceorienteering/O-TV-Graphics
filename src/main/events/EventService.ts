@@ -35,6 +35,7 @@ import type {
   VirtualBibOptions,
 } from "../../shared/types/event";
 import { inheritFolder, breakChangedInheritance } from "./folderInheritance";
+import { bibNumber } from "../../shared/bibs";
 import {
   templateGraphicKind,
 } from "../templates/templateSets";
@@ -804,11 +805,13 @@ export function assignVirtualBibs(
           .map((e) => e.key)
       : [],
   );
+  // Numbers taken by real bibs and kept virtual bibs: V101 is never given out next to a real 101,
+  // so operators can type a virtual bib without its V
   const used = new Set(
     list.entries
       .flatMap((e) => [e.bib, replacing.has(e.key) ? undefined : e.virtualBib])
       .filter((v): v is string => !!v)
-      .map((v) => v.toUpperCase()),
+      .map((v) => bibNumber(v)),
   );
   let next = start;
   classes.forEach((className) => {
@@ -822,9 +825,9 @@ export function assignVirtualBibs(
       );
     for (const e of runners) {
       if (e.bib || (e.virtualBib && !options.overwrite)) continue;
-      while (used.has(`V${next}`)) next++;
-      e.virtualBib = `V${next++}`;
-      used.add(e.virtualBib);
+      while (used.has(String(next))) next++;
+      e.virtualBib = `V${next}`;
+      used.add(String(next++));
     }
   });
   return saveStartList(projectId, list);

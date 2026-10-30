@@ -353,17 +353,31 @@ function favouritesPath(projectId: string) {
 }
 
 export function loadDeskFavorites(projectId: string): Record<string, DeskFavorite[]> {
+  let all: Record<string, DeskFavorite[]>;
   try {
-    return JSON.parse(fs.readFileSync(favouritesPath(projectId), 'utf-8'));
+    all = JSON.parse(fs.readFileSync(favouritesPath(projectId), 'utf-8'));
   } catch {
     return {};
   }
+  // Favourites saved before F-numbers existed get the next free numbers, in their saved order
+  for (const list of Object.values(all)) {
+    for (const f of list) if (!Number.isInteger(f.n) || f.n < 1) f.n = nextFavoriteNumber(list.filter(x => x !== f && x.n));
+  }
+  return all;
+}
+
+/** Lowest F-number not used by this graphic's favourites */
+function nextFavoriteNumber(list: Pick<DeskFavorite, 'n'>[]): number {
+  const used = new Set(list.map(f => f.n));
+  let n = 1;
+  while (used.has(n)) n++;
+  return n;
 }
 
 export function saveDeskFavorite(projectId: string, label: string, draft: DeskDraft): Record<string, DeskFavorite[]> {
   const all = loadDeskFavorites(projectId);
   const list = all[draft.key] ?? [];
-  list.push({ id: uuidv4(), label: label.trim() || 'Favourite', draft, created: Date.now() });
+  list.push({ id: uuidv4(), n: nextFavoriteNumber(list), label: label.trim() || 'Favourite', draft, created: Date.now() });
   all[draft.key] = list;
   fs.writeFileSync(favouritesPath(projectId), JSON.stringify(all, null, 1));
   return all;

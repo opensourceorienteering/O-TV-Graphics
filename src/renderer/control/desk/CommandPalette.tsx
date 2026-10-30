@@ -6,7 +6,7 @@ import { t as tr } from "../i18n";
  */
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { applySuggestion, parseCommand, type PaletteData, type Suggestion } from './command';
+import { applySuggestion, commandSyntax, parseCommand, type PaletteData, type Suggestion } from './command';
 import type { DeskDraft } from '../../../shared/desk';
 
 export interface RecentCommand { input: string; label: string; detail: string }
@@ -46,6 +46,9 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
   const pointer = useRef<{ x: number; y: number } | null>(null);
   const recent = useMemo(() => loadRecent(eventId), [eventId]);
   const parsed = useMemo(() => parseCommand(input, data), [input, data]);
+  // The chosen graphic's whole command: what is done, what is being typed, what comes next
+  const syntax = useMemo(() => commandSyntax(input, parsed, data), [input, parsed, data]);
+  const currentPart = syntax?.parts.find(p => p.state === 'current');
 
   useEffect(() => { field.current?.focus(); }, []);
   useEffect(() => { setActive(0); }, [input]);
@@ -144,9 +147,36 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
             {parsed.error && parsed.errorToken ? <span className="bad">{parsed.errorToken}</span>
               : parsed.complete ? <span className="done">{tr("✓ Ready")}</span>
               : parsed.interpretation[parsed.interpretation.length - 1]?.startsWith('Runner:') ? <span className="next">{parsed.interpretation[parsed.interpretation.length - 1]}</span>
-              : parsed.next ? <span className="next">{tr("Next:")} {tr(parsed.next)}</span> : null}
+              : parsed.next && !syntax ? <span className="next">{tr("Next:")} {tr(parsed.next)}</span> : null}
           </div>
         ) : null}
+        {!showRecent && syntax && (
+          <div className="syntax" aria-label={`${tr("Command for")} ${tr(syntax.label)}`}>
+            <div className="syntax-line">
+              <span className="syn-part syn-graphic"><span className="syn-tok">{syntax.number}</span>{tr(syntax.label)}</span>
+              {syntax.favorite !== undefined
+                ? <span className="syn-part done"><span className="syn-tok">F{syntax.favorite}</span>{tr("Favourite")}</span>
+                : syntax.parts.map(p => (
+                  <span key={p.param} className={`syn-part ${p.state}${p.optional ? ' optional' : ''}`}
+                    aria-current={p.state === 'current' ? 'step' : undefined}>
+                    {p.state === 'done'
+                      ? <>{p.token && <span className="syn-tok">{p.token}</span>}{tr(p.value ?? '')}</>
+                      : `${p.optional ? '[' : ''}${tr(p.label)}${p.optional ? ']' : ''}`}
+                  </span>
+                ))}
+              {syntax.favorite === undefined && syntax.parts.length === 0 && <span className="syn-none">{tr("no parameters")}</span>}
+              {syntax.favorite === undefined && syntax.favorites.length > 0 && (
+                <span className="syn-or">{tr("or favourite")} {syntax.favorites.join(' ')}</span>
+              )}
+            </div>
+            {currentPart && (
+              <p className="syn-hint">
+                <b>{tr(currentPart.label)}</b>: {tr(currentPart.hint)}{currentPart.range ? ` (${currentPart.range})` : ''}
+                {currentPart.optional && parsed.complete ? ` · ${tr("optional, Enter loads without it")}` : ''}
+              </p>
+            )}
+          </div>
+        )}
         {!showRecent && (
           <p id="palette-msg" className={`msg ${parsed.error ? 'bad' : ''}`} role={parsed.error ? 'alert' : 'status'}>
             {parsed.complete ? tr("✓ Complete command · ready to load") : parsed.message}

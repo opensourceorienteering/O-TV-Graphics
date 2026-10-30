@@ -134,6 +134,20 @@ describe('live desk', () => {
     expect(() => desk.saveDeskCommands({ x: 'results' } as any)).toThrow('0–99');
   });
 
+  it('numbers favourites F1, F2 ... per graphic and gives a freed number to the next one', () => {
+    const d = (text: string) => ({ key: 'free-text', values: {}, fields: { text } });
+    desk.saveDeskFavorite('p1', 'A', d('a'));
+    desk.saveDeskFavorite('p1', 'B', d('b'));
+    let all = desk.saveDeskFavorite('p1', 'Other graphic', { key: 'speaker', values: {}, fields: {} });
+    expect(all['free-text'].map(f => `F${f.n} ${f.label}`)).toEqual(['F1 A', 'F2 B']);
+    expect(all.speaker[0].n).toBe(1); // numbering restarts per graphic
+    all = desk.deleteDeskFavorite('p1', 'free-text', all['free-text'][0].id);
+    all = desk.saveDeskFavorite('p1', 'C', d('c'));
+    expect(all['free-text'].map(f => `F${f.n} ${f.label}`)).toEqual(['F2 B', 'F1 C']);
+    for (const f of all['free-text']) desk.deleteDeskFavorite('p1', 'free-text', f.id);
+    desk.deleteDeskFavorite('p1', 'speaker', all.speaker[0].id);
+  });
+
   it('fills the weather graphic automatically, keeps typed overrides, and explains a missing reading', async () => {
     await desk.deskShow('p1', { key: 'weather', values: {}, fields: { title: 'Arena', wind: '20' } });
     const item = pages[0].items.find((i: any) => i.templateId === 'iof-weather');

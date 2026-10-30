@@ -3,12 +3,15 @@
  * class 2, bib 101; "1 2 213" = live split, class 2, control 213. The graphic numbers come from
  * the configurable command map; the parameters follow the graphic's order (see DESK_TEMPLATES).
  *
+ * A favourite is picked by its F-number after the graphic: "2 F1" = runner identity, favourite F1.
+ *
  * Classes are numbered 1..n in the competition's class order (or typed by name). Runners are
  * found by bib or by name, inside the chosen class or, with no class, the whole competition.
  * Parsing never activates output: a complete command only loads a draft for Preview.
  */
 
-import { DESK_TEMPLATES, type DeskCommandMap, type DeskDraft, type DeskParam, type DeskTemplate } from '../../../shared/desk';
+import { bibMatch, bibStartsWith, findByBib } from '../../../shared/bibs';
+import { DESK_TEMPLATES, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
 
 export interface PaletteRunner { name: string; club: string; className: string; bib?: string; virtualBib?: string; startTimeMs?: number }
 export interface PaletteControl { code: number | string; name: string }
@@ -31,6 +34,8 @@ export interface PaletteData {
   runners: PaletteRunner[];
   /** Controls per class (loaded on demand) */
   controls: (className: string) => PaletteControl[] | undefined;
+  /** Saved favourites per graphic key ("<graphic> F<n>") */
+  favorites?: Record<string, DeskFavorite[]>;
 }
 
 export interface Suggestion {
@@ -45,7 +50,7 @@ export interface ParsedCommand {
   /** "Runner identity / Men Elite / Jan Novák" */
   interpretation: string[];
   /** Parameter being typed or required next */
-  next?: DeskParam | 'graphic';
+  next?: DeskParam | 'graphic' | 'favourite';
   /** What to tell the operator */
   message: string;
   /** Problem with the current input (shown in red; Load is disabled) */
@@ -57,6 +62,80 @@ export interface ParsedCommand {
   draft?: DeskDraft;
   /** Token index where the parameter being completed starts (a suggestion replaces from here) */
   tokenStart?: number;
+  /** F-number of the favourite the command loads ("<graphic> F<n>") */
+  favorite?: number;
+}
+
+/** One part of a graphic's command, for the syntax line under the palette input */
+export interface SyntaxPart {
+  param: DeskParam;
+  /** "Class", "Runner" ... (translated by the palette) */
+  label: string;
+  /** What was typed for it, as a number or code: "1", "101", "213", "F" */
+  token?: string;
+  /** What that matched: "Damer Lång", "Jan Novák", "Finish" */
+  value?: string;
+  state: 'done' | 'current' | 'todo';
+  optional: boolean;
+  /** What the part accepts, e.g. "bib or name" (a fixed text, translated by the palette) */
+  hint: string;
+  /** Valid numbers, e.g. "1–25" for classes */
+  range?: string;
+}
+
+export interface CommandSyntax {
+  /** Graphic number as typed */
+  number: string;
+  label: string;
+  parts: SyntaxPart[];
+  /** The graphic's favourites, e.g. ["F1", "F2"] */
+  favorites: string[];
+  /** The command loads this favourite instead of parameters */
+  favorite?: number;
+}
+
+/**
+ * The chosen graphic's whole command: done parts with their values, the part being typed,
+ * the parts still to come, and its favourites. Null until the graphic number is recognised.
+ */
+export function commandSyntax(input: string, parsed: ParsedCommand, data: PaletteData): CommandSyntax | null {
+  const template = parsed.template;
+  if (!template) return null;
+  const number = input.trim().split(/\s+/)[0] ?? '';
+  const values = parsed.draft?.values ?? {};
+  const classCount = data.classes.length;
+  const hints: Record<DeskParam, string> = {
+    class: 'number or name',
+    runner: 'bib or name',
+    control: template.key === 'runner-start' ? 'S start · radio code · F finish' : 'radio code · F finish',
+    page: 'page number'
+  };
+  const focusStart = template.key === 'runner-start' && parsed.interpretation.includes('Start');
+  /** [typed token, what it matched] for a part that is filled in */
+  const filled = (param: DeskParam): [string | undefined, string] | undefined => {
+    if (param === 'class') {
+      if (!values.className) return undefined;
+      const i = data.classes.indexOf(values.className);
+      return [i >= 0 ? String(i + 1) : undefined, values.className];
+    }
+    if (param === 'runner') return values.runnerName ? [values.runnerBib || undefined, values.runnerName] : undefined;
+    if (param === 'control') {
+      if (values.controlCode === undefined) return focusStart ? ['S', 'Start'] : undefined;
+      if (values.controlCode === '' || values.controlCode === 'F') return ['F', 'Finish'];
+      const name = values.className ? data.controls(values.className)?.find(c => String(c.code) === values.controlCode)?.name : undefined;
+      return [values.controlCode, name || `Control ${values.controlCode}`];
+    }
+    return parsed.draft?.page ? [String(parsed.draft.page), 'Page'] : undefined;
+  };
+  const LABELS: Record<DeskParam, string> = { class: 'Class', runner: 'Runner', control: 'Control', page: 'Page' };
+  const parts: SyntaxPart[] = parsed.favorite !== undefined ? [] : template.params.map(param => {
+    const done = filled(param);
+    const state: SyntaxPart['state'] = parsed.next === param ? 'current' : done ? 'done' : 'todo';
+    const range = param === 'class' && classCount ? `1–${classCount}` : undefined;
+    return { param, label: LABELS[param], token: done?.[0], value: done?.[1], state, optional: !template.required.includes(param), hint: hints[param], range };
+  });
+  const favorites = [...(data.favorites?.[template.key] ?? [])].sort((a, b) => a.n - b.n).map(f => `F${f.n}`);
+  return { number, label: template.label, parts, favorites, favorite: parsed.favorite };
 }
 
 const PARAM_LABEL: Record<DeskParam, string> = { class: 'class', runner: 'runner', control: 'control', page: 'page' };
@@ -114,6 +193,53 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
   out.interpretation.push(template.short);
   const draft: DeskDraft = { key: template.key, values: {}, fields: {} };
 
+  // --- favourite: "<graphic> F<n>" loads a saved draft instead of parameters ---
+  const favs = [...(data.favorites?.[template.key] ?? [])].sort((a, b) => a.n - b.n);
+  const favSuggestions = (digits = '') =>
+    favs.filter(f => String(f.n).startsWith(digits)).map(f => ({ token: `F${f.n}`, label: f.label, detail: 'Favourite' }));
+  const first = tokens[1];
+  if (first !== undefined && (/^f\d+$/i.test(first) || (/^f$/i.test(first) && favs.length > 0))) {
+    out.tokenStart = 1;
+    const digits = first.slice(1);
+    const fav = digits ? favs.find(f => f.n === Number(digits)) : undefined;
+    if (tokens.length === 2 && !endsWithSpace && (!fav || favSuggestions(digits).length > 1)) {
+      // Still typing the F-number (F1 vs F12): offer the matches
+      out.next = 'favourite';
+      out.suggestions = favSuggestions(digits);
+      if (fav) {
+        out.interpretation.push(`F${fav.n} ${fav.label}`);
+        out.draft = { ...fav.draft, key: template.key };
+        out.favorite = fav.n;
+        out.complete = true;
+        out.message = 'Favourite ready · Enter loads it into Preview';
+      } else {
+        out.message = out.suggestions.length ? 'Choose a favourite' : `${template.label} has no favourite ${first.toUpperCase()}`;
+        if (!out.suggestions.length) { out.error = out.message; out.errorToken = first.toUpperCase(); }
+      }
+      return out;
+    }
+    if (!fav) {
+      out.next = 'favourite';
+      out.error = `${template.label} has no favourite ${first.toUpperCase()}`;
+      out.errorToken = first.toUpperCase();
+      out.message = out.error;
+      out.suggestions = favSuggestions();
+      return out;
+    }
+    if (tokens.length > 2) {
+      out.error = 'A favourite takes no parameters';
+      out.errorToken = tokens[2];
+      out.message = out.error;
+      return out;
+    }
+    out.interpretation.push(`F${fav.n} ${fav.label}`);
+    out.draft = { ...fav.draft, key: template.key };
+    out.favorite = fav.n;
+    out.complete = true;
+    out.message = 'Favourite ready · Enter loads it into Preview';
+    return out;
+  }
+
   // --- parameters, in the graphic's order ---
   const params = template.params;
   let ti = 1;
@@ -133,7 +259,8 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
       // Nothing typed for this parameter yet
       const required = template.required.includes(param);
       out.next = param;
-      out.suggestions = suggest(param, '', draft, data);
+      // Right after the graphic, its favourites come first (F1, F2 ...)
+      out.suggestions = [...(ti === 1 ? favSuggestions() : []), ...suggest(param, '', draft, data)];
       if (required) {
         out.message = `Choose a ${PARAM_LABEL[param]} to complete the command`;
         out.draft = draft;
@@ -202,8 +329,9 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
 
     if (param === 'runner') {
       const pool = runnersFor(data, draft.values.className);
+      // A bib: real bibs, or virtual bibs with or without their V ("101" finds V101)
       const exact = /^[a-z]?\d+$/i.test(token)
-        ? pool.filter(r => runnerBib(r).toLowerCase() === token.toLowerCase())
+        ? findByBib(pool, token)
         : pool.filter(r => fold(r.name) === fold(token));
       const s = suggest('runner', token, draft, data);
       if (exact.length !== 1 || (typing && s.length > 1)) {
@@ -233,6 +361,8 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
       continue;
     }
   }
+  // A graphic without parameters is complete at once; its favourites stay on offer
+  if (!params.length && tokens.length === 1) out.suggestions = favSuggestions();
   if (ti < tokens.length) return fail(out, `${template.label} takes no more than ${params.length} parameter${params.length === 1 ? '' : 's'}`, tokens.slice(ti).join(' '), undefined, []);
   return finish(out, template, draft, false);
 }
@@ -277,9 +407,9 @@ export function suggest(param: DeskParam, text: string, draft: DeskDraft, data: 
     const pool = runnersFor(data, draft.values.className);
     const scored = pool
       .map(r => {
-        const bib = runnerBib(r).toLowerCase();
         const name = fold(r.name);
-        const score = !q ? 1 : bib === q ? 0 : bib.startsWith(q) ? 1 : name.startsWith(q) ? 2 : name.includes(q) ? 3 : -1;
+        const exact = q ? bibMatch(r, q) : -1;
+        const score = !q ? 1 : exact >= 0 ? 0 : bibStartsWith(r, q) ? 1 : name.startsWith(q) ? 2 : name.includes(q) ? 3 : -1;
         return { r, score };
       })
       .filter(x => x.score >= 0)

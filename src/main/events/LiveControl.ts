@@ -13,6 +13,7 @@ import { ndiOutputManager } from "../output/NDIOutputManager";
 import * as desk from "./Desk";
 import { getLiveEventId, liveOutputsFor, loadEvent, loadStartList } from "./EventService";
 import { getWebServer } from "../output/WebServer";
+import { findByBib } from "../../shared/bibs";
 
 export interface PreviewSnapshot {
   version: number;
@@ -190,12 +191,8 @@ export async function prepareRunner(bib: string, key = "runner-identity"): Promi
   const eventId = requireEvent();
   const def = DESK_TEMPLATES.find((t) => t.key === key);
   if (!def?.params.includes("runner")) throw fail(`"${key}" is not a runner graphic`, 404);
-  const wanted = String(bib).trim().toLowerCase();
-  const runner = loadStartList(eventId).entries.find(
-    (e) =>
-      String(e.bib ?? "").toLowerCase() === wanted ||
-      String(e.virtualBib ?? "").toLowerCase() === wanted,
-  );
+  // Real bibs first; a virtual bib matches with or without its V ("101" finds V101)
+  const runner = findByBib(loadStartList(eventId).entries, String(bib))[0];
   if (!runner) throw fail(`No runner with bib ${bib}`, 404);
   await prepare(
     eventId,
