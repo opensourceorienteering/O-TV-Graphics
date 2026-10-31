@@ -26,7 +26,8 @@
       "zip"
     ],
     "category": "public.app-category.graphics-design",
-    "icon": "resources/icon.icns"
+    "icon": "resources/icon.icns",
+    "artifactName": "Split-Control-${version}-mac-${arch}.${ext}"
   },
   "win": {
     "target": [
@@ -41,10 +42,15 @@
       "deb"
     ],
     "category": "Graphics",
-    "icon": "resources/icon-win.png"
+    "icon": "resources/icon-win.png",
+    "artifactName": "Split-Control-${version}-linux-${arch}.${ext}"
   },
   "nsis": {
     "oneClick": false,
-    "allowToChangeInstallationDirectory": true
+    "allowToChangeInstallationDirectory": true,
+    "artifactName": "Split-Control-${version}-windows-setup.${ext}"
+  },
+  "portable": {
+    "artifactName": "Split-Control-${version}-windows-portable.${ext}"
   }
 }

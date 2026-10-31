@@ -11,12 +11,15 @@ It runs on Windows, macOS and Linux.
 
 ## Download
 
-There is no published release yet. Every push to `main` builds the apps on GitHub:
+Get Split Control from the website: **<https://opensourceorienteering.github.io/O-TV-Graphics/>**.
+It also has the [manual](https://opensourceorienteering.github.io/O-TV-Graphics/manual.html)
+and an [FAQ](https://opensourceorienteering.github.io/O-TV-Graphics/faq.html).
 
-1. Open the [latest successful Build run](https://github.com/opensourceorienteering/O-TV-Graphics/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess).
-2. Under **Artifacts**, download `split-control-mac-arm64` (Apple Silicon Macs) or
-   `split-control-windows-x64` (Windows installer and portable `.exe`). You need to be
-   signed in to GitHub to download artifacts.
+Until the first release, test builds are on the
+[Build page](https://github.com/opensourceorienteering/O-TV-Graphics/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess):
+under **Artifacts**, download `split-control-mac-arm64` (Apple Silicon Macs) or
+`split-control-windows-x64` (Windows installer and portable `.exe`). You need to be signed in
+to GitHub to download artifacts.
 
 The builds are not signed yet:
 
@@ -190,7 +193,26 @@ npm run companion:package
 [`.github/workflows/build.yml`](.github/workflows/build.yml) builds macOS (Apple Silicon)
 and Windows (x64) packages on GitHub, each on its own platform, because the NDI addon can't
 be cross-compiled. It runs on pushes to `main`, on version tags (`v1.2.0`) and from the
-Actions tab. See the [Build & Packaging Guide](docs/BUILD-PACKAGING.md) for local builds and
+Actions tab.
+
+**To publish a release**, set the version in `package.json`, commit, then push a matching tag:
+
+```bash
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The build then creates a GitHub release with the installers, and the website's download
+buttons link to it. A tag with a suffix (`v1.2.0-beta.1`) makes a pre-release, which the
+website doesn't offer.
+
+### Website
+
+The website (downloads, manual, FAQ) is plain HTML in [`site/`](site/).
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes it to GitHub Pages when
+`site/` changes on `main`. Preview it with `npx serve site` or by opening `site/index.html`.
+
+See the [Build & Packaging Guide](docs/BUILD-PACKAGING.md) for local builds and
 club logos.
 
 ### Where things are stored
@@ -225,6 +247,7 @@ rename.
 ├── club-logos/          Bundled Eventor club logos
 ├── companion/           Bitfocus Companion module
 ├── public/              Director page and other static pages
+├── site/                Website (GitHub Pages): downloads, manual, FAQ
 ├── scripts/             Packaging, template sets, club logos, race replay
 └── docs/
 ```

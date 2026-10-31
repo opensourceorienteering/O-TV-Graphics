@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FAQ · Split Control</title>
+  <meta name="description" content="Answers to common questions about installing and running Split Control.">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="./"><img src="logo.svg" alt="">Split Control</a>
+      <nav class="site-nav">
+        <a href="./#download">Download</a>
+        <a href="manual.html">Manual</a>
+        <a href="faq.html" aria-current="page">FAQ</a>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="faq">
+    <h1>Frequently asked questions</h1>
+    <p class="section-intro">Can't find your answer? Read the <a href="manual.html">manual</a> or
+      <a href="https://github.com/opensourceorienteering/O-TV-Graphics/issues">ask on GitHub</a>.</p>
+
+    <h2>General</h2>
+
+    <details>
+      <summary>What does Split Control cost?</summary>
+      <div><p>Nothing. Split Control is free and open source.</p></div>
+    </details>
+
+    <details>
+      <summary>Was this called OL-Grafik before?</summary>
+      <div><p>Yes. Split Control is the new name of OL-Grafik. Your events are kept: the app still
+        stores its data in the <code>OL-Grafik</code> folder.</p></div>
+    </details>
+
+    <details>
+      <summary>Which computers does it run on?</summary>
+      <div>
+        <p>Windows 10 and 11 (64-bit) and Macs with Apple Silicon (M1 and newer). It also runs on
+          Linux when built from the source code.</p>
+        <p>Intel Macs are not built yet.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Which production software does it work with?</summary>
+      <div><p>Anything that takes a browser source or NDI: OBS, vMix, CasparCG, Wirecast,
+        TriCaster and others. See <a href="manual.html#outputs">Set up the outputs</a>.</p></div>
+    </details>
+
+    <details>
+      <summary>Does it need the internet during the broadcast?</summary>
+      <div>
+        <p>Only if your timing data comes from the internet (Liveresultat) or you use automatic
+          weather. With MeOS or an IOF XML file on the local network, it works fully offline.</p>
+        <p>Club logos come with the app, so nothing is fetched from Eventor during a broadcast.</p>
+      </div>
+    </details>
+
+    <h2>Installing</h2>
+
+    <details>
+      <summary>Windows says "Windows protected your PC"</summary>
+      <div><p>The app is not signed yet, so SmartScreen doesn't recognise it. Choose
+        <strong>More info → Run anyway</strong>.</p></div>
+    </details>
+
+    <details id="mac-damaged">
+      <summary>macOS won't open the app, or says it is "damaged"</summary>
+      <div>
+        <p>The app is not signed yet. Right-click Split Control in Applications, choose
+          <strong>Open</strong>, then <strong>Open</strong> again.</p>
+        <p>If macOS says the app is damaged, open Terminal and run:</p>
+        <pre><code>xattr -dr com.apple.quarantine "/Applications/Split Control.app"</code></pre>
+        <p>Then open it again.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Do I need to install NDI separately?</summary>
+      <div>
+        <p>No, NDI support is built in. If Split Control says the NDI Runtime is not installed,
+          install <a href="https://ndi.video/tools/">NDI Tools</a> and restart Split Control.</p>
+        <p>The web output works without NDI.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Where are my events stored? How do I back them up?</summary>
+      <div>
+        <p><code>%APPDATA%\OL-Grafik</code> on Windows and
+          <code>~/Library/Application Support/OL-Grafik</code> on macOS. Copy the
+          <code>DATAROOT</code> folder to back up every event.</p>
+        <p>To move one event's setup, use <strong>Export settings…</strong> in
+          Plan → Final check.</p>
+      </div>
+    </details>
+
+    <h2>Timing data</h2>
+
+    <details>
+      <summary>Which timing systems are supported?</summary>
+      <div>
+        <ul>
+          <li><strong>Liveresultat</strong>, with instant push updates.</li>
+          <li><strong>MeOS</strong>, directly through its information server.</li>
+          <li><strong>MOP databases</strong> (MySQL/MariaDB).</li>
+          <li><strong>IOF XML 3.0</strong> files from any timing software: OE/OS, OLA, MeOS,
+            Helga and others.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>How fast do results appear on screen?</summary>
+      <div>
+        <p>With Liveresultat and <strong>Instant updates (push)</strong> on, as soon as Liveresultat
+          has them. Without push, it is polled every 10 seconds.</p>
+        <p>MeOS and databases can be read every second, so radio controls appear almost at once.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>The race has no bibs. Can I still pick runners by number?</summary>
+      <div><p>Yes. In <strong>Plan → Start lists</strong>, choose <strong>Assign virtual bibs</strong>.
+        Runners get numbers like V105, and in the command palette <code>105</code> finds V105.
+        Virtual bibs never go to the timing system.</p></div>
+    </details>
+
+    <details>
+      <summary>A radio control or club name looks wrong on air</summary>
+      <div>
+        <p>Rename radio controls in <strong>Plan → Radio controls</strong>, for the whole
+          competition or one class.</p>
+        <p>Shorten club names in <strong>Plan → Start lists → Club names on air</strong>. These names
+          are used in every event.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>"Test connection" fails</summary>
+      <div>
+        <ul>
+          <li><strong>Liveresultat:</strong> check the internet connection and that the right
+            competition is selected.</li>
+          <li><strong>MeOS:</strong> check that <strong>Services → Information server</strong> is
+            running in MeOS and that the address and port (2009 by default) are right. If MeOS is on
+            another computer, use its IP address and allow the port through its firewall.</li>
+          <li><strong>IOF XML:</strong> check that the file exists and that the timing software
+            still exports it.</li>
+        </ul>
+      </div>
+    </details>
+
+    <h2>On air</h2>
+
+    <details>
+      <summary>The browser source is empty</summary>
+      <div>
+        <ul>
+          <li>Check that Split Control is running and the event is in <strong>Live</strong>.</li>
+          <li>Open <code>http://&lt;computer&gt;:5657/output</code> in a normal browser on the
+            production computer. If it doesn't load, check the address and the firewall.</li>
+          <li>Set the browser source to the same size as Split Control's resolution (1920 × 1080 by
+            default).</li>
+          <li>Use <strong>Put test pattern on air</strong> in Plan → Output to check the path.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details>
+      <summary>Red and blue look swapped on NDI</summary>
+      <div><p>Change the colour format to RGBA in <strong>Settings → Output defaults</strong>.</p></div>
+    </details>
+
+    <details>
+      <summary>Why did a graphic disappear when I showed another one?</summary>
+      <div><p>Graphics in the same part of the screen clash. Showing a results table removes a
+        lower third, for example; the clock stays. You can turn this off in
+        <strong>Plan → Theme</strong> (<strong>Take clashing graphics off air automatically</strong>).</p></div>
+    </details>
+
+    <details>
+      <summary>The results table doesn't update</summary>
+      <div><p>Results tables and the podium hold their data while on air so they don't jump. Press
+        <kbd>U</kbd> to update. You can change this per graphic in
+        <strong>Plan → Templates</strong>.</p></div>
+    </details>
+
+    <details>
+      <summary>The keys don't do anything</summary>
+      <div><p>Single keys are off while you type in a field. Press <kbd>Esc</kbd> to leave the field
+        first. <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd> works everywhere.</p></div>
+    </details>
+
+    <details>
+      <summary>Can I use a Stream Deck?</summary>
+      <div><p>Yes, through Bitfocus Companion. Split Control comes with a Companion module that turns
+        favourites into buttons. See <a href="manual.html#remote">Stream Deck and remote control</a>.</p></div>
+    </details>
+
+    <details>
+      <summary>Can two people run the desk at once?</summary>
+      <div><p>One computer runs the desk. Others can help from the network: the director page shows
+        upcoming starters, and Companion or the HTTP control API can show favourites and hide
+        graphics.</p></div>
+    </details>
+
+    <details>
+      <summary>Is it safe on a public network?</summary>
+      <div><p>No. The director page and control APIs have no password, so anyone on the network can
+        use them. Run Split Control on your own production network.</p></div>
+    </details>
+
+    <h2>Graphics</h2>
+
+    <details>
+      <summary>Can I use my own colours and logos?</summary>
+      <div><p>Yes. In <strong>Plan → Theme</strong>, pick three colours that every graphic follows,
+        add the event logo, and add or replace club logos as <code>&lt;Club name&gt;.png</code> in
+        the logo folder.</p></div>
+    </details>
+
+    <details>
+      <summary>Can I make my own graphics?</summary>
+      <div>
+        <p>Yes. Split Control uses standard <a href="https://ograf.ebu.io">EBU OGraf</a> graphics.
+          Add an OGraf package to the templates folder and scan the library in
+          <strong>Graphics library</strong>.</p>
+        <p>To build a whole new look, see
+          <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">Template sets</a>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Does it support GPS tracking?</summary>
+      <div><p>Not yet. Tracking providers such as Livelox and Loggator each have their own API and
+        there is no shared standard.</p></div>
+    </details>
+
+    <details>
+      <summary>How can I practise before race day?</summary>
+      <div><p>Replay a finished Liveresultat race as if it were live. See
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/REPLAY-A-RACE.md">Replay a race</a>.</p></div>
+    </details>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>Split Control (formerly OL-Grafik) is open source.</span>
+      <span>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">Source code</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/issues">Report a problem</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/releases">All releases</a>
+      </span>
+    </div>
+  </footer>
+  <script>
+    // Open the question a link points to (faq.html#mac-damaged)
+    function openFromHash() {
+      const el = location.hash && document.getElementById(location.hash.slice(1));
+      if (el && el.tagName === "DETAILS") el.open = true;
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+  </script>
+</body>
+</html>

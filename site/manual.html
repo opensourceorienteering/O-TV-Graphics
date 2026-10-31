@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual · Split Control</title>
+  <meta name="description" content="How to install Split Control, connect timing data, plan an event and run the live broadcast.">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="./"><img src="logo.svg" alt="">Split Control</a>
+      <nav class="site-nav">
+        <a href="./#download">Download</a>
+        <a href="manual.html" aria-current="page">Manual</a>
+        <a href="faq.html">FAQ</a>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc">
+    <nav class="toc" aria-label="Contents">
+      <p>Contents</p>
+      <ol>
+        <li><a href="#install">1. Install</a></li>
+        <li><a href="#overview">2. How it works</a></li>
+        <li><a href="#data">3. Connect timing data</a></li>
+        <li><a href="#event">4. Create an event</a></li>
+        <li><a href="#plan">5. Plan the event</a></li>
+        <li><a href="#outputs">6. Set up the outputs</a></li>
+        <li><a href="#live">7. Run the broadcast</a></li>
+        <li><a href="#palette">8. Command palette</a></li>
+        <li><a href="#graphics">9. The graphics</a></li>
+        <li><a href="#director">10. Director page</a></li>
+        <li><a href="#remote">11. Stream Deck and remote control</a></li>
+        <li><a href="#settings">12. Settings</a></li>
+        <li><a href="#rehearse">13. Rehearse with a replay</a></li>
+        <li><a href="#checklist">14. Race-day checklist</a></li>
+      </ol>
+    </nav>
+
+    <article class="doc-body">
+      <h1>Manual</h1>
+      <p class="section-intro">Everything you need to put live orienteering results on air with
+        Split Control, from installing the app to the last runner at the finish.</p>
+
+      <!-- 1 -->
+      <h2 id="install">1. Install</h2>
+      <p>Download Split Control from the <a href="./#download">download page</a>.</p>
+      <h3>Windows</h3>
+      <ol>
+        <li>Run the installer. You can choose where to install it.</li>
+        <li>SmartScreen warns you because the app is not signed yet. Choose
+          <strong>More info → Run anyway</strong>.</li>
+      </ol>
+      <p>The <strong>portable</strong> version is a single <code>.exe</code> that runs without
+        installing.</p>
+      <h3>macOS (Apple Silicon)</h3>
+      <ol>
+        <li>Open the <code>.dmg</code> and drag Split Control to Applications.</li>
+        <li>The first launch is blocked because the app is not signed yet. Right-click the app,
+          choose <strong>Open</strong>, then <strong>Open</strong> again.</li>
+      </ol>
+      <h3>Firewall</h3>
+      <p>Other devices (OBS on another computer, the director's phone, a Stream Deck) reach Split
+        Control over the network on port <strong>5657</strong>. Allow Split Control through the
+        firewall when your computer asks.</p>
+
+      <!-- 2 -->
+      <h2 id="overview">2. How it works</h2>
+      <p>Split Control is organised in <strong>events</strong>. An event is one race: its timing
+        data, look, start list and outputs. Events can be grouped in <strong>folders</strong>,
+        for example a multi-day event or a season.</p>
+      <p>Each event has two modes:</p>
+      <ul>
+        <li><strong>Plan</strong>: prepare the event step by step, days or hours before the
+          broadcast. A checklist shows what is ready.</li>
+        <li><strong>Live</strong>: the desk you run the broadcast from. Every graphic is
+          triggered by hand; there is no fixed running order.</li>
+      </ul>
+      <p>Settings that apply to every event (ports, resolution, data sources, club names) are
+        in <strong>Settings</strong>.</p>
+
+      <!-- 3 -->
+      <h2 id="data">3. Connect timing data</h2>
+      <p>Add the timing service once in <strong>Settings → Data sources → Add data source</strong>.
+        Each event then picks a data source and a competition.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Type</th><th>Use it when</th><th>What to fill in</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>LiveResults</strong></td>
+            <td>The race publishes to Liveresultat. The most common choice.</td>
+            <td><strong>Base URL</strong> <code>https://api.orienteering.services</code>.
+              <strong>API</strong>: Automatic. Turn on <strong>Instant updates (push)</strong>
+              for results the moment Liveresultat has them.</td>
+          </tr>
+          <tr>
+            <td><strong>MeOS (information server)</strong></td>
+            <td>You have network access to the MeOS computer. No internet or database needed.</td>
+            <td>In MeOS, start <strong>Services → Information server</strong>. Enter its address,
+              e.g. <code>http://localhost:2009</code>, or the MeOS computer's address.</td>
+          </tr>
+          <tr>
+            <td><strong>MySQL/MariaDB Database</strong></td>
+            <td>Results are in a MeOS Online Protocol (MOP) database.</td>
+            <td>Host, database name, user name and password. Use a read-only database user: the
+              password is stored in plain text.</td>
+          </tr>
+          <tr>
+            <td><strong>IOF XML 3.0 file</strong></td>
+            <td>Any other timing software (OE/OS, OLA, MeOS, Helga…).</td>
+            <td>The path of a ResultList or StartList file. Set your timing software to export it
+              every few seconds; Split Control re-reads it when it changes.</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <p class="tip"><strong>How often?</strong> Liveresultat is polled every 10 seconds at most
+        (15 for the legacy <code>api.php</code>); push updates arrive at once. MeOS and databases
+        can be read every second.</p>
+
+      <!-- 4 -->
+      <h2 id="event">4. Create an event</h2>
+      <ol>
+        <li>On <strong>Events</strong>, choose <strong>New event</strong> and give it a name you'll
+          recognise on broadcast day.</li>
+        <li>Optionally put it in a folder with <strong>New folder</strong>. Events in a folder can
+          share its data source, event details, logos and look, or stay independent.</li>
+        <li>The event opens in Plan.</li>
+      </ol>
+      <p>To reuse a setup, <strong>Duplicate event</strong>, or export the settings from one event and
+        import them in another (see <a href="#final-check">Final check</a>).</p>
+
+      <!-- 5 -->
+      <h2 id="plan">5. Plan the event</h2>
+      <p>Plan has seven steps. The checklist on the left shows which are ready; you can do them in
+        any order.</p>
+
+      <h3>Data source &amp; event info</h3>
+      <ol>
+        <li>Choose the <strong>Event data source</strong> and pick the race under
+          <strong>Select Competition</strong>.</li>
+        <li>Choose <strong>Test connection</strong>.</li>
+        <li><strong>Use source details</strong> copies the name, date and organiser into the event
+          info. Check them and add the location.</li>
+        <li>Choose the <strong>Event type</strong>: national events show clubs, international
+          events show flags.</li>
+        <li>Optionally add an <strong>Event logo</strong> and coordinates for
+          <strong>Automatic weather</strong>.</li>
+      </ol>
+
+      <h3>Output</h3>
+      <p>Choose the outputs this event uses: <strong>Web output</strong> and/or
+        <strong>NDI</strong>. They turn on automatically when the event opens in Live. See
+        <a href="#outputs">Set up the outputs</a>.</p>
+
+      <h3>Theme</h3>
+      <ul>
+        <li><strong>Event theme</strong>: the look (template set). All graphics of the event use it.</li>
+        <li><strong>Theme colors</strong>: three colours that every shade, gradient and divider
+          follows. <strong>Apply colors</strong>, then <strong>Save event theme</strong>.</li>
+        <li><strong>Next to names</strong>: club, flag, both, or automatic (relays show club and flag).</li>
+        <li><strong>Seconds per page</strong> for tables with several pages (0 = page by hand).</li>
+        <li>The broadcast language: English, Swedish, Norwegian or Czech.</li>
+        <li>Club logos. The app ships with them; <strong>Open logo folder</strong> to add or replace
+          one as <code>&lt;Club name&gt;.png</code>.</li>
+      </ul>
+      <p>The preview on the right updates as you change the theme. Sample previews never go on air.</p>
+
+      <h3>Templates</h3>
+      <p>Drag graphics into the order you want in the Live list. Open a graphic for its settings:</p>
+      <ul>
+        <li><strong>Defaults</strong> fill the operator's draft in Live; any field can still be changed there.</li>
+        <li><strong>Hidden in Live</strong> removes graphics you won't use.</li>
+        <li><strong>Live updates off</strong> keeps the graphic's data until you press Update.</li>
+      </ul>
+
+      <h3>Start lists</h3>
+      <ul>
+        <li><strong>Refresh from event source</strong>, or <strong>Import XML / CSV</strong>.
+          A CSV needs a class column and a name column (or first and last name); club, bib, start
+          time and country are optional. Headers can be in English or Swedish.</li>
+        <li>Star <strong>favourite runners</strong> and <strong>favourite classes</strong>. Stars and
+          notes are shared with Live and the director page.</li>
+        <li><strong>Assign virtual bibs</strong> when the race has no bibs. Virtual bibs (V105) stay
+          inside Split Control and its PDFs.</li>
+        <li><strong>Club names on air</strong>: type a shorter name for any club whose name is too
+          long. Names are saved for every event.</li>
+        <li><strong>Export PDF</strong> for a printed start list with favourites and notes.</li>
+      </ul>
+
+      <h3>Radio controls</h3>
+      <p>Optional. Rename radio controls whose names from the timing data don't read well on air,
+        for the <strong>whole competition</strong> or <strong>per class</strong> (a class name wins).
+        <strong>Automatic names</strong> number the controls in the order each class passes them.</p>
+
+      <h3 id="final-check">Final check</h3>
+      <p><strong>Run final check</strong> tests the data connection and the setup. When the required
+        items are complete, <strong>Go live</strong> is enabled.</p>
+      <p><strong>Export settings…</strong> saves the whole setup as one JSON file, to take to another
+        event or computer. <strong>Import settings…</strong> brings it in.</p>
+
+      <!-- 6 -->
+      <h2 id="outputs">6. Set up the outputs</h2>
+      <h3>Web output (browser source)</h3>
+      <p>Add this address as a browser source. It has a transparent background and is
+        1920 × 1080 by default.</p>
+      <pre><code>http://&lt;computer&gt;:5657/output</code></pre>
+      <p>Use <code>localhost</code> instead of <code>&lt;computer&gt;</code> on the same computer.
+        Plan → Output shows the exact address and copies it for you.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Software</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td>OBS</td><td>Add a <strong>Browser</strong> source, paste the URL, set width 1920 and height 1080.</td></tr>
+          <tr><td>vMix</td><td>Add Input → <strong>Web Browser</strong>, paste the URL, 1920 × 1080.</td></tr>
+          <tr><td>CasparCG</td><td>Play the URL as an HTML producer: <code>PLAY 1-20 [HTML] "http://…/output"</code>.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3>NDI</h3>
+      <p>Turn on NDI in <strong>Plan → Output</strong>. The source is called
+        <strong>Split Control NDI Output</strong> and carries transparency (alpha). Pick it in vMix,
+        OBS (with the NDI plugin), TriCaster or any NDI receiver.</p>
+      <p>The NDI name and frame rate are in <strong>Settings → Output defaults</strong>.</p>
+      <h3>Check the signal</h3>
+      <p><strong>Put test pattern on air</strong> sends colour bars and safe-area guides through the
+        real output. Use it to check keying and framing in your production, then
+        <strong>Clear test pattern</strong>.</p>
+
+      <!-- 7 -->
+      <h2 id="live">7. Run the broadcast</h2>
+      <p>Choose <strong>Go live</strong> in Plan. The desk has three parts:</p>
+      <ul>
+        <li><strong>The graphics list</strong>, in the order set in Plan → Templates, each with its
+          number.</li>
+        <li><strong>The draft</strong> of the chosen graphic: class, runner, control, page and its
+          text fields. Empty fields say what will go on air and where it comes from.</li>
+        <li><strong>Preview</strong> and <strong>Program</strong> monitors. Preview shows the draft
+          and never affects the output; Program is what's on air.</li>
+      </ul>
+      <h3>Prepare, then send</h3>
+      <ol>
+        <li>Choose a graphic (click it, or press its number).</li>
+        <li>Fill in its fields, or recall a favourite.</li>
+        <li>Check it in Preview.</li>
+        <li><kbd>Space</kbd> shows it. <kbd>U</kbd> sends changes to the graphic on air.
+          <kbd>Space</kbd> again hides it.</li>
+      </ol>
+      <p>Showing a graphic takes clashing graphics off air: a results table removes a lower third,
+        but the clock stays.</p>
+      <h3>Keyboard shortcuts</h3>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Key</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>Space</kbd></td><td>Show / hide the selected graphic</td></tr>
+          <tr><td><kbd>U</kbd></td><td>Update the graphic on air with the draft</td></tr>
+          <tr><td><kbd>H</kbd></td><td>Hide the last graphic shown</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Freeze / resume the running time on air</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Hide all (in a field: leave the field)</td></tr>
+          <tr><td><kbd>←</kbd> / <kbd>→</kbd></td><td>Previous / next page on Program</td></tr>
+          <tr><td><kbd>0</kbd>–<kbd>9</kbd></td><td>Choose a graphic by its number</td></tr>
+          <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Choose a graphic in the list</td></tr>
+          <tr><td><kbd>F</kbd></td><td>Save the draft as a favourite</td></tr>
+          <tr><td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd></td><td>Command palette (also from a field)</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Single keys never fire while you type in a field or in the palette.</p>
+      <h3>Live data</h3>
+      <p>Graphics on air follow new results as they arrive. Results tables and the podium hold
+        their data until you press <kbd>U</kbd>, so a table doesn't jump while it is on screen.
+        The data status on the desk shows when the source was last read.</p>
+      <h3>Freeze the running time</h3>
+      <p>When you see a runner pass a control on video, press <kbd>T</kbd>. Live split (with a
+        runner) and Runner focus stop their clock at that moment. The official time replaces it
+        as soon as the timing data has the runner. Press <kbd>T</kbd> again to let the clock run.</p>
+      <h3>Favourites</h3>
+      <p>Press <kbd>F</kbd> to save the current draft as a favourite (F1, F2…). Recalling a
+        favourite only prepares it; <kbd>Space</kbd> sends it.</p>
+      <h3>Monitors</h3>
+      <p>Program and Preview can sit in the desk, in their own windows (<strong>Pop out</strong>),
+        or together on another screen.</p>
+      <h3>End Live</h3>
+      <p><strong>End Live</strong> returns to Plan. NDI turns off; the web output page stays
+        available.</p>
+
+      <!-- 8 -->
+      <h2 id="palette">8. Command palette</h2>
+      <p>Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd> and type a graphic number and its
+        parameters, separated by spaces:</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>Means</th></tr></thead>
+        <tbody>
+          <tr><td><code>2 3 105</code></td><td>Runner identity, class 3, bib 105</td></tr>
+          <tr><td><code>1 3 F</code></td><td>Live split, class 3, at the finish</td></tr>
+          <tr><td><code>1 3 45</code></td><td>Live split, class 3, radio control 45</td></tr>
+          <tr><td><code>2 F1</code></td><td>Runner identity, favourite F1</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <ul>
+        <li>A hint line shows the whole command for the chosen graphic and what each part accepts.</li>
+        <li><kbd>Enter</kbd> loads the command into the draft; it never goes on air by itself.
+          Press <kbd>Space</kbd> to show it.</li>
+        <li>Recent commands are listed first; every graphic that went on air is added, however it
+          was shown.</li>
+        <li>Virtual bibs are found by their number alone: <code>105</code> finds V105.</li>
+      </ul>
+      <p>Command numbers are the same in every event and set in <strong>Settings → Controls</strong>.</p>
+
+      <!-- 9 -->
+      <h2 id="graphics">9. The graphics</h2>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Graphic</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td>Race title</td><td>Series, race name, place and date, with the event logo.</td></tr>
+          <tr><td>Live split</td><td>The latest runners through a radio control or the finish, live.</td></tr>
+          <tr><td>Runner identity</td><td>Name, club or flag, and a line of detail.</td></tr>
+          <tr><td>Runner focus</td><td>One runner with a running clock, from the start or at a control.</td></tr>
+          <tr><td>Results table</td><td>Results of a class at the finish or a control, page by page, with position changes.</td></tr>
+          <tr><td>Runner split comparison</td><td>One runner's splits against the leader.</td></tr>
+          <tr><td>Start list</td><td>A class's start list, page by page.</td></tr>
+          <tr><td>Start group</td><td>The next starters; follows the start list automatically.</td></tr>
+          <tr><td>Position history</td><td>A chart of positions at each control.</td></tr>
+          <tr><td>Podium / flowers</td><td>The top three of a class.</td></tr>
+          <tr><td>Course parameters</td><td>Length, climb, controls, winning time.</td></tr>
+          <tr><td>Weather</td><td>Current conditions at the venue, refreshed while on air.</td></tr>
+          <tr><td>Identity plate</td><td>Free text with an optional title.</td></tr>
+          <tr><td>Commentators / speaker</td><td>Names of the commentators.</td></tr>
+          <tr><td>Elapsed timer</td><td>A running clock.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Every graphic exists in all seven looks: <strong>IOF</strong>, <strong>ČO</strong>,
+        <strong>Classic</strong>, <strong>Standard</strong>, <strong>Bold</strong>,
+        <strong>Brutal</strong> and <strong>Signal</strong>. Browse them in
+        <strong>Graphics library</strong>.</p>
+      <p>The graphics are standard <a href="https://ograf.ebu.io">EBU OGraf</a> packages, so
+        third-party OGraf graphics load too.</p>
+
+      <!-- 10 -->
+      <h2 id="director">10. Director page</h2>
+      <p>A page for the director on any phone, tablet or computer on the same network. Open it
+        from <strong>Director page</strong> on the Live desk, or go to:</p>
+      <pre><code>http://&lt;computer&gt;:5657/director</code></pre>
+      <ul>
+        <li>Choose the classes to follow. The next starters are listed, favourites starred.</li>
+        <li>Sounds for favourites, each on or off: a <strong>heads-up</strong> (45 s before the
+          start by default), <strong>start imminent</strong> (10 s) and <strong>start beeps</strong>.</li>
+        <li>Sound starts off, because browsers only play sound after a click. Choose <strong>Sound off</strong> to turn it on.</li>
+      </ul>
+
+      <!-- 11 -->
+      <h2 id="remote">11. Stream Deck and remote control</h2>
+      <h3>Bitfocus Companion</h3>
+      <p>Split Control comes with a module for <a href="https://bitfocus.io/companion">Bitfocus
+        Companion</a>. It turns your favourites into Stream Deck buttons, next to Show, Update,
+        Hide and Hide all, with on-air feedback.</p>
+      <ol>
+        <li>Open <strong>Settings → Controls</strong> (or the keyboard shortcuts list in Plan or Live) and choose <strong>Show Companion module</strong>. This shows the module file that comes with the app.</li>
+        <li>Load the module into Companion (its developer-module import).</li>
+        <li>Enter Live in Split Control, then add the connection in Companion with Split Control's
+          host and port.</li>
+      </ol>
+      <h3>HTTP control</h3>
+      <p>Any device that can send an HTTP request can drive the desk, e.g. Companion's
+        <strong>Generic HTTP</strong>. All actions work with GET and POST:</p>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td><code>/api/control/show</code> · <code>/update</code> · <code>/hide</code> · <code>/hide-all</code></td><td>Like the desk buttons</td></tr>
+          <tr><td><code>/api/control/page/next</code> · <code>/page/previous</code></td><td>Page the table on air</td></tr>
+          <tr><td><code>/api/control/favorites</code></td><td>The favourites, with links to prepare or show each</td></tr>
+          <tr><td><code>/api/control/tally/&lt;graphic&gt;</code></td><td>Whether a graphic is on air</td></tr>
+          <tr><td><code>/api/control/state</code></td><td>Everything on air and prepared</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Split Control also speaks the <a href="https://github.com/ebu/ograf">EBU OGraf Server API v1</a>
+        at <code>http://&lt;computer&gt;:5657/ograf/v1</code>.</p>
+      <p class="tip"><strong>Trusted networks only.</strong> The director page and control APIs have
+        no password. Use them on your production network, not on public Wi-Fi.</p>
+
+      <!-- 12 -->
+      <h2 id="settings">12. Settings</h2>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td><strong>General</strong></td><td>App language, graphics resolution, log detail, network ports.</td></tr>
+          <tr><td><strong>Output defaults</strong></td><td>Web output and NDI defaults: source name, frame rate, colour format.</td></tr>
+          <tr><td><strong>Controls</strong></td><td>Command numbers for the palette and the key list.</td></tr>
+          <tr><td><strong>Data sources</strong></td><td>Timing connections used by events.</td></tr>
+          <tr><td><strong>Club names</strong></td><td>Short names on air, for every event.</td></tr>
+          <tr><td><strong>Storage</strong></td><td>Where events and logs are kept; diagnostics.</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Ports and resolution need an app restart.</p>
+      <p>Events and settings are stored in the app data folder:
+        <code>%APPDATA%\OL-Grafik</code> on Windows,
+        <code>~/Library/Application Support/OL-Grafik</code> on macOS. It keeps its old name so
+        existing events survive the rename.</p>
+
+      <!-- 13 -->
+      <h2 id="rehearse">13. Rehearse with a replay</h2>
+      <p>Any finished race on Liveresultat can be replayed as if it were live, faster than real
+        time: runners start, radio controls come in, results update. Use it to train operators
+        or try a new look with real data.</p>
+      <p>The replay tool runs from the source code with Node.js. See
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/REPLAY-A-RACE.md">Replay
+        a race</a> for the steps.</p>
+
+      <!-- 14 -->
+      <h2 id="checklist">14. Race-day checklist</h2>
+      <ol>
+        <li>Open the event and run <strong>Final check</strong>. Test the data connection.</li>
+        <li><strong>Refresh from event source</strong> in Start lists for late entries.</li>
+        <li>Go live. Check that the outputs are on.</li>
+        <li>Put the test pattern on air and check keying and framing in your production. Clear it.</li>
+        <li>Show the Race title and a Start list to check the look and logos on Program.</li>
+        <li>Open the director page on the director's device and choose the classes.</li>
+        <li>Check the data status on the desk while the first radio controls come in.</li>
+      </ol>
+      <p>Something not working? See the <a href="faq.html">FAQ</a> or
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/issues">report a problem</a>.</p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>Split Control (formerly OL-Grafik) is open source.</span>
+      <span>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">Source code</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/issues">Report a problem</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/releases">All releases</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>
