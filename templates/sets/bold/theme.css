@@ -188,7 +188,10 @@
 @keyframes bt-band { from { transform: scaleX(0); } to { transform: none; } }
 @keyframes bt-band-out { from { transform: none; } to { transform: scaleX(0); transform-origin: 100% 50%; } }
 @keyframes bt-stripe { from { transform: scaleY(0); } to { transform: none; } }
-@keyframes bt-up { from { transform: translateY(110%); } to { transform: none; } }
+/* Texts rise from below their row's mask. At least 130 px: cells sit on a shared baseline and
+   are only as tall as their text, so 110 % of their own height would start them inside the row
+   (visible before the animation, accents peeking above it). 130 px clears the tallest bar. */
+@keyframes bt-up { from { transform: translateY(max(110%, 130px)); } to { transform: none; } }
 @keyframes bt-down { from { transform: none; opacity: 1; } to { transform: translateY(-110%); opacity: 0; } }
 
 .gfx[data-state="in"] .panel::before { animation: bt-band 620ms var(--bt-ease) both; }

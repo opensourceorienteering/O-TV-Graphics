@@ -174,6 +174,20 @@ function orderedResults(data) {
   return { ranked, other, all: [...ranked, ...other] };
 }
 
+/** The table at the start: every runner with a start time, in start order, showing the start time */
+const atStart = (data) => /^(s|start)$/i.test(String(data?.controlCode ?? '').trim());
+function startOrder(data) {
+  const tz = data?.competitionTimeZone;
+  const list = (Array.isArray(data?.results) ? data.results : [])
+    .filter(r => r.startTimeMs || r.startTime || r.time)
+    .slice()
+    .sort((a, b) => (a.startTimeMs ?? 0) - (b.startTimeMs ?? 0));
+  // Runners are still "running" at the start: show them as plain rows with their start time
+  const all = list.map(r => ({ ...r, statusCode: 0, position: '', diff: '',
+    time: r.startTimeMs ? timeOfDay(r.startTimeMs, tz) : (r.startTime || r.time) }));
+  return { ranked: [], other: [], all };
+}
+
 function paginate(rows, perPage, step) {
   const pages = Math.max(1, Math.ceil(rows.length / perPage));
   const page = Math.min(Math.max(1, step), pages);
@@ -189,7 +203,8 @@ function emptyRow(text) {
 const views = {
   /** Full results / standings table at finish or a control, paged */
   results(data, ctx) {
-    const { all, ranked } = orderedResults(data);
+    // At the start no one is ranked yet (all are running): list the starters instead of nothing
+    const { all, ranked } = atStart(data) ? startOrder(data) : orderedResults(data);
     const per = int(data.rowsPerPage, ctx.rowsPerPage ?? 10);
     const { pages, page, slice } = paginate(all, per, ctx.step);
     const leaderTime = ranked[0];
