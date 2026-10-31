@@ -1,5 +1,4 @@
-import { CLASSIC_MODERN_CSS } from '../modern.js';
-import { eventLogoHtml, updateEventLogo } from '../../_core/util.js';
+import { CLASSIC_MODERN_CSS, classicHeadingHtml, updateClassicHeading, fitClassicHeading } from '../modern.js';
 import { broadcastControlLabel } from '../../_core/labels.js';
 import { livePatch, FLASH_CSS, applyThemeColors } from '../../_core/live.js';
 
@@ -286,6 +285,7 @@ export default class SplitTimeLowerThird extends HTMLElement {
       return;
     }
     runnersContainer.innerHTML = this.renderRunners();
+    updateClassicHeading(this.shadowRoot, this.data);
 
     // Re-apply visible classes to maintain animation state
     const container = this.shadowRoot.querySelector('.container');
@@ -647,10 +647,8 @@ export default class SplitTimeLowerThird extends HTMLElement {
       <div class="container">
         <div class="graphic">
           <div class="header">
-            <div class="logo">
-              ${eventLogoHtml(this.data)}
-            </div>
-            <p>${className} - ${controlName}</p>
+            <!-- No event logo: in a runner graphic it could be read as a runner's club logo -->
+            ${classicHeadingHtml(this.data)}
           </div>
           <div class="runners-container">
             ${this.renderRunners()}
@@ -658,6 +656,7 @@ export default class SplitTimeLowerThird extends HTMLElement {
         </div>
       </div>
     `;
+    fitClassicHeading(this.shadowRoot);
   }
 
   /**

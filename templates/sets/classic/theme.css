@@ -51,18 +51,23 @@
 .panel { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: #fff; color: var(--text); }
 .panel--clock { overflow: visible; background: transparent; box-shadow: none; }
 
-/* header: logo box left, title right-aligned */
+/* header: title left-aligned, the logo box at the right end (flush with the edge) */
 .hdr-mark, .ftr-mark { display: none; }
 .hdr {
   background: var(--red); color: #fff; font-weight: 700; font-size: 32px; letter-spacing: -.01em;
-  height: 76px; padding: 0 26px 0 0; gap: 14px; justify-content: flex-end;
+  height: 76px; padding: 0 26px; gap: 14px; justify-content: flex-start;
 }
-.hdr-logo { order: -1; margin-right: auto; background: #fff; min-width: 96px; height: 100%; padding: 0 22px; }
+.hdr-logo { order: 99; margin-left: auto; margin-right: -26px; background: #fff; min-width: 96px; height: 100%; padding: 0 22px; }
 .hdr-logo img { width: 46px; height: 46px; }
 .hdr-logo--empty { display: none; }
 .hdr-sub { font-weight: 600; opacity: .92; }
 .hdr-title::after { content: " –"; }
-.hdr:not(:has(.hdr-sub)) .hdr-title::after { content: none; }
+.hdr:not(:has(.hdr-sub)) .hdr-title::after, .hdr--timing .hdr-title::after { content: none; }
+/* runner split comparison: the runner's name only */
+.panel--splits .hdr-sub { display: none; }
+.panel--splits .hdr-title::after { content: none; }
+/* the start countdown sits at the header's right end, like the logo */
+.hdr-clock { margin-left: auto; margin-right: -26px; }
 .ftr { display: none; }
 .panel--table .ftr:has(.ftr-page) { display: flex; color: var(--muted); justify-content: flex-end; padding: 8px 18px; font-size: 20px; font-weight: 700; }
 .panel--table .ftr .ftr-label, .panel--table .ftr .ftr-logo { display: none; }

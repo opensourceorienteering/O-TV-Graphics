@@ -1,5 +1,4 @@
-import { CLASSIC_MODERN_CSS } from '../modern.js';
-import { eventLogoHtml, updateEventLogo } from '../../_core/util.js';
+import { CLASSIC_MODERN_CSS, classicHeadingHtml, updateClassicHeading, fitClassicHeading } from '../modern.js';
 import { broadcastControlLabel } from '../../_core/labels.js';
 import { livePatch, FLASH_CSS, applyThemeColors } from '../../_core/live.js';
 
@@ -1150,9 +1149,7 @@ export default class SplitTimeLowerThirdRunner extends HTMLElement {
    * This preserves animation state (visible classes) during live timing updates
    */
   updateRunnersDisplay() {
-    updateEventLogo(this.shadowRoot, this.data);
-    const heading = this.shadowRoot.querySelector('.header p');
-    if (heading) heading.textContent = `${this.data.className || ''} - ${broadcastControlLabel(this.data)}`;
+    updateClassicHeading(this.shadowRoot, this.data);
     console.log('[SplitTimeLowerThirdRunner] Updating runners display (preserving animation state)', {
       displayRunnersLength: this.displayRunners?.length || 0
     });
@@ -1403,10 +1400,8 @@ export default class SplitTimeLowerThirdRunner extends HTMLElement {
       <div class="container">
         <div class="graphic">
           <div class="header">
-            <div class="logo">
-              ${eventLogoHtml(this.data)}
-            </div>
-            <p>${className} - ${controlName}</p>
+            <!-- No event logo: in a runner graphic it could be read as a runner's club logo -->
+            ${classicHeadingHtml(this.data)}
           </div>
           <div class="runners-container">
             ${this.renderRunners()}
@@ -1414,6 +1409,7 @@ export default class SplitTimeLowerThirdRunner extends HTMLElement {
         </div>
       </div>
     `;
+    fitClassicHeading(this.shadowRoot);
   }
 
   /**

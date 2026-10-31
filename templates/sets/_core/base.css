@@ -47,6 +47,24 @@
 .hdr-logo, .ftr-logo, .clk-logo, .title-logo { display: flex; align-items: center; justify-content: center; }
 .hdr-logo img, .ftr-logo img, .clk-logo img, .title-logo img { max-height: 100%; max-width: 100%; object-fit: contain; }
 .hdr-logo--empty, .ftr-logo--empty, .clk-logo--empty, .title-logo--empty { display: none; }
+/* The event logo shows at most once per graphic, as in the IOF set: tables carry it in the
+   header, so a paged table's footer (page 1/2) never repeats it */
+.panel--table .ftr-logo { display: none; }
+/* A logo box never gives way to a long title: the header texts shrink and get the ellipsis */
+.hdr-logo, .ftr-logo { flex-shrink: 0; }
+.panel--table :is(.hdr-title, .hdr-sub) { min-width: 0; }
+.panel--table .hdr-sub { text-overflow: ellipsis; }
+/* At most 56 px tall in headers and footers (at least 42 px, see graphic.js); the race title
+   card keeps its large logo */
+.gfx :is(.hdr-logo, .ftr-logo) img { max-height: min(100%, 56px); }
+/* Where the event logo appears: the start list and results (in the header) and the race
+   title card (its own logo box). Nowhere else, so it is never read as a runner's or a
+   person's club logo and never crowds a lower third. */
+.gfx:not(.gfx--results, .gfx--start-list) :is(.hdr-logo, .ftr-logo) { display: none; }
+/* Too small to read (graphic.js, MIN_LOGO_PX) */
+.logo--too-small { display: none !important; }
+/* Runners without a bib: keep the column, but no empty bib box */
+.c-bib:empty { visibility: hidden; }
 /* logos sit straight on the graphic with their own transparency; Settings can put one on the white plate */
 :is(.hdr-logo, .ftr-logo, .clk-logo, .title-logo):has(> img[data-clear]) {
   background: transparent !important; border-color: transparent !important; box-shadow: none !important; outline: 0 !important;
@@ -92,6 +110,11 @@
 :is(.panel--table, .panel--lower:not(.panel--strap)) > .rows:has(> .row > .c-change) { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
 .panel--startlist > .rows { grid-template-columns: auto auto minmax(0, 1fr) auto; }
 .panel--startgroup > .rows { grid-template-columns: auto minmax(0, 1fr) auto; }
+/* No bibs in the list: the bib column is left out */
+.panel--startlist.no-bibs > .rows { grid-template-columns: auto minmax(0, 1fr) auto; }
+.panel--startgroup.no-bibs > .rows { grid-template-columns: minmax(0, 1fr) auto; }
+/* the name is then the first cell: it gets the inset the bib cell gave the row */
+.gfx .panel--startgroup.no-bibs > .rows > .row > .c-name:first-child { padding-left: 24px; }
 .panel--splits > .rows { grid-template-columns: minmax(0, 1fr) auto auto auto; }
 :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
 :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row--empty > .c-name { grid-column: 1 / -1; }
@@ -132,10 +155,22 @@
  * the box while long text still ends in an ellipsis and nothing moves. Sets that pack text
  * tightly (display fonts) may raise the margin in their theme.
  */
-.gfx :is(.c-name, .c-label, .c-text, .hdr-title, .ftr-label, .id-club) {
+.gfx :is(.c-name, .c-label, .c-text, .hdr-title, .ftr-label, .id-club),
+.gfx .panel--table .hdr-sub {
   overflow: clip;
   overflow-clip-margin: .3em;
 }
+
+/* Timing point (IOF, ČO, Classic): long form, or the short "M2" when it does not fit
+   (fitTimingPoints in labels.js). Class left, timing point right. */
+.tp-short { display: none; }
+.tp.is-short .tp-full { display: none; }
+.tp.is-short .tp-short { display: inline; }
+.panel .hdr.hdr--timing { justify-content: flex-start; }
+.panel .hdr.hdr--timing .hdr-title { order: 0; flex: 0 1 auto; min-width: 0; }
+.panel .hdr.hdr--timing .hdr-sub { order: 1; margin-left: auto; margin-right: 0; flex: 0 0 auto; text-align: right; }
+.panel .hdr.hdr--timing .hdr-logo { order: 2; margin-left: 0; }
+.ftr-tp { margin-left: auto; flex: 0 0 auto; white-space: nowrap; }
 
 /* --- title card --------------------------------------------------------------------- */
 .title-body { display: flex; align-items: stretch; }

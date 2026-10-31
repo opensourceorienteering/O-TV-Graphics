@@ -1,12 +1,58 @@
 /** Event label overrides. 'set' preserves the graphic family's original wording. */
 const labels = {
-  en: { noResults: 'No results yet', standingsAt: 'Standings at', noStarters: 'No start list', startList: 'Start list', noSplits: 'No split times yet', finishShort: 'F', positionHistory: 'Position history', podium: 'Podium', start: 'Start', length: 'Length', climb: 'Climb', controls: 'Controls', winningTime: 'Winning time', startInterval: 'Start interval', course: 'Course', condition: 'Conditions', temperature: 'Temperature', wind: 'Wind', humidity: 'Humidity', weather: 'Weather', commentators: 'Commentators', split: 'Split', control: 'Control', toSplit: 'To split', toFinish: 'To finish', finish: 'Finish' },
-  sv: { noResults: 'Inga resultat ännu', standingsAt: 'Ställning vid', noStarters: 'Ingen startlista', startList: 'Startlista', noSplits: 'Inga mellantider ännu', finishShort: 'M', positionHistory: 'Positionsutveckling', podium: 'Prispall', start: 'Start', length: 'Längd', climb: 'Stigning', controls: 'Kontroller', winningTime: 'Segrartid', startInterval: 'Startintervall', course: 'Bana', condition: 'Förhållanden', temperature: 'Temperatur', wind: 'Vind', humidity: 'Luftfuktighet', weather: 'Väder', commentators: 'Kommentatorer', split: 'Mellantid', control: 'Kontroll', toSplit: 'Mot mellantid', toFinish: 'Mot mål', finish: 'Mål' },
-  nb: { noResults: 'Ingen resultater ennå', standingsAt: 'Stilling ved', noStarters: 'Ingen startliste', startList: 'Startliste', noSplits: 'Ingen mellomtider ennå', finishShort: 'M', positionHistory: 'Plasseringsutvikling', podium: 'Seierspall', start: 'Start', length: 'Lengde', climb: 'Stigning', controls: 'Poster', winningTime: 'Vinnertid', startInterval: 'Startintervall', course: 'Løype', condition: 'Forhold', temperature: 'Temperatur', wind: 'Vind', humidity: 'Luftfuktighet', weather: 'Vær', commentators: 'Kommentatorer', split: 'Mellomtid', control: 'Post', toSplit: 'Mot mellomtid', toFinish: 'Mot mål', finish: 'Mål' },
-  cs: { noResults: 'Zatím bez výsledků', standingsAt: 'Pořadí na', noStarters: 'Bez startovní listiny', startList: 'Startovní listina', noSplits: 'Zatím bez mezičasů', finishShort: 'C', positionHistory: 'Vývoj pořadí', podium: 'Stupně vítězů', start: 'Start', length: 'Délka', climb: 'Převýšení', controls: 'Kontroly', winningTime: 'Čas vítěze', startInterval: 'Startovní interval', course: 'Trať', condition: 'Podmínky', temperature: 'Teplota', wind: 'Vítr', humidity: 'Vlhkost', weather: 'Počasí', commentators: 'Komentátoři', split: 'Mezičas', control: 'Kontrola', toSplit: 'Na mezičas', toFinish: 'Do cíle', finish: 'Cíl' }
+  en: { splitShort: 'Split {n}', noResults: 'No results yet', standingsAt: 'Standings at', noStarters: 'No start list', startList: 'Start list', noSplits: 'No split times yet', finishShort: 'F', positionHistory: 'Position history', podium: 'Podium', start: 'Start', length: 'Length', climb: 'Climb', controls: 'Controls', winningTime: 'Winning time', startInterval: 'Start interval', course: 'Course', condition: 'Conditions', temperature: 'Temperature', wind: 'Wind', humidity: 'Humidity', weather: 'Weather', commentators: 'Commentators', split: 'Split', control: 'Control', toSplit: 'To split', toFinish: 'To finish', finish: 'Finish' },
+  sv: { splitShort: 'M{n}', noResults: 'Inga resultat ännu', standingsAt: 'Ställning vid', noStarters: 'Ingen startlista', startList: 'Startlista', noSplits: 'Inga mellantider ännu', finishShort: 'M', positionHistory: 'Positionsutveckling', podium: 'Prispall', start: 'Start', length: 'Längd', climb: 'Stigning', controls: 'Kontroller', winningTime: 'Segrartid', startInterval: 'Startintervall', course: 'Bana', condition: 'Förhållanden', temperature: 'Temperatur', wind: 'Vind', humidity: 'Luftfuktighet', weather: 'Väder', commentators: 'Kommentatorer', split: 'Mellantid', control: 'Kontroll', toSplit: 'Mot mellantid', toFinish: 'Mot mål', finish: 'Mål' },
+  nb: { splitShort: 'M{n}', noResults: 'Ingen resultater ennå', standingsAt: 'Stilling ved', noStarters: 'Ingen startliste', startList: 'Startliste', noSplits: 'Ingen mellomtider ennå', finishShort: 'M', positionHistory: 'Plasseringsutvikling', podium: 'Seierspall', start: 'Start', length: 'Lengde', climb: 'Stigning', controls: 'Poster', winningTime: 'Vinnertid', startInterval: 'Startintervall', course: 'Løype', condition: 'Forhold', temperature: 'Temperatur', wind: 'Vind', humidity: 'Luftfuktighet', weather: 'Vær', commentators: 'Kommentatorer', split: 'Mellomtid', control: 'Post', toSplit: 'Mot mellomtid', toFinish: 'Mot mål', finish: 'Mål' },
+  cs: { splitShort: 'M{n}', noResults: 'Zatím bez výsledků', standingsAt: 'Pořadí na', noStarters: 'Bez startovní listiny', startList: 'Startovní listina', noSplits: 'Zatím bez mezičasů', finishShort: 'C', positionHistory: 'Vývoj pořadí', podium: 'Stupně vítězů', start: 'Start', length: 'Délka', climb: 'Převýšení', controls: 'Kontroly', winningTime: 'Čas vítěze', startInterval: 'Startovní interval', course: 'Trať', condition: 'Podmínky', temperature: 'Teplota', wind: 'Vítr', humidity: 'Vlhkost', weather: 'Počasí', commentators: 'Komentátoři', split: 'Mezičas', control: 'Kontrola', toSplit: 'Na mezičas', toFinish: 'Do cíle', finish: 'Cíl' }
 };
 export function eventLabels(language, defaults = {}) {
   return { ...defaults, ...(labels[language] || {}) };
+}
+
+/**
+ * The timing point a graphic shows, for the class / timing point header of the IOF, ČO and
+ * Classic sets: "Mellantid 2 Önnestad" (short "M2"; English "Split 2 Önnestad" / "Split 2").
+ * Start and finish carry only their name. `words` are the graphic's labels (split, splitShort,
+ * control, finish). Control names come from the data, renamed in Plan → Radio controls.
+ */
+export function timingPoint(data, words = {}) {
+  // labels the language lacks (undefined) keep the English defaults
+  const w = { split: 'Split', splitShort: 'Split {n}', control: 'Control', finish: '',
+    ...Object.fromEntries(Object.entries(words).filter(([, v]) => v != null && v !== '')) };
+  const code = String(data?.controlCode ?? '').trim();
+  const controls = Array.isArray(data?.splitControls) ? data.splitControls : [];
+  const idx = controls.findIndex(c => String(c.code) === code);
+  if (!code || /^(f|finish|1000)$/i.test(code) || idx < 0) {
+    const name = !code || /^(f|finish|1000)$/i.test(code) ? (w.finish || broadcastControlLabel(data)) : broadcastControlLabel(data);
+    return { full: name, short: name, split: false };
+  }
+  const c = controls[idx];
+  const raw = String(c.name ?? '').trim();
+  // LiveResults names radio controls "[110] Radio 2"; a bare number becomes "Control 62"
+  const name = !raw || /^\d+$/.test(raw) ? `${w.control} ${raw || Number(c.code) % 1000}` : raw;
+  const n = idx + 1;
+  // A control named only by its split number ("Split 2", "Mellantid 2": Plan → Radio controls,
+  // automatic names) shows the number once: "Mellantid 2", not "Mellantid 2 Split 2"
+  const numberOnly = /^(split|mellantid|mellomtid|mezičas|m|s)\s*\d+$/i.test(name);
+  return { full: numberOnly ? `${w.split} ${n}` : `${w.split} ${n} ${name}`, short: w.splitShort.replace('{n}', n), split: true };
+}
+
+/** Markup for a timing point: both forms; fitTimingPoints() shows the short one when needed */
+export function timingPointHtml(tp, esc) {
+  return `<span class="tp${tp.split ? ' tp--split' : ''}"><span class="tp-full">${esc(tp.full)}</span>` +
+    `<span class="tp-short">${esc(tp.short)}</span></span>`;
+}
+
+/** Show the short form ("M2") where the long one makes its header or footer overflow */
+export function fitTimingPoints(root) {
+  for (const tp of root.querySelectorAll('.tp')) {
+    tp.classList.remove('is-short');
+    const bar = tp.closest('.hdr, .ftr, .header') || tp.parentElement;
+    if (!bar) continue;
+    // the class name keeps its room first: shorten the timing point before the class gets "…"
+    const cut = (el) => el.scrollWidth > el.clientWidth + 1;
+    if (cut(bar) || [...bar.querySelectorAll('.hdr-title, .ftr-label, .h-class')].some(cut)) tp.classList.add('is-short');
+  }
 }
 
 export function broadcastControlLabel(data) {

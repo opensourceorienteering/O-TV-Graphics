@@ -119,6 +119,18 @@ describe('shared views (templates/sets/_core)', () => {
     { position: '', name: 'Still Running', club: 'EST', time: '', diff: '', statusCode: 9 }
   ];
 
+  it('words the timing point as "Mellantid 2 <name>" with a short "M2", start and finish by name', async () => {
+    const { timingPoint } = await import('../../../../templates/sets/_core/labels.js');
+    const sv = { split: 'Mellantid', splitShort: 'M{n}', control: 'Kontroll', finish: 'Mål' };
+    const data = { controlCode: '1136', splitControls: [{ code: 1110, name: 'Åsen' }, { code: 1136, name: 'Önnestad' }] };
+    expect(timingPoint(data, sv)).toEqual({ full: 'Mellantid 2 Önnestad', short: 'M2', split: true });
+    expect(timingPoint({ ...data, controlCode: '' }, sv)).toMatchObject({ full: 'Mål', split: false });
+    expect(timingPoint({ ...data, splitControls: [{ code: 1136, name: '36' }] }, sv).full).toBe('Mellantid 1 Kontroll 36');
+    expect(timingPoint(data, {})).toMatchObject({ full: 'Split 2 Önnestad', short: 'Split 2' });
+    // automatic names (Plan → Radio controls) are only a split number: shown once
+    expect(timingPoint({ ...data, splitControls: [{ code: 1110, name: 'x' }, { code: 1136, name: 'Mellantid 2' }] }, sv).full).toBe('Mellantid 2');
+  });
+
   it('uses Swedish and Norwegian broadcast wording independently of the look', () => {
     for (const language of ['sv', 'nb']) {
       const data = { className: 'H21', controlName: 'Finish', presentation: { language }, results: [] };

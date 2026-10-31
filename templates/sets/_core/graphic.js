@@ -17,6 +17,7 @@ import { renderView } from './views.js';
 import { clock, now, timeOfDay } from './util.js';
 import { livePatch, imagesReady } from './live.js';
 import { fitLowerThird } from './fit.js';
+import { fitTimingPoints } from './labels.js';
 
 const loadedFonts = new Set();
 
@@ -65,6 +66,28 @@ function clockShape(text, mode) {
   if ((mode === 'elapsed' || mode === 'run') && /^\+?00:00$/.test(shape)) shape = shape.replace('00:00', '0:00:00');
   return shape;
 }
+/**
+ * The event logo is left out where it would be drawn smaller than MIN_LOGO_PX (design pixels,
+ * at 1920x1080) on its shorter side: a smaller logo can't be read on air. Measured on the
+ * drawn image (object-fit: contain), so wide and tall logos are judged by what is visible.
+ * Runs again when the image loads; the set's own layout decides the space each slot has.
+ */
+export const MIN_LOGO_PX = 42;
+function fitLogos(root) {
+  for (const box of root.querySelectorAll('.hdr-logo, .ftr-logo, .clk-logo, .title-logo')) {
+    const img = box.querySelector('img');
+    if (!img) continue;
+    box.classList.remove('logo--too-small');
+    // not loaded yet (measured again on load), or hidden by the set
+    if (!img.complete || !img.naturalWidth || !img.naturalHeight) continue;
+    const w = img.clientWidth, h = img.clientHeight;
+    if (!w || !h) continue;
+    const scale = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+    const shorter = Math.min(img.naturalWidth * scale, img.naturalHeight * scale);
+    box.classList.toggle('logo--too-small', shorter < MIN_LOGO_PX);
+  }
+}
+
 // a web font that finishes loading changes every measurement: measure again once
 let fontEpoch = 0;
 document.fonts?.addEventListener?.('loadingdone', () => { fontEpoch++; });
@@ -125,7 +148,7 @@ export function createGraphic(kind, set) {
       this.resizeObserver = new ResizeObserver(() => this.fit());
       this.resizeObserver.observe(this);
       // Lower thirds fit their text again when a font or a logo changes the measurements
-      this.refit = () => fitLowerThird(this.root);
+      this.refit = () => { fitLogos(this.root); fitTimingPoints(this.root); fitLowerThird(this.root); };
       this.root.addEventListener('load', this.refit, true);
       document.fonts?.addEventListener?.('loadingdone', this.refit);
       this.render();
@@ -165,6 +188,9 @@ export function createGraphic(kind, set) {
       const code = String(this.data?.controlCode ?? '').trim();
       this.root.classList.toggle('is-finish', !code || /^(f|finish|1000)$/i.test(code));
       this.tick();
+      // logos first: a hidden logo frees room the lower-third text fitting can use
+      fitLogos(this.root);
+      fitTimingPoints(this.root);
       fitLowerThird(this.root);
     }
 

@@ -225,3 +225,22 @@
 /* Anton's capitals fill the whole line, so accents (Å, Ä, Ö, Ø, Æ) sit above the line box.
    Boxes that clip for their ellipsis get room above and below, without moving the layout. */
 .c-name, .hdr-title, .panel--splits .c-label, .id-club { padding-block: .24em; margin-block: -.24em; }
+
+/* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
+   (graphic.js hides smaller logos) */
+.panel--table .hdr-logo { height: 58px; }
+
+/* --- one baseline ----------------------------------------------------------------------------
+   Anton (names, titles) and Oswald (labels, clubs, times) have very different font boxes, so
+   centring each cell put texts of a row or header at different heights. Texts now share one
+   baseline; the row's track is as tall as its content and centred in the row, so the line
+   still sits in the middle. The logo and filled boxes keep their own centring. */
+.gfx :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits, .panel--info) > .rows > .row { align-items: baseline; align-content: center; }
+.gfx :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits, .panel--info) > .rows > .row > * { align-self: baseline !important; }
+.gfx .hdr { align-items: baseline; padding-top: 16px; padding-bottom: 14px; }
+.gfx .hdr > .hdr-logo { align-self: center; }
+/* Runner and person straps (one flex row): texts on one baseline too; the height now comes from
+   padding (was min-height 112 px), and the bib box still fills the full height */
+.gfx .panel--strap .row { align-items: baseline; min-height: 0; padding-block: 22px; }
+.gfx .panel--strap .row > * { align-self: baseline !important; }
+.gfx .panel--strap .row > .c-place { align-self: stretch !important; margin-block: -22px; }

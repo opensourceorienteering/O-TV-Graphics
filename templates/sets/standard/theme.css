@@ -310,3 +310,7 @@
   .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
   .clk-label::before, .row.is-virtual .c-place:empty::after { animation: none; }
 }
+
+/* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
+   (graphic.js hides smaller logos) */
+.panel--table .hdr-logo { height: 58px; }

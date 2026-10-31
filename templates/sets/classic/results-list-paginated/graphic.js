@@ -1,4 +1,4 @@
-import { CLASSIC_MODERN_CSS } from '../modern.js';
+import { CLASSIC_MODERN_CSS, classicHeadingHtml, updateClassicHeading, fitClassicHeading } from '../modern.js';
 import { eventLogoHtml, updateEventLogo } from '../../_core/util.js';
 import { broadcastControlLabel } from '../../_core/labels.js';
 import { livePatch, FLASH_CSS, applyThemeColors } from '../../_core/live.js';
@@ -457,12 +457,13 @@ export default class ResultsListPaginated extends HTMLElement {
             <div class="logo">
               ${eventLogoHtml(this.data)}
             </div>
-            <p>${className} - ${controlName}</p>
+            ${classicHeadingHtml(this.data)}
           </div>
           <div class="runners-container"></div>
         </div>
       </div>
     `;
+    fitClassicHeading(this.shadowRoot);
   }
 
   /**
@@ -745,9 +746,7 @@ export default class ResultsListPaginated extends HTMLElement {
     // On air: never rebuild the graphic (no re-entry, logos stay); patch the rows in place
     if (this.currentStep > 0) {
       this.currentStep = Math.min(this.currentStep, this.totalSteps);
-      const p = this.shadowRoot.querySelector('.header p');
-      const label = `${this.data.className || ''} - ${broadcastControlLabel(this.data)}`;
-      if (p && p.textContent !== label) p.textContent = label;
+      updateClassicHeading(this.shadowRoot, this.data);
       if (this.animating) this.pendingUpdate = true;
       else this.renderRunners(this.currentStep, false, true);
       return { statusCode: 200, message: 'Update action completed', currentStep: this.currentStep, totalSteps: this.totalSteps };

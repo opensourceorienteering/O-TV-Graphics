@@ -43,6 +43,10 @@
 .hdr-sub { font-weight: 500; }
 .hdr-logo, .ftr-logo { margin-left: auto; align-self: stretch; background: #fff; width: 120px; padding: 6px 10px; }
 .hdr-logo--empty, .ftr-logo--empty { display: none; }
+/* The logo (or the start countdown) sits flush at the header's right end; without one the
+   header text needs its own right inset */
+.gfx:not(.gfx--results, .gfx--start-list) .hdr:not(:has(> .hdr-clock)),
+.hdr:not(:has(> .hdr-clock, > .hdr-logo:not(.hdr-logo--empty, .logo--too-small))) { padding-right: 20px; }
 .ftr-page { padding-right: 20px; font-weight: 500; }
 .panel--table .ftr:not(:has(.ftr-page)) { display: none; }
 .panel--table .ftr .ftr-label { visibility: hidden; }
@@ -69,7 +73,7 @@
 
 /* lower thirds: footer label + optional logo; highlighted runner outlined */
 .panel--lower .hdr { display: none; }
-.panel--lower .ftr { font-size: 30px; }
+.panel--lower .ftr { font-size: 30px; padding-right: 20px; }
 .panel--lower .row--hl { box-shadow: inset 0 0 0 4px var(--text); z-index: 1; }
 .panel--lower .row--hl .c-place:empty { background: var(--red); }
 .panel--runner .row--hl { box-shadow: none; min-height: 64px; font-size: 34px; }
@@ -127,7 +131,7 @@
 /* event ID card: blue series bar, white body with logos left and event info right */
 .panel--title .hdr { min-height: 60px; font-size: 32px; }
 .title-body { background: #fff; min-height: 170px; }
-.title-logo { width: 260px; padding: 20px; border-right: 2px solid var(--divider); }
+.title-logo { width: 190px; padding: 20px; border-right: 2px solid var(--divider); }
 .title-text { padding: 20px 32px; color: var(--text); }
 .title-main { font-size: 52px; font-weight: 800; line-height: 1.05; }
 .title-sub { font-size: 30px; font-weight: 700; margin-top: 10px; }

@@ -1,4 +1,4 @@
-import { eventLabels, weatherCondition } from './labels.js';
+import { eventLabels, weatherCondition, timingPoint, timingPointHtml } from './labels.js';
 /**
  * Views: data -> markup for every graphic kind. All sets share this markup; each set's
  * theme.css decides how it looks and animates. A view returns { html, steps }.
@@ -105,19 +105,28 @@ function leaderMs(data, leader) {
   return Number.isFinite(sec) ? sec * 1000 : NaN;
 }
 
+/** Does any runner have a (real) bib? Lists without bibs leave the bib column out */
+const hasBibs = (list) => list.some(r => String(r?.bib ?? '').trim() !== '');
+
 function logoBox(data, cls = 'brand') {
   const url = data?.presentation?.logoUrl;
   return url ? `<span class="${cls}">${eventLogoHtml(data)}</span>` : `<span class="${cls} ${cls}--empty"></span>`;
 }
 
-function header(title, sub, data, extra = '') {
-  return `<header class="hdr"><span class="hdr-mark"></span><span class="hdr-title">${title}</span>` +
+function header(title, sub, data, extra = '', cls = '') {
+  return `<header class="hdr${cls ? ' ' + cls : ''}"><span class="hdr-mark"></span><span class="hdr-title">${title}</span>` +
     (sub ? `<span class="hdr-sub">${sub}</span>` : '') + extra + logoBox(data, 'hdr-logo') + `</header>`;
 }
 
 function footer(label, data, extra = '') {
   return `<footer class="ftr"><span class="ftr-mark"></span><span class="ftr-label">${label}</span>${extra}${logoBox(data, 'ftr-logo')}</footer>`;
 }
+
+/** The timing point in the graphic's language, both forms (see labels.js timingPoint) */
+const tpHtml = (data, ctx) => timingPointHtml(timingPoint(data, {
+  split: L(ctx, 'split', 'Split'), splitShort: L(ctx, 'splitShort', 'Split {n}'),
+  control: L(ctx, 'control', 'Control'), finish: L(ctx, 'finish', '')
+}), esc);
 
 /** Footer text "H21 – Finish": class and control in separate spans for themes */
 const ctlLabel = (data, label) => `<span class="ftr-class">${esc(data.className || '')}</span><span class="ftr-sep"> – </span><span class="ftr-ctrl">${label}</span>`;
@@ -189,9 +198,13 @@ const views = {
     const title = esc(data.title || data.className || '');
     const sub = esc(`${L(ctx, 'standingsAt', 'Standings at')} ${where}`);
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
+    // IOF, ČO, Classic: [class] left, the timing point right ("Mellantid 2 Önnestad" / "Mål")
+    const head = ctx.timingHeader
+      ? header(esc(data.className || data.title || ''), tpHtml(data, ctx), data, '', 'hdr--timing')
+      : header(title, sub, data);
     return {
       steps: pages,
-      html: `<div class="panel panel--table">${header(title, sub, data)}<div class="rows">${rows}</div>${footer(esc(where), data, pageInfo)}</div>`
+      html: `<div class="panel panel--table">${head}<div class="rows">${rows}</div>${footer(esc(where), data, pageInfo)}</div>`
     };
   },
 
@@ -202,15 +215,18 @@ const views = {
     const per = int(data.rowsPerPage, ctx.rowsPerPage ?? 12);
     const { pages, page, slice } = paginate(list, per, ctx.step);
     const tz = data.competitionTimeZone;
+    // No runner in the list has a bib: leave the bib column out (decided for the whole list,
+    // so the layout does not jump between pages)
+    const bibs = hasBibs(list);
     const rows = slice.map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}">` +
       `<span class="c-start">${esc(r.startTimeMs ? timeOfDay(r.startTimeMs, tz) : time(r.startTime))}</span>` +
-      `<span class="c-bib">${esc(r.bib ?? '')}</span>` +
+      (bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : '') +
       `<span class="c-name">${runnerName(r, data, ctx, 'table')}</span>` +
       `<span class="c-id">${identityHtml(r, data)}</span></div>`).join('') || emptyRow(L(ctx, 'noStarters', 'No start list'));
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
     return {
       steps: pages,
-      html: `<div class="panel panel--table panel--startlist">${header(esc(data.className || ''), esc(L(ctx, 'startList', 'Start list')), data)}<div class="rows">${rows}</div>${footer(esc(L(ctx, 'startList', 'Start list')), data, pageInfo)}</div>`
+      html: `<div class="panel panel--table panel--startlist${bibs ? '' : ' no-bibs'}">${header(esc(data.className || ''), esc(L(ctx, 'startList', 'Start list')), data)}<div class="rows">${rows}</div>${footer(esc(L(ctx, 'startList', 'Start list')), data, pageInfo)}</div>`
     };
   },
 
@@ -245,11 +261,15 @@ const views = {
       virtual: r === focus ? virtualCell(r, data, leader) : '' })).join('')
       || emptyRow(L(ctx, 'noResults', 'No results yet'));
     const label = esc(splitLabel(data, ctx, virtualPos >= 0));
+    // IOF, ČO, Classic: footer [class] left, the timing point right; on the way "Mot mellantid 2"
+    const foot = ctx.timingHeader
+      ? footer(esc(data.className || ''), data, `<span class="ftr-tp">${virtualPos >= 0 ? `<span class="tp"><span class="tp-full">${label}</span><span class="tp-short">${label}</span></span>` : tpHtml(data, ctx)}</span>`)
+      : footer(ctlLabel(data, label), data);
     return {
       steps: 1,
       // the view changes with time while the selected runner is on the way (see graphic.js tick)
       key, rekey: virtualPos >= 0,
-      html: `<div class="panel panel--lower">${header(esc(data.className || ''), label, data)}<div class="rows">${html}</div>${footer(ctlLabel(data, label), data)}</div>`
+      html: `<div class="panel panel--lower">${header(esc(data.className || ''), label, data)}<div class="rows">${html}</div>${foot}</div>`
     };
   },
 
@@ -431,7 +451,8 @@ const views = {
     const runners = nextKey ? groups.get(nextKey) : [];
     const startMs = nextKey ? nextKey * 1000 : NaN;
     const max = int(data.rows, 6);
-    const rows = runners.slice(0, max).map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}"><span class="c-bib">${esc(r.bib ?? '')}</span>` +
+    const bibs = hasBibs(runners);
+    const rows = runners.slice(0, max).map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}">${bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : ''}` +
       `<span class="c-name">${runnerName(r, data, ctx, 'lower')}</span><span class="c-id">${identityHtml(r, data)}</span></div>`).join('')
       || emptyRow(L(ctx, 'noStarters', 'No more starters'));
     const when = Number.isFinite(startMs)
@@ -440,7 +461,7 @@ const views = {
     return {
       steps: 1,
       key: String(nextKey ?? ''), rekey: true,
-      html: `<div class="panel panel--lower panel--startgroup">${header(title, esc(data.className || ''), data, when)}<div class="rows">${rows}</div>${footer(ctlLabel(data, title), data, when)}</div>`
+      html: `<div class="panel panel--lower panel--startgroup${bibs ? '' : ' no-bibs'}">${header(title, esc(data.className || ''), data, when)}<div class="rows">${rows}</div>${footer(ctlLabel(data, title), data, when)}</div>`
     };
   },
 
@@ -458,7 +479,7 @@ const views = {
     const label = esc(data.label || '');
     return {
       steps: 1,
-      html: `<div class="panel panel--clock">${label ? `<span class="clk-label">${label}</span>` : ''}<span class="clk-time" ${attr}></span>${logoBox(data, 'clk-logo')}</div>`
+      html: `<div class="panel panel--clock">${label ? `<span class="clk-label">${label}</span>` : ''}<span class="clk-time" ${attr}></span></div>` // no event logo on the clock
     };
   },
 

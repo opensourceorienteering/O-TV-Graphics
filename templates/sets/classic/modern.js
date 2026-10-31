@@ -8,6 +8,40 @@
  *    short accelerating exits; transform and opacity only
  */
 
+import { eventLabels, timingPoint, timingPointHtml, fitTimingPoints } from '../_core/labels.js';
+
+const escH = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/**
+ * Header of the hand-made Classic graphics: [class] left, the timing point right
+ * ("Mellantid 2 Önnestad", short "M2"; start and finish by name only).
+ */
+export function classicHeadingHtml(data) {
+  const w = eventLabels(data?.presentation?.language);
+  const tp = timingPoint(data, { split: w.split, splitShort: w.splitShort, control: w.control, finish: w.finish });
+  return `<p class="h-class">${escH(data?.className)}</p><p class="h-tp">${timingPointHtml(tp, escH)}</p>`;
+}
+
+/** Put the heading back after a live update, then choose the long or short timing point */
+export function updateClassicHeading(root, data) {
+  const header = root?.querySelector('.header');
+  if (!header) return;
+  const html = classicHeadingHtml(data);
+  if (header.dataset.heading !== html) {
+    header.querySelectorAll(':scope > p').forEach((p) => p.remove());
+    header.insertAdjacentHTML('afterbegin', html);
+    header.dataset.heading = html;
+  }
+  fitClassicHeading(root);
+}
+
+/** Long or short timing point; measured again once web fonts have loaded */
+export function fitClassicHeading(root) {
+  if (!root) return;
+  fitTimingPoints(root);
+  document.fonts?.ready?.then(() => fitTimingPoints(root));
+}
+
 const TOKENS = `
   :host {
     --cl-text: #1d0d18;
@@ -31,6 +65,14 @@ export const CLASSIC_MODERN_CSS = `${TOKENS}
   }
   .header.visible { transform: none; opacity: 1; }
   .header p { margin: 0; }
+  /* [class] left, the timing point right, the logo (results list) at the right end */
+  .header { justify-content: flex-start; text-align: left; padding: 0; }
+  .header .h-class { padding-left: 26px; margin-right: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header .h-tp { padding: 0 26px 0 20px; flex: 0 0 auto; white-space: nowrap; }
+  .header .logo { order: 2; }
+  .tp-short { display: none; }
+  .tp.is-short .tp-full { display: none; }
+  .tp.is-short .tp-short { display: inline; }
   .logo { height: 76px; min-width: 96px; }
   .logo img { width: 46px; height: 46px; object-fit: contain; }
   /* logos keep their own transparency unless Settings asks for the white plate */
