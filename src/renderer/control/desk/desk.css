@@ -109,6 +109,10 @@
 .d-sep { height: 1px; background: var(--d-line); flex: none; }
 .d-field { display: flex; flex-direction: column; gap: 6px; }
 .d-field > label, .d-field > .lbl { font-size: 12px; color: var(--d-muted); }
+.d-input::placeholder { color: var(--d-muted); opacity: 1; }
+/* What an empty field puts on air, and where that comes from (event setup, settings, weather) */
+.d-uses { font-size: 12px; color: var(--d-muted); }
+.d-uses b { color: var(--d-text); font-weight: 600; }
 .d-input, .d-select {
   height: 40px; width: 100%; padding: 0 14px; border-radius: 4px; background: var(--d-input);
   border: 1px solid var(--d-line); color: var(--d-text); font: 16px var(--d-sans);
@@ -190,6 +194,9 @@
 .desk-lower { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(260px, 388px); gap: 20px; align-items: start; }
 .desk-controls { display: flex; flex-direction: column; gap: 12px; }
 .desk-controls .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* Freeze: the running time on air is stopped until the official time arrives */
+.desk-controls .d-btn.frozen { border-color: var(--d-accent); color: var(--d-accent); }
+.d-frozen { color: var(--d-accent); font-size: 13px; }
 .desk-controls p { margin: 0; font-size: 12px; color: var(--d-muted); line-height: 1.5; }
 .mon.preview .mon-video { margin: 0; }
 /* Program popped out: Preview fills the big monitor slot */
@@ -263,7 +270,7 @@
   background: var(--d-raised); border: 1px solid var(--d-raised);
 }
 .palette li[aria-selected='true'] { background: var(--d-accent-bg); border-color: var(--d-accent); }
-.palette li.recent .what b { font-family: var(--d-mono); font-weight: 500; }
+.palette li.recent .what small.cmd { font: 12px var(--d-mono); color: var(--d-accent); letter-spacing: 0.02em; }
 .palette li { scroll-margin: 8px; }
 .palette li .tok { font: 13px var(--d-mono); color: var(--d-accent); min-width: 44px; }
 .palette li .what { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }

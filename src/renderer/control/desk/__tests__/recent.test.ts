@@ -27,4 +27,13 @@ describe('recent palette commands', () => {
     expect(loadRecent('event-a')).toEqual([]);
     expect(store.has('olg.desk.recent')).toBe(false);
   });
+
+  it('keep typed text apart, and a bare entry gives way to one with text', () => {
+    rememberRecent('event-a', { input: '12', label: 'Identity plate', detail: '' });
+    rememberRecent('event-a', { input: '12', label: 'Identity plate', detail: 'Speaker', fields: { text: 'Speaker' } });
+    rememberRecent('event-a', { input: '12', label: 'Identity plate', detail: 'Finish', fields: { text: 'Finish' } });
+    expect(loadRecent('event-a').map(r => r.fields?.text)).toEqual(['Finish', 'Speaker']);
+    rememberRecent('event-a', { input: '12', label: 'Identity plate', detail: 'Speaker', fields: { text: 'Speaker' } });
+    expect(loadRecent('event-a').map(r => r.fields?.text)).toEqual(['Speaker', 'Finish']);
+  });
 });

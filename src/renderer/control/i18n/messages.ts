@@ -3119,5 +3119,57 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "No class has its own names. Choose a class to name its controls, or name all classes automatically.": {
     "sv": "Ingen klass har egna namn. Välj en klass för att namnge dess kontroller, eller namnge alla klasser automatiskt.",
     "nb": "Ingen klasse har egne navn. Velg en klasse for å navngi postene, eller navngi alle klasser automatisk."
+  },
+  "On air:": {
+    "sv": "I sändning:",
+    "nb": "På lufta:"
+  },
+  "from": {
+    "sv": "från",
+    "nb": "fra"
+  },
+  "Settings → Templates": {
+    "sv": "Inställningar → Mallar",
+    "nb": "Innstillinger → Maler"
+  },
+  "graphic default": {
+    "sv": "grafikens standard",
+    "nb": "grafikkens standard"
+  },
+  "event setup": {
+    "sv": "evenemangets inställningar",
+    "nb": "arrangementets oppsett"
+  },
+  "automatic weather": {
+    "sv": "automatiskt väder",
+    "nb": "automatisk vær"
+  },
+  "selected class": {
+    "sv": "vald klass",
+    "nb": "valgt klasse"
+  },
+  "Freeze time": {
+    "sv": "Frys tiden",
+    "nb": "Frys tiden"
+  },
+  "Resume clock": {
+    "sv": "Starta klockan",
+    "nb": "Start klokken"
+  },
+  "Time frozen at": {
+    "sv": "Tiden fryst",
+    "nb": "Tiden frosset"
+  },
+  "the official time replaces it when it arrives": {
+    "sv": "den officiella tiden ersätter den när den kommer",
+    "nb": "den offisielle tiden erstatter den når den kommer"
+  },
+  "Stop the running time when you see the runner pass. The official time replaces it when it arrives.": {
+    "sv": "Stoppa den löpande tiden när du ser löparen passera. Den officiella tiden ersätter den när den kommer.",
+    "nb": "Stopp løpende tid når du ser løperen passere. Den offisielle tiden erstatter den når den kommer."
+  },
+  "Freeze / resume the running time on air": {
+    "sv": "Frys / starta den löpande tiden i sändning",
+    "nb": "Frys / start løpende tid på lufta"
   }
 };

@@ -3,14 +3,16 @@ import { t as tr } from '../i18n';
 /**
  * One input for a graphic field from its manifest schema (Live inspector and Settings → Templates).
  * `fallback` is what applies when the field is left empty (the event's template default, else the
- * manifest default); it shows as the placeholder or the checkbox state.
+ * manifest default); it shows as the placeholder or the checkbox state. `inherited` is what the
+ * graphic fills in by itself when there is no fallback (event setup, automatic weather, the class).
+ * An empty text field says under it what goes on air, so the operator never guesses.
  */
-export function SchemaField({ name, schema, value, onChange, auto, fallback, idPrefix = 'field' }: {
+export function SchemaField({ name, schema, value, onChange, inherited, fallback, idPrefix = 'field' }: {
   name: string;
   schema: any;
   value: any;
   onChange: (v: any) => void;
-  auto?: string;
+  inherited?: { value: string; from: string };
   fallback?: any;
   idPrefix?: string;
 }) {
@@ -38,7 +40,12 @@ export function SchemaField({ name, schema, value, onChange, auto, fallback, idP
       </div>
     );
   }
-  const placeholder = auto ? `Automatic: ${auto}` : base !== undefined && base !== '' ? String(base) : '';
+  const uses = fallback !== undefined && fallback !== '' ? { value: String(fallback), from: 'Settings → Templates' }
+    : inherited?.value ? inherited
+    : schema.default !== undefined && schema.default !== '' ? { value: String(schema.default), from: 'graphic default' }
+    : undefined;
+  const placeholder = uses?.value ?? '';
+  const empty = value === undefined || value === '';
   return (
     <div className="d-field">
       {label}
@@ -54,6 +61,9 @@ export function SchemaField({ name, schema, value, onChange, auto, fallback, idP
           placeholder={placeholder}
           onChange={e => onChange(schema.type === 'number' ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)}
         />
+      )}
+      {empty && uses && (
+        <span className="d-uses">{tr("On air:")} <b>{uses.value}</b> · {tr("from")} {tr(uses.from)}</span>
       )}
     </div>
   );

@@ -345,6 +345,29 @@ describe('shared views (templates/sets/_core)', () => {
     expect(text(done)).toContain('+0:12');
   });
 
+  it('a frozen live feed stops the running time, then shows the official time when it arrives', () => {
+    const now = Date.now();
+    const leader = { position: '1', name: 'Leader', club: 'A', time: '5:00', statusCode: 0, splitTimes: [{ code: 1062, time: 30000 }] };
+    const runner = { position: '', name: 'On Way', club: 'B', time: '--:--', statusCode: 10, startTimeMs: now - 400_000 };
+    // the operator froze it 100 s ago, when the runner had run 5:00 -> level with the leader
+    const data = { controlCode: '1062', runnerName: 'On Way', clockOffsetMs: 0, frozenAt: now - 100_000, results: [leader, runner] };
+    const html = views.renderView('standings-lower-third', data, ctx()).html;
+    expect(html).toContain('is-frozen');
+    expect(text(html)).toContain('+0:00');
+    const arrived = { ...runner, position: '2', time: '5:01', diff: '+0:01', statusCode: 0 };
+    const done = views.renderView('standings-lower-third', { ...data, results: [leader, arrived] }, ctx()).html;
+    expect(done).not.toContain('is-frozen');
+    expect(text(done)).toContain('+0:01');
+  });
+
+  it('a frozen runner focus stops the running time at the freeze moment', () => {
+    const now = Date.now();
+    const runner = { position: '', name: 'On Way', club: 'B', time: '--:--', statusCode: 10, startTimeMs: now - 400_000 };
+    const html = views.renderView('runner-start', { controlCode: 'F', runnerName: 'On Way', clockOffsetMs: 0, frozenAt: now - 100_000, results: [runner] }, ctx()).html;
+    expect(html).toContain('is-frozen');
+    expect(text(html)).toContain('5:00');
+  });
+
   it('live feed shows the selected runner with the leader and the runners around them', () => {
     const now = Date.now();
     const field = Array.from({ length: 10 }, (_, i) => ({ position: String(i + 1), name: `R${i + 1}`, club: 'X', time: `5:${String(i * 5).padStart(2, '0')}`, statusCode: 0, splitTimes: [{ code: 1062, time: 30000 + i * 500 }] }));

@@ -12,10 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BrandMark } from '../components/BrandMark';
 import { call } from '../events/api';
-import { CommandPalette } from './CommandPalette';
+import { CommandPalette, rememberRecent, typedFields } from './CommandPalette';
 import { MonitorHead, PreviewVideo, ProgramVideo } from './DeskMonitor';
-import { type PaletteControl, type PaletteData, type PaletteRunner } from './command';
-import { DESK_SHORTCUTS, DESK_TEMPLATES, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskState } from '../../../shared/desk';
+import { commandForDraft, type PaletteControl, type PaletteData, type PaletteRunner } from './command';
+import { DESK_SHORTCUTS, DESK_TEMPLATES, canFreeze, isFrozenDraft, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskState } from '../../../shared/desk';
 import type { EventStartList, StartListEntry } from '../../../shared/types/event';
 import './desk.css';
 import { SchemaField } from './SchemaField';
@@ -35,6 +35,9 @@ function startsIn(ms: number): string {
   if (s < 2) return 'now';
   return `in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
+
+/** The moment a key or button was pressed (the freeze moment) */
+const pressedAt = () => Date.now();
 
 function emptyDraft(key: string): DeskDraft {
   return { key, values: {}, fields: {} };
@@ -269,13 +272,44 @@ export function LiveDesk() {
     humidity: String(weather.reading.humidity)
   } : {};
   const draft = drafts[selected] ?? emptyDraft(selected);
+  /** What a graphic fills in by itself when a field is left empty (mirrors the templates' fallbacks) */
+  const inheritedFor = (key: string, f: string, d: DeskDraft): { value: string; from: string } | undefined => {
+    const info = event?.info ?? {};
+    const fromEvent = (value?: string) => (value ? { value, from: 'event setup' } : undefined);
+    if (key === 'event-title') {
+      if (f === 'title') return fromEvent(event?.name);
+      if (f === 'series') return fromEvent(info.series);
+      if (f === 'place') return fromEvent(info.location);
+      if (f === 'date') return fromEvent(info.date);
+    }
+    if (key === 'weather') {
+      if (f === 'title') return fromEvent(info.location);
+      return weatherAuto[f] ? { value: weatherAuto[f], from: 'automatic weather' } : undefined;
+    }
+    if (f === 'title' && ['results', 'podium', 'course-info'].includes(key) && d.values.className)
+      return { value: d.values.className, from: 'selected class' };
+    return undefined;
+  };
   const latestDraft = useRef(draft);
   latestDraft.current = draft;
-  const setDraft = (next: DeskDraft) => setDrafts(d => ({ ...d, [next.key]: next }));
+  /** A draft without the freeze moment (favourites and a new runner or control start running) */
+  const unfrozen = (d: DeskDraft): DeskDraft => {
+    if (!isFrozenDraft(d)) return d;
+    const fields = { ...d.fields };
+    delete fields.frozenAt;
+    return { ...d, fields };
+  };
+  const setDraft = (next: DeskDraft) => setDrafts(d => {
+    const prev = d[next.key];
+    // Another runner or timing point: the old freeze moment means nothing for it
+    const moved = prev && JSON.stringify(prev.values) !== JSON.stringify(next.values);
+    return { ...d, [next.key]: moved ? unfrozen(next) : next };
+  });
   const onAirSel = desk.onAir.find(o => o.key === selected);
   const changed = !!onAirSel && !sameDraft(onAirSel.draft, draft);
   // Held live data on air with newer results waiting: Update brings the graphic up to date
   const freshData = !!onAirSel?.newData;
+  const frozenOnAir = !!onAirSel && isFrozenDraft(onAirSel.draft);
   const numberOf = (key: string) => Object.entries(commands).find(([, k]) => k === key)?.[0];
 
   const loadControls = useCallback((cls: string) => {
@@ -326,12 +360,25 @@ export function LiveDesk() {
   const update = () => onAirSel && (changed || freshData)
     ? act(() => call('desk:update', eventId, draft), `${def?.label} updated on air`, 'air')
     : say(onAirSel ? 'No changes to apply' : 'Not on air; use Show', 'err');
+  /**
+   * Freeze: the operator sees the runner pass and stops the running clock on air at that moment.
+   * The official time from the timing data replaces it on its own; T again lets the clock run.
+   */
+  const freeze = () => {
+    const at = pressedAt();
+    if (!onAirSel || !canFreeze(onAirSel.draft)) return say('Freeze needs a runner on the way, on air (Live split or Runner focus at a control)', 'err');
+    const frozen = isFrozenDraft(onAirSel.draft);
+    const apply = (d: DeskDraft): DeskDraft => frozen ? unfrozen(d) : { ...d, fields: { ...d.fields, frozenAt: at } };
+    setDrafts(all => ({ ...all, [selected]: apply(all[selected] ?? onAirSel.draft) }));
+    return act(() => call('desk:update', eventId, apply(onAirSel.draft)),
+      frozen ? 'Clock running again' : `Time frozen at ${new Date(at).toLocaleTimeString('en-GB')} · the official time replaces it`, 'air');
+  };
   const hideActive = () => act(() => call('desk:hide', eventId, onAirSel ? selected : undefined), 'Hidden');
   const hideAll = () => act(() => call('desk:hideAll', eventId), 'All graphics hidden');
   const page = (delta: 1 | -1) => act(() => call('desk:page', eventId, delta), delta > 0 ? 'Next page' : 'Previous page');
   const addFavorite = async () => {
     try {
-      setFavorites(await call('desk:saveFavorite', eventId, favLabel(draft, def), draft));
+      setFavorites(await call('desk:saveFavorite', eventId, favLabel(draft, def), unfrozen(draft)));
       say('Saved to favourites');
     } catch (e) { say((e as Error).message, 'err'); }
   };
@@ -375,8 +422,8 @@ export function LiveDesk() {
     const key = commands[n];
     return templates.find(t => t.key === key && t.available)?.key;
   };
-  const actions = useRef({ show, update, hideActive, hideAll, page, addFavorite, graphicFor });
-  actions.current = { show, update, hideActive, hideAll, page, addFavorite, graphicFor };
+  const actions = useRef({ show, update, freeze, hideActive, hideAll, page, addFavorite, graphicFor });
+  actions.current = { show, update, freeze, hideActive, hideAll, page, addFavorite, graphicFor };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -395,6 +442,7 @@ export function LiveDesk() {
       if (key === ' ') { e.preventDefault(); void actions.current.show(); return; }
       if (key === 'u') { e.preventDefault(); void actions.current.update(); return; }
       if (key === 'h') { e.preventDefault(); void actions.current.hideActive(); return; }
+      if (key === 't') { e.preventDefault(); void actions.current.freeze(); return; }
       if (key === 'f') { e.preventDefault(); void actions.current.addFavorite(); return; }
       if (key === 'ArrowRight') { e.preventDefault(); void actions.current.page(1); return; }
       if (key === 'ArrowLeft') { e.preventDefault(); void actions.current.page(-1); return; }
@@ -429,6 +477,36 @@ export function LiveDesk() {
     controls: (cls: string) => controls[cls],
     favorites
   }), [commands, templates, classes, runners, controls, favorites]);
+
+  // --- recent commands: every graphic that goes on air, however it was shown (desk, keys, Stream Deck) ---
+  /** On-air entries already seen; null until the first state arrives (graphics already on air don't count) */
+  const seenOnAir = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    // By graphic: Update keeps it on air (not a new entry); hide and show again is one
+    const ids = desk.onAir.map(o => o.key);
+    if (desk.eventId !== eventId) return;
+    const seen = seenOnAir.current;
+    seenOnAir.current = new Set(ids);
+    if (!seen || !Object.keys(commands).length) return;
+    // Oldest first, so the newest ends up on top of the list
+    for (const o of [...desk.onAir].reverse()) {
+      if (seen.has(o.key)) continue;
+      const input = commandForDraft(o.draft, paletteData);
+      if (!input) continue;
+      const def = DESK_TEMPLATES.find(t => t.key === o.key);
+      const v = o.draft.values ?? {};
+      const fields = typedFields(o.draft.fields);
+      const favN = / F(\d+)$/.exec(input)?.[1];
+      const fav = favN ? (favorites[o.key] ?? []).find(f => f.n === Number(favN)) : undefined;
+      const control = v.controlCode === undefined ? (o.key === 'runner-start' ? 'Start' : undefined)
+        : v.controlCode === '' || v.controlCode === 'F' ? 'Finish' : `Control ${v.controlCode}`;
+      const detail = fav ? `F${fav.n} ${fav.label}`
+        : [v.className, v.runnerName, control, o.draft.page && o.draft.page > 1 ? `Page ${o.draft.page}` : undefined,
+          fields?.text ?? fields?.commentators ?? fields?.title].filter(Boolean).join(' / ');
+      rememberRecent(eventId, { input, label: def?.label ?? o.name, detail, fields: fav ? undefined : fields });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [desk, eventId]);
 
   const tz = event?.info?.timeZone;
   const clock = (() => { try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', ...(tz ? { timeZone: tz } : {}) }).format(now); } catch { return new Date(now).toTimeString().slice(0, 8); } })();
@@ -695,7 +773,7 @@ export function LiveDesk() {
                 </div>
               )}
               {deskFields(def).map(f => (
-                <SchemaField key={f} name={f} schema={def.schema[f]} value={draft.fields[f]} fallback={def.fieldDefaults?.[f]} auto={selected === 'weather' ? weatherAuto[f] : undefined} onChange={v => setDraft({ ...draft, fields: { ...draft.fields, [f]: v } })} />
+                <SchemaField key={f} name={f} schema={def.schema[f]} value={draft.fields[f]} fallback={def.fieldDefaults?.[f]} inherited={inheritedFor(selected, f, draft)} onChange={v => setDraft({ ...draft, fields: { ...draft.fields, [f]: v } })} />
               ))}
 
               <div className={`d-note ${previewError ? 'err' : preparedAt ? 'ok' : ''}`} role="status">
@@ -753,8 +831,16 @@ export function LiveDesk() {
               </button>
               <div className="pair">
                 <button type="button" className="d-btn big" style={{ fontSize: 17 }} onClick={update} disabled={!onAirSel || (!changed && !freshData)}>{tr("Update")} <kbd>U</kbd></button>
-                <button type="button" className="d-btn big" style={{ fontSize: 14 }} onClick={hideActive} disabled={!desk.onAir.length}>{tr("Hide active")} <kbd>H</kbd></button>
+                <button type="button" className={`d-btn big${frozenOnAir ? ' frozen' : ''}`} style={{ fontSize: 15 }} onClick={freeze} disabled={!onAirSel || !canFreeze(onAirSel.draft)}
+                  title={tr("Stop the running time when you see the runner pass. The official time replaces it when it arrives.")}>
+                  {frozenOnAir ? tr("Resume clock") : tr("Freeze time")} <kbd>T</kbd>
+                </button>
               </div>
+              {frozenOnAir && (
+                <p className="d-frozen" role="status">
+                  {tr("Time frozen at")} {new Date(Number(onAirSel!.draft.fields.frozenAt)).toLocaleTimeString('en-GB')} · {tr("the official time replaces it when it arrives")}
+                </p>
+              )}
               <p>{tr("Space shows / hides the selected graphic. U applies draft changes to it on air. Shortcuts are off while you type in a field or the palette.")}</p>
               {desk.otherOnAir > 0 && <p>{desk.otherOnAir}  {tr("other graphic")}{desk.otherOnAir === 1 ? '' : 's'}  {tr("on air (e.g. the output test pattern) · Force hide all clears everything.")}</p>}
             </div>

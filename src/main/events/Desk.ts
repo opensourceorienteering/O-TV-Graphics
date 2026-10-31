@@ -22,7 +22,7 @@ import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
 import {
-  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
+  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, isFrozenDraft, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
   type DeskOnAir, type DeskState
 } from '../../shared/desk';
 import { applyStartList, loadEvent, loadStartList, syncPages } from './EventService';
@@ -197,7 +197,8 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
   const rm = getRundownManager();
   let item = page.items.find(i => i.templateId === t.manifest.id);
   // holdOnAir keeps polling (so the desk can say new results are waiting) but does not push them
-  const liveResultsData = t.dataSourceConfig ? { autoUpdate: true, holdOnAir: draft.liveUpdates === false, dataSourceValues: values } : undefined;
+  // A frozen clock always follows the data: the official time replaces it as soon as it arrives
+  const liveResultsData = t.dataSourceConfig ? { autoUpdate: true, holdOnAir: draft.liveUpdates === false && !isFrozenDraft(draft), dataSourceValues: values } : undefined;
   const fields = await automaticFields(project, draft.key, draft.fields, draft.values?.className);
   const eventPageDuration = Math.max(0, Number(project.settings?.presentation?.autoPageDurationSeconds) || 0);
   const requestedPageDuration = draft.autoPageDurationSeconds === undefined
@@ -296,7 +297,7 @@ export async function deskState(projectId: string | null): Promise<DeskState> {
       key: def.key, templateId: g.templateId, name: def.label,
       since: info?.since ?? Date.now(), step: g.currentStep,
       draft: info?.draft ?? { key: def.key, values: {}, fields: {} },
-      held: (info?.draft?.liveUpdates ?? liveUpdatesDefault(def.key, project.settings?.templates)) === false,
+      held: (info?.draft?.liveUpdates ?? liveUpdatesDefault(def.key, project.settings?.templates)) === false && !isFrozenDraft(info?.draft),
       newData: g.newData || undefined
     });
   }

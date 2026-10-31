@@ -105,6 +105,19 @@ export function fieldDefaults(key: string, settings?: DeskTemplateSettingsMap): 
   return Object.fromEntries(Object.entries(own).filter(([, v]) => v !== undefined && v !== ''));
 }
 
+/**
+ * Freeze: the operator saw the runner pass the timing point and stopped the running clock
+ * (draft.fields.frozenAt, epoch ms). It stays stopped until the timing data has the runner
+ * through, then the official time takes over. Only graphics with a runner on the way have one.
+ */
+export function canFreeze(draft?: DeskDraft | null): boolean {
+  if (!draft?.values?.runnerName) return false;
+  if (draft.key === 'live-feed') return true;
+  // Runner focus at the start shows no time to stop
+  return draft.key === 'runner-start' && draft.values.controlCode !== undefined;
+}
+export const isFrozenDraft = (draft?: DeskDraft | null) => Number(draft?.fields?.frozenAt) > 0;
+
 /** What the operator prepares */
 export interface DeskDraft {
   key: string;
@@ -172,6 +185,7 @@ export const DESK_SHORTCUTS: [string, string][] = [
   ['Space', 'Show / hide the selected graphic'],
   ['U', 'Update the graphic on air with the draft'],
   ['H', 'Hide the active graphic'],
+  ['T', 'Freeze / resume the running time on air'],
   ['Esc', 'Hide all (in a field: leave the field)'],
   ['← / →', 'Previous / next page on Program'],
   ['0–9', 'Choose a graphic by its number'],

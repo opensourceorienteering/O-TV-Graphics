@@ -9,7 +9,23 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { applySuggestion, commandSyntax, parseCommand, type PaletteData, type Suggestion } from './command';
 import type { DeskDraft } from '../../../shared/desk';
 
-export interface RecentCommand { input: string; label: string; detail: string }
+export interface RecentCommand {
+  input: string;
+  label: string;
+  detail: string;
+  /** Typed text the graphic went on air with (title, plate text …); recall brings it back */
+  fields?: Record<string, any>;
+}
+
+const sameFields = (a?: Record<string, any>, b?: Record<string, any>) =>
+  JSON.stringify(a ?? {}) === JSON.stringify(b ?? {});
+
+/** Typed fields worth keeping: empty ones fall back to the event's defaults anyway */
+export function typedFields(fields?: Record<string, any>): Record<string, any> | undefined {
+  // The freeze moment belongs to one passing; a recalled command starts with a running clock
+  const kept = Object.entries(fields ?? {}).filter(([k, v]) => k !== 'frozenAt' && v !== undefined && v !== '');
+  return kept.length ? Object.fromEntries(kept) : undefined;
+}
 
 /** Recent commands belong to one event: class and bib numbers mean nothing in another */
 const recentKey = (eventId: string) => `olg.desk.recent.${eventId}`;
@@ -24,7 +40,7 @@ export function loadRecent(eventId: string): RecentCommand[] {
 
 export function rememberRecent(eventId: string, cmd: RecentCommand) {
   try {
-    const list = [cmd, ...loadRecent(eventId).filter(r => r.input !== cmd.input)].slice(0, 8);
+    const list = [cmd, ...loadRecent(eventId).filter(r => r.input !== cmd.input || (r.fields && !sameFields(r.fields, cmd.fields)))].slice(0, 8);
     localStorage.setItem(recentKey(eventId), JSON.stringify(list));
   } catch { /* storage optional */ }
 }
@@ -40,6 +56,8 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
 }) {
   const [input, setInput] = useState('');
   const [active, setActive] = useState(0);
+  /** The recent entry being recalled: its typed fields load with the command */
+  const [recalled, setRecalled] = useState<RecentCommand | null>(null);
   const field = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
   /** Pointer position of the last mouse move; hover selects only when the pointer really moves */
@@ -61,8 +79,8 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
   // Empty input: recent commands first, then the graphics (hints) — one list for ↑↓
   const empty = !input.trim();
   const showRecent = empty && recent.length > 0;
-  const items: (Suggestion & { recent?: boolean })[] = empty
-    ? [...recent.map(r => ({ token: r.input, label: r.label, detail: r.detail, recent: true })), ...parsed.suggestions]
+  const items: (Suggestion & { recent?: boolean; index?: number })[] = empty
+    ? [...recent.map((r, i) => ({ token: r.input, label: r.label, detail: r.detail, recent: true, index: i })), ...parsed.suggestions]
     : parsed.suggestions;
   const current = Math.min(active, Math.max(0, items.length - 1));
 
@@ -73,14 +91,16 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
 
   const load = () => {
     if (!parsed.complete || !parsed.draft) return;
-    rememberRecent(eventId, { input: input.trim(), label: parsed.template!.label, detail: parsed.interpretation.slice(1).join(' / ') });
-    onLoad(parsed.draft);
+    const fields = recalled?.input === input.trim() && parsed.favorite === undefined ? recalled.fields : undefined;
+    const draft = fields ? { ...parsed.draft, fields: { ...parsed.draft.fields, ...fields } } : parsed.draft;
+    rememberRecent(eventId, { input: input.trim(), label: parsed.template!.label, detail: recalled?.input === input.trim() ? recalled.detail : parsed.interpretation.slice(1).join(' / '), fields });
+    onLoad(draft);
   };
 
   const choose = (index: number) => {
     const item = items[index];
     if (!item) return;
-    if (item.recent) { setInput(`${item.token} `); return; }
+    if (item.recent) { setRecalled(recent[item.index!] ?? null); setInput(`${item.token} `); return; }
     setInput(applySuggestion(input, item, parsed));
   };
 
@@ -203,7 +223,7 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
           >
             {items.map((s, i) => (
               <li
-                key={`${s.recent ? 'r' : 's'}:${s.token}:${s.label}`}
+                key={`${s.recent ? `r${s.index}` : 's'}:${s.token}:${s.label}`}
                 id={`palette-opt-${i}`}
                 role="option"
                 aria-selected={i === current}
@@ -211,7 +231,9 @@ export function CommandPalette({ eventId, data, onLoad, onClose, onNeedControls 
                 onMouseDown={e => { e.preventDefault(); choose(i); field.current?.focus(); }}
               >
                 <span className="tok">{s.recent ? '↺' : s.token.length <= 6 ? s.token : '—'}</span>
-                <span className="what"><b>{s.recent ? s.token : tr(s.label)}</b><small>{s.recent ? `${tr(s.label)}${s.detail ? ' · ' + s.detail : ''}` : s.detail}</small></span>
+                {s.recent
+                  ? <span className="what"><b>{tr(s.label)}{s.detail ? ` · ${s.detail}` : ''}</b><small className="cmd">{s.token}</small></span>
+                  : <span className="what"><b>{tr(s.label)}</b><small>{s.detail}</small></span>}
                 {i === current && <span className="enter">↵</span>}
               </li>
             ))}

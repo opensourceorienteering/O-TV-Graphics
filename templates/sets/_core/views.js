@@ -12,7 +12,7 @@ import { eventLabels, weatherCondition, timingPoint, timingPointHtml } from './l
  */
 
 import {
-  esc, time, diff, clock, now, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
+  esc, time, diff, clock, now, isFrozen, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
   nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml
 } from './util.js';
 
@@ -155,7 +155,7 @@ function around(list, idx, min = 3) {
 }
 
 function runnerRow(r, i, data, ctx, { leader, highlight, where = 'table', showDiff = true, virtual = '' } = {}) {
-  const cls = ['row', leader ? 'row--leader' : '', highlight ? 'row--hl' : '', statusLabel(r) ? 'row--status' : '', virtual ? 'is-running is-virtual' : ''].filter(Boolean).join(' ');
+  const cls = ['row', leader ? 'row--leader' : '', highlight ? 'row--hl' : '', statusLabel(r) ? 'row--status' : '', virtual ? 'is-running is-virtual' : '', virtual && isFrozen(data) ? 'is-frozen' : ''].filter(Boolean).join(' ');
   return `<div class="${cls}" style="--i:${i}" data-key="${rowKey(r)}">` +
     `<span class="c-place">${esc(placeOf(r))}</span>` +
     `<span class="c-name">${where === 'lower' ? lowerName(r, data, ctx) : runnerName(r, data, ctx, where)}</span>` +
@@ -308,6 +308,7 @@ const views = {
     } else {
       value = '';
     }
+    if (cls && isFrozen(data)) cls += ' is-frozen';
     const runner = r ?? { name, club: data.runnerClub, bib: data.runnerBib };
     const main = `<div class="row row--hl${cls}" style="--i:0" data-key="focus"><span class="c-place">${esc(r ? placeOf(r) : '')}</span>` +
       `<span class="c-name">${nameHtml(name, nameStyle(ctx, 'lower'))}</span><span class="c-id">${identityHtml(runner, data)}</span>` +
@@ -596,7 +597,7 @@ const views = {
     } else if (Number.isFinite(startMs)) {
       const left = startMs - now(data);
       box = `<span class="c-time"><span class="st-at" data-tick="run" data-t="${startMs}">${esc(left > 0 ? clock(-Math.ceil(left / 1000)) : clock(-left / 1000))}</span></span>`;
-      cls = left > 0 ? ' is-counting' : ' is-running';
+      cls = left > 0 ? ' is-counting' : ` is-running${isFrozen(data) ? ' is-frozen' : ''}`;
     } else if (r.startTime) {
       box = `<span class="c-time">${esc(time(r.startTime))}</span>`;
     }

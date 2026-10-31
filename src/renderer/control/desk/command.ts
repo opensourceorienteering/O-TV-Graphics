@@ -11,7 +11,7 @@
  */
 
 import { bibMatch, bibStartsWith, findByBib } from '../../../shared/bibs';
-import { DESK_TEMPLATES, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
+import { DESK_TEMPLATES, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
 
 export interface PaletteRunner { name: string; club: string; className: string; bib?: string; virtualBib?: string; startTimeMs?: number }
 export interface PaletteControl { code: number | string; name: string }
@@ -428,4 +428,48 @@ export function applySuggestion(input: string, s: Suggestion, parsed: ParsedComm
   const tokens = input.trim() ? input.trim().split(/\s+/) : [];
   const start = parsed.tokenStart ?? tokens.length;
   return `${[...tokens.slice(0, start), s.token].join(' ')} `;
+}
+
+/**
+ * The palette command that loads a draft, e.g. "3 6 101 F", for the recent list when a graphic
+ * goes on air some other way (desk buttons, keys, a control surface). A draft that matches a
+ * favourite becomes "<graphic> F<n>". Null when no command can express it.
+ */
+export function commandForDraft(draft: DeskDraft, data: PaletteData): string | null {
+  const number = Object.entries(data.commands).find(([, k]) => k === draft.key)?.[0];
+  const template = DESK_TEMPLATES.find(t => t.key === draft.key);
+  if (number === undefined || !template) return null;
+  const fav = (data.favorites?.[draft.key] ?? []).find(f => sameDraft({ ...f.draft, key: draft.key }, draft));
+  if (fav) return `${number} F${fav.n}`;
+  const v = draft.values ?? {};
+  const tokens: (string | undefined)[] = template.params.map(param => {
+    if (param === 'class') {
+      if (!v.className) return undefined;
+      const i = data.classes.indexOf(v.className);
+      if (i >= 0) return String(i + 1);
+      return /\s/.test(v.className) ? undefined : v.className;
+    }
+    if (param === 'runner') return v.runnerBib || v.runnerName || undefined;
+    if (param === 'control') {
+      if (v.controlCode === undefined) return template.key === 'runner-start' ? 'S' : undefined;
+      return v.controlCode === '' || v.controlCode === 'F' ? 'F' : v.controlCode;
+    }
+    return draft.page && draft.page > 1 ? String(draft.page) : undefined;
+  });
+  // Trailing parameters left open are simply not typed; an open one before a typed one breaks the order
+  while (tokens.length && tokens[tokens.length - 1] === undefined) tokens.pop();
+  // No control means the finish; spell it out when a page follows it
+  const ci = template.params.indexOf('control');
+  if (ci >= 0 && ci < tokens.length && tokens[ci] === undefined) tokens[ci] = 'F';
+  // Runner focus: "S" (the start) is the default, so it needs no token at the end
+  if (template.key === 'runner-start' && tokens[tokens.length - 1] === 'S') tokens.pop();
+  if (tokens.some(t => t === undefined)) return null;
+  const input = [number, ...tokens].join(' ');
+  // Only offer what the palette reads back as the same graphic and parameters
+  const check = parseCommand(input, { ...data, controls: cls => data.controls(cls) ?? (v.controlCode ? [{ code: v.controlCode, name: '' }] : []) });
+  if (!check.complete || !check.draft) return null;
+  const same = (a: DeskDraft['values'], b: DeskDraft['values']) =>
+    (a.className ?? '') === (b.className ?? '') && (a.runnerName ?? '') === (b.runnerName ?? '') &&
+    (a.controlCode ?? '') === (b.controlCode ?? '');
+  return same(check.draft.values, v) ? input : null;
 }

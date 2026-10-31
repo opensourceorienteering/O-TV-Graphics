@@ -51,8 +51,17 @@ export const diff = (v) => {
   return clock(sec, { sign: true });
 };
 
-/** Server-corrected "now" in ms (data.clockOffsetMs from the app) */
-export const now = (data) => Date.now() + (Number(data?.clockOffsetMs) || 0);
+/**
+ * Server-corrected "now" in ms (data.clockOffsetMs from the app). A frozen graphic
+ * (data.frozenAt: the operator saw the runner pass) stops its clocks at that moment, until
+ * the timing data has the runner through and the official time replaces the running one.
+ */
+export const now = (data) => {
+  const frozen = Number(data?.frozenAt);
+  return (Number.isFinite(frozen) && frozen > 0 ? frozen : Date.now()) + (Number(data?.clockOffsetMs) || 0);
+};
+/** The graphic's running clock is stopped by the operator */
+export const isFrozen = (data) => Number(data?.frozenAt) > 0;
 
 /** "HH:MM:SS" (24 h) of an epoch ms in the event's time zone (falls back to local) */
 export function timeOfDay(ms, timeZone, withSeconds = true) {

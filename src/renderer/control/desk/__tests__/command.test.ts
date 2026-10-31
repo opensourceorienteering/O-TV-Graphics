@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applySuggestion, commandSyntax, nextStarter, parseCommand, type PaletteData } from '../command';
+import { applySuggestion, commandForDraft, commandSyntax, nextStarter, parseCommand, type PaletteData } from '../command';
 import { DEFAULT_DESK_COMMANDS, DESK_TEMPLATES } from '../../../../shared/desk';
 
 // The grammar tests use their own fixed numbering, independent of the default order
@@ -228,3 +228,32 @@ describe('virtual bibs', () => {
   });
 });
 
+
+describe('command for a draft shown on air', () => {
+  const draft = (key: string, values: Record<string, string> = {}, extra: object = {}) => ({ key, values, fields: {}, ...extra });
+
+  it('writes the parameters the palette reads back as the same draft', () => {
+    expect(commandForDraft(draft('runner-identity', { className: 'Men Elite', runnerName: 'Jan Novák', runnerBib: '101' }), data)).toBe('0 2 101');
+    expect(commandForDraft(draft('live-feed', { className: 'Men Elite', controlCode: '213' }), data)).toBe('4 2 213');
+    expect(commandForDraft(draft('live-feed', { className: 'Men Elite', controlCode: '' }), data)).toBe('4 2 F');
+    expect(commandForDraft(draft('runner-start', { className: 'Men Elite', runnerName: 'Jan Novák', runnerBib: '101', controlCode: 'F' }), data)).toBe('1 2 101 F');
+    expect(commandForDraft(draft('runner-start', { className: 'Men Elite', runnerName: 'Jan Novák', runnerBib: '101' }), data)).toBe('1 2 101');
+    expect(commandForDraft(draft('results', { className: 'H21' }, { page: 2 }), data)).toBe('5 3 F 2');
+    expect(commandForDraft(draft('free-text'), data)).toBe('12');
+  });
+
+  it('uses the runner name when there is no bib', () => {
+    expect(commandForDraft(draft('runner-identity', { className: 'Men Elite', runnerName: 'Petr Svoboda' }), { ...data, runners: data.runners.map(r => ({ ...r, bib: undefined })) }))
+      .toBe('0 2 Petr Svoboda');
+  });
+
+  it('names the favourite when the draft is one', () => {
+    const fav = { id: 'f1', n: 3, label: 'Jan', created: 0, draft: draft('runner-identity', { className: 'Men Elite', runnerName: 'Jan Novák' }) };
+    expect(commandForDraft(fav.draft, { ...data, favorites: { 'runner-identity': [fav] } })).toBe('0 F3');
+  });
+
+  it('gives up when no command can express the draft', () => {
+    expect(commandForDraft(draft('runner-identity', { runnerName: 'Nobody Known' }), data)).toBeNull();
+    expect(commandForDraft(draft('live-feed', { className: 'Men Elite' }), { ...data, commands: {} })).toBeNull();
+  });
+});
