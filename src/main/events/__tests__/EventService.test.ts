@@ -230,6 +230,20 @@ describe("Events over existing project files", () => {
     expect(virtual).toEqual(["V102", "V103"]);
   });
 
+  it("renames radio controls for the competition and per class, on the data graphics get", async () => {
+    const event = await events.createEvent({ name: "Radio names" });
+    events.updateStartListPreferences(event.id, {
+      controlNames: { all: { "1110": "Åsen", "1136": "  " }, classes: { H21: { "1110": "Toppen" }, D21: {} } },
+    });
+    const saved = events.loadStartList(event.id).controlNames!;
+    expect(saved).toEqual({ all: { "1110": "Åsen" }, classes: { H21: { "1110": "Toppen" } } }); // blanks dropped
+    const data = { className: "H21", controlCode: "1110", splitControls: [{ code: 1110, name: "[110] Radio 2" }, { code: 1136, name: "Radio 3" }] };
+    const h21 = events.applyStartList(event.id, data);
+    expect(h21.splitControls.map((c: any) => c.name)).toEqual(["Toppen", "Radio 3"]);
+    expect(h21.controlName).toBe("Toppen");
+    expect(events.applyStartList(event.id, { ...data, className: "D21" }).controlName).toBe("Åsen");
+  });
+
   it("updates linked events, preserves overrides and defers folder changes in Live", async () => {
     const folder = events.createFolder("Linked series");
     await events.updateFolder(folder.id, {

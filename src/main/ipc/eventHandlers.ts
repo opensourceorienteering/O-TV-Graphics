@@ -217,11 +217,13 @@ export function registerEventHandlers(): void {
     const res = await client.getClassResults(competitionId, className, {
       maxAgeMs: 30_000,
     });
-    return (res.data.splitcontrols ?? []).map((c: any) =>
-      typeof c === "object"
-        ? { code: c.code, name: c.name }
-        : { code: c, name: `Control ${c}` },
-    );
+    // Names as graphics show them (Plan → Radio controls), with the data source's name
+    const names = events.loadStartList(id).controlNames;
+    return (res.data.splitcontrols ?? []).map((c: any) => {
+      const code = typeof c === "object" ? c.code : c;
+      const sourceName = typeof c === "object" ? c.name : `Control ${c}`;
+      return { code, name: events.controlNameFor(names, className, code) || sourceName, sourceName };
+    });
   });
 
   // --- start lists ---

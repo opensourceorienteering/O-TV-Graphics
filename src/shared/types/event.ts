@@ -84,12 +84,23 @@ export interface StartListEntry {
   note?: string;
 }
 
+/** Renamed radio controls: competition-wide and per class, by control code */
+export interface EventControlNames {
+  all?: Record<string, string>;
+  classes?: Record<string, Record<string, string>>;
+}
+
 export interface EventStartList {
   updated: number;
   /** Where the entries came from: 'source' (data source), 'iofxml', 'csv' */
   origin?: string;
   timeZone?: string;
   entries: StartListEntry[];
+  /**
+   * Plan → Radio controls: names graphics show for radio controls, replacing the names from the
+   * data source. By control code; a class name wins over the competition-wide name.
+   */
+  controlNames?: EventControlNames;
   /** Classes and radio controls pinned for quick access in Live. */
   favouriteClasses?: string[];
   favouriteControls?: Array<{

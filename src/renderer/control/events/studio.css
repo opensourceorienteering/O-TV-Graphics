@@ -2428,3 +2428,10 @@ progress {
 .club-names .warn {
   color: var(--color-warning, #d9a35f);
 }
+
+/* Plan → Radio controls */
+.control-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.control-table th { text-align: left; color: var(--color-text-secondary); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--color-border); }
+.control-table td { padding: 6px 8px; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.control-table td.mono { font-variant-numeric: tabular-nums; width: 5em; }
+.control-table input { width: 100%; }

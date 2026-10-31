@@ -33,6 +33,7 @@ import { ClubLogoSettings } from "../components/ClubLogoSettings";
 import { EventHeader } from "./WorkspaceHeader";
 import { EventInfoForm } from "./EventInfoForm";
 import { SettingsTransferCard } from "./SettingsTransferCard";
+import { EventControls } from "./EventControls";
 import { RETIRED_LOGO_URLS, TYR_LOGO_URL } from "../../../shared/branding";
 
 const sections = [
@@ -41,6 +42,7 @@ const sections = [
   ["theme", "Theme"],
   ["templates", "Templates"],
   ["startlists", "Start lists"],
+  ["controls", "Radio controls"],
   ["final", "Final check"],
 ] as const;
 const legacySections: Record<string, string> = {
@@ -255,7 +257,7 @@ export function EventPlan() {
     if (id === "final")
       return pending.length ? "Setup items remain" : "Run the final check";
     // Optional: the built-in defaults work without changes
-    if (id === "templates") return true;
+    if (id === "templates" || id === "controls") return true;
     return summary?.readiness.find((item) => item.section === id)?.ok;
   };
   const completedSteps = sections.filter(([id]) => readinessFor(id)).length;
@@ -305,6 +307,7 @@ export function EventPlan() {
     templates:
       "Set each graphic's defaults, its number and whether Live shows it. Export or import your setup.",
     startlists: "Bring in your runners, then star the ones you want to follow.",
+    controls: "Rename radio controls whose names from the timing data do not read well on air.",
     final: "Check the database and review the complete broadcast setup.",
   };
   if (!event)
@@ -656,6 +659,7 @@ export function EventPlan() {
           {section === "startlists" && (
             <StartLists eventId={eventId} onChanged={refresh} />
           )}
+          {section === "controls" && <EventControls eventId={eventId} />}
           {section === "output" && (
             <EventOutput eventId={eventId} onChange={() => void refresh()} />
           )}

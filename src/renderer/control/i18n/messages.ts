@@ -2999,5 +2999,125 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Automatic uses REST for api.orienteering.services and the legacy api.php for other addresses.": {
     "sv": "Automatiskt använder REST för api.orienteering.services och äldre api.php för andra adresser.",
     "nb": "Automatisk bruker REST for api.orienteering.services og eldre api.php for andre adresser."
+  },
+  "Rename radio controls whose names from the timing data do not read well on air.": {
+    "sv": "Döp om radiokontroller vars namn från tidtagningen inte passar i sändning.",
+    "nb": "Gi nytt navn til radioposter som ikke passer på skjermen."
+  },
+  "Graphics show a radio control as its split number and name, for example \"Mellantid 2 Önnestad\". Rename controls whose names from the timing data do not read well. Leave a field empty to keep the name from the timing data.": {
+    "sv": "Grafiken visar en radiokontroll som mellantidsnummer och namn, till exempel \"Mellantid 2 Önnestad\". Döp om kontroller vars namn från tidtagningen inte passar. Lämna ett fält tomt för att behålla namnet från tidtagningen.",
+    "nb": "Grafikken viser en radiopost som mellomtidsnummer og navn, for eksempel \"Mellomtid 2 Önnestad\". Gi nytt navn til poster som ikke passer. La et felt stå tomt for å beholde navnet fra tidtakingen."
+  },
+  "Whole competition": {
+    "sv": "Hela tävlingen",
+    "nb": "Hele løpet"
+  },
+  "A name here is used in every class that passes the control.": {
+    "sv": "Ett namn här används i alla klasser som passerar kontrollen.",
+    "nb": "Et navn her brukes i alle klasser som passerer posten."
+  },
+  "Refresh controls": {
+    "sv": "Uppdatera kontroller",
+    "nb": "Oppdater poster"
+  },
+  "Loading radio controls…": {
+    "sv": "Hämtar radiokontroller…",
+    "nb": "Henter radioposter…"
+  },
+  "Name from timing data": {
+    "sv": "Namn från tidtagningen",
+    "nb": "Navn fra tidtakingen"
+  },
+  "Name in graphics": {
+    "sv": "Namn i grafiken",
+    "nb": "Navn i grafikken"
+  },
+  "Classes": {
+    "sv": "Klasser",
+    "nb": "Klasser"
+  },
+  "Name in graphics for control": {
+    "sv": "Namn i grafiken för kontroll",
+    "nb": "Navn i grafikken for post"
+  },
+  "The timing data has no radio controls yet. Check the data source, then refresh.": {
+    "sv": "Tidtagningen har inga radiokontroller ännu. Kontrollera datakällan och uppdatera.",
+    "nb": "Tidtakingen har ingen radioposter ennå. Sjekk datakilden og oppdater."
+  },
+  "One class": {
+    "sv": "En klass",
+    "nb": "Én klasse"
+  },
+  "A name here is used only in this class and wins over the competition-wide name.": {
+    "sv": "Ett namn här används bara i den här klassen och går före namnet för hela tävlingen.",
+    "nb": "Et navn her brukes bare i denne klassen og går foran navnet for hele løpet."
+  },
+  "Split": {
+    "sv": "Mellantid",
+    "nb": "Mellomtid"
+  },
+  "Competition name": {
+    "sv": "Namn i hela tävlingen",
+    "nb": "Navn i hele løpet"
+  },
+  "Name in this class": {
+    "sv": "Namn i den här klassen",
+    "nb": "Navn i denne klassen"
+  },
+  "Name in this class for control": {
+    "sv": "Namn i den här klassen för kontroll",
+    "nb": "Navn i denne klassen for post"
+  },
+  "This class has no radio controls.": {
+    "sv": "Klassen har inga radiokontroller.",
+    "nb": "Klassen har ingen radioposter."
+  },
+  "Save radio control names": {
+    "sv": "Spara kontrollnamn",
+    "nb": "Lagre postnavn"
+  },
+  "Radio control names saved. Graphics on air use them at their next update.": {
+    "sv": "Kontrollnamnen är sparade. Grafik i sändning använder dem vid nästa uppdatering.",
+    "nb": "Postnavnene er lagret. Grafikk på lufta bruker dem ved neste oppdatering."
+  },
+  "Automatic names": {
+    "sv": "Automatiska namn",
+    "nb": "Automatiske navn"
+  },
+  "Clear names in this class": {
+    "sv": "Rensa namnen i klassen",
+    "nb": "Fjern navnene i klassen"
+  },
+  "Automatic names number the controls in the order this class passes them; graphics then show only the split number.": {
+    "sv": "Automatiska namn numrerar kontrollerna i den ordning klassen passerar dem; grafiken visar då bara mellantidsnumret.",
+    "nb": "Automatiske navn nummererer postene i rekkefølgen klassen passerer dem; grafikken viser da bare mellomtidsnummeret."
+  },
+  "Per class": {
+    "sv": "Per klass",
+    "nb": "Per klasse"
+  },
+  "A name here is used only in its class and wins over the competition-wide name.": {
+    "sv": "Ett namn här används bara i sin klass och går före namnet för hela tävlingen.",
+    "nb": "Et navn her brukes bare i sin klasse og går foran navnet for hele løpet."
+  },
+  "Automatic names in all classes": {
+    "sv": "Automatiska namn i alla klasser",
+    "nb": "Automatiske navn i alle klasser"
+  },
+  "Clear names in all classes": {
+    "sv": "Rensa namnen i alla klasser",
+    "nb": "Fjern navnene i alle klasser"
+  },
+  "Automatic names number the controls in the order each class passes them; graphics then show only the split number.": {
+    "sv": "Automatiska namn numrerar kontrollerna i den ordning varje klass passerar dem; grafiken visar då bara mellantidsnumret.",
+    "nb": "Automatiske navn nummererer postene i rekkefølgen hver klasse passerer dem; grafikken viser da bare mellomtidsnummeret."
+  },
+  "classes have their own names (•). Choose a class to see or edit them.": {
+    "sv": "klasser har egna namn (•). Välj en klass för att se eller ändra dem.",
+    "nb": "klasser har egne navn (•). Velg en klasse for å se eller endre dem."
+  },
+  "No class has its own names. Choose a class to name its controls, or name all classes automatically.": {
+    "sv": "Ingen klass har egna namn. Välj en klass för att namnge dess kontroller, eller namnge alla klasser automatiskt.",
+    "nb": "Ingen klasse har egne navn. Velg en klasse for å navngi postene, eller navngi alle klasser automatisk."
   }
 };

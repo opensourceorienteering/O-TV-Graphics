@@ -25,6 +25,7 @@ import type {
 import { DEFAULT_TEMPLATE_SET } from "../../shared/types/spx";
 import { SYSTEM_TEMPLATE_SET } from "../../shared/types/ograf";
 import type {
+  EventControlNames,
   EventFolder,
   EventLiveOutputs,
   EventStartList,
@@ -520,12 +521,62 @@ function saveStartList(
 
 export function updateStartListPreferences(
   projectId: string,
-  updates: Pick<EventStartList, "favouriteClasses" | "favouriteControls">,
+  updates: Pick<EventStartList, "favouriteClasses" | "favouriteControls" | "controlNames">,
 ): EventStartList {
-  return saveStartList(projectId, {
-    ...loadStartList(projectId),
-    ...updates,
-  });
+  const next = { ...loadStartList(projectId), ...updates };
+  if (updates.controlNames) next.controlNames = cleanControlNames(updates.controlNames);
+  return saveStartList(projectId, next);
+}
+
+/** Drop empty names, and empty classes */
+function cleanControlNames(names: EventControlNames): EventControlNames {
+  const clean = (m?: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(m ?? {})
+        .map(([code, name]) => [String(code).trim(), String(name ?? "").trim()])
+        .filter(([code, name]) => code && name),
+    );
+  const classes = Object.fromEntries(
+    Object.entries(names.classes ?? {})
+      .map(([cls, m]) => [cls, clean(m)] as const)
+      .filter(([, m]) => Object.keys(m).length),
+  );
+  return { all: clean(names.all), classes };
+}
+
+/** The name graphics show for a radio control: the class name, else the competition-wide one */
+export function controlNameFor(
+  names: EventControlNames | undefined,
+  className: string,
+  code: string | number,
+): string | undefined {
+  const c = String(code);
+  return names?.classes?.[className]?.[c] || names?.all?.[c] || undefined;
+}
+
+/** Renamed radio controls (Plan → Radio controls) on the data graphics receive */
+export function applyControlNames(
+  projectId: string,
+  data: Record<string, any>,
+): Record<string, any> {
+  let names: EventControlNames | undefined;
+  try {
+    names = loadStartList(projectId).controlNames;
+  } catch {
+    return data;
+  }
+  if (!names || (!Object.keys(names.all ?? {}).length && !Object.keys(names.classes ?? {}).length)) return data;
+  const cls = String(data?.className ?? "");
+  const out = { ...data };
+  if (Array.isArray(data.splitControls))
+    out.splitControls = data.splitControls.map((c: any) => {
+      const name = controlNameFor(names, cls, typeof c === "object" ? c.code : c);
+      return name ? (typeof c === "object" ? { ...c, name } : { code: c, name }) : c;
+    });
+  const code = String(data.controlCode ?? "").trim();
+  const renamed = code ? controlNameFor(names, cls, code) : undefined;
+  if (renamed) out.controlName = renamed;
+  return out;
 }
 
 /** Every club in the start list with the name graphics will show, for the operator to review */
@@ -903,6 +954,7 @@ export function applyStartList(
   projectId: string,
   data: Record<string, any>,
 ): Record<string, any> {
+  data = applyControlNames(projectId, data);
   if (!Array.isArray(data?.results) || !data.results.length) return data;
   let index: Map<string, StartListEntry>;
   try {
