@@ -1,0 +1,12 @@
+{
+  "id": "iof2",
+  "name": "IOF 2.0",
+  "description": "A modern take on the IOF broadcast style: tinted glass plates in deep IOF blue with map contour lines drifting behind, IOF Red rank chips and accents, IOF Green gains, Franklin Gothic with uppercase family names, soft rising motion.",
+  "author": "Split Control, after the IOF broadcast graphics guidelines",
+  "colors": [
+    "#e30420",
+    "#307ea1",
+    "#00794c"
+  ],
+  "fonts": "Libre Franklin (OFL) stands in for ITC Franklin Gothic"
+}

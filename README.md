@@ -87,7 +87,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Eight looks**, each with the same 17 graphics:
+- **Nine looks**, each with the same 17 graphics:
   - live split at a radio control, and a runner lower third
   - runner identity, runner focus with a running clock, and a name strap
   - start list and start group (next starters)
@@ -105,6 +105,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | Look | Style |
   |---|---|
   | **IOF** | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
+  | **IOF 2.0** | A modern take on IOF: tinted glass in deep IOF blue with map contour lines drifting behind, IOF Red rank chips and accents, uppercase family names |
   | **ČO** | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
   | **Classic** | The original OL-Grafik look, modernised |
   | **Standard** | Modern and playful: floating cards with a gradient accent |

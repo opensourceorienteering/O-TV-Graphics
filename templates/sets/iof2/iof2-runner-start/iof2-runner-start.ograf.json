@@ -1,0 +1,57 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "iof2-runner-start",
+  "version": "1.0.0",
+  "name": "IOF 2.0 – Runner focus",
+  "description": "One runner followed at the start, a radio control or the finish: countdown to the start, then the running time; place and time once through the chosen point.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "detail": {
+        "type": "string",
+        "title": "Detail text",
+        "description": "Optional line, e.g. \"Last to start\""
+      },
+      "showBib": {
+        "type": "boolean",
+        "title": "Show bib",
+        "description": "Show the bib number",
+        "default": true
+      },
+      "startTimeOnly": {
+        "type": "boolean",
+        "title": "Start time only",
+        "description": "Show the start time instead of a countdown and running time",
+        "default": false
+      },
+      "showStartTime": {
+        "type": "boolean",
+        "title": "Show time",
+        "description": "Show the time box",
+        "default": true
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "iof2",
+  "v_olgrafik_kind": "runner-start",
+  "v_olgrafik_zone": "lower"
+}

@@ -21,6 +21,7 @@ const SCHEMA_URL = 'https://ograf.ebu.io/v1/specification/json-schemas/graphics/
 const SETS = {
   standard: { label: 'Standard', skip: [] },
   iof: { label: 'IOF', skip: [] },
+  iof2: { label: 'IOF 2.0', skip: [] },
   cz: { label: 'ČO', skip: [] },
   signal: { label: 'Signal', skip: [] },
   brutal: { label: 'Brutal', skip: [] },

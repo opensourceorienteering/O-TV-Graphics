@@ -1,0 +1,330 @@
+/*
+ * IOF 2.0: a modern take on the IOF broadcast style.
+ * - IOF colours: Red #e30420 for ranks, accents and the runner in focus, Blue #307ea1 as the
+ *   source of the deep glass, Green #00794c for gains. Franklin Gothic (Libre Franklin).
+ * - Tinted glass plates the video shows through (no background blur: the picture behind is
+ *   mixed in later by the production switcher), with hairline highlights.
+ * - Map contour lines drift slowly inside every plate (contours.svg, a seamless tile), and a
+ *   soft sheen passes now and then. Both animate only transform and opacity.
+ * - Family names in IOF capitals, given names in normal case; small labels tracked wide.
+ * - 100 px broadcast margins, as in the IOF look.
+ *
+ * Three colours drive everything (Plan → Theme colours): --red, --blue, --green.
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --red: #e30420;
+  --blue: #307ea1;
+  --green: #00794c;
+
+  /* derived: deep glass from IOF Blue, a lighter blue for text accents, gains readable on dark */
+  --glass-top: color-mix(in oklab, var(--blue) 46%, #04111d);
+  --glass-bottom: color-mix(in oklab, var(--blue) 20%, #020a12);
+  --glass: linear-gradient(160deg, rgb(from var(--glass-top) r g b / .84), rgb(from var(--glass-bottom) r g b / .9));
+  --edge: rgb(255 255 255 / .14);
+  --rule: rgb(255 255 255 / .09);
+  --sky: color-mix(in oklab, var(--blue) 55%, #fff);
+  --gain: color-mix(in oklab, var(--green) 60%, #8dffc4);
+  --loss: color-mix(in oklab, var(--red) 70%, #ffb3b3);
+  --red-glow: rgb(from var(--red) r g b / .45);
+  --red-wash: rgb(from var(--red) r g b / .16);
+  --text: #f4f7fa;
+  --muted: rgb(225 235 245 / .66);
+  --faint: rgb(225 235 245 / .42);
+  --chart-grid: var(--rule);
+  --chart-axis: var(--muted);
+
+  --font: "ITC Franklin Gothic Std", ITCFranklinGothicStd, "Libre Franklin", "Franklin Gothic Medium", Arial, sans-serif;
+  --fs: 30px;
+  --margin-x: 100px;
+  --margin-y: 100px;
+  --table-top: 200px;  /* below the corner clock */
+  --table-x: 400px;
+  --lower-w: 880px;
+  --side-w: 470px;
+  --podium-x: 300px;
+  --title-x: 330px;
+  --radius: 14px;
+  --line-0: var(--red); --line-1: #fff; --line-2: var(--sky); --line-3: var(--gain);
+  --line-4: #f9b122; --line-5: #e5007d; --line-6: #9fc9df; --line-7: var(--faint);
+
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* --- glass plates --------------------------------------------------------------------- */
+.panel {
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: var(--radius);
+  background: var(--glass);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .18),      /* top highlight */
+    inset 0 0 0 1px var(--edge),                /* hairline edge */
+    0 24px 60px -24px rgb(0 8 16 / .7);
+  color: var(--text);
+}
+/* drifting contour lines: one tile larger than the plate, moved by exactly one tile */
+.panel::before {
+  content: ""; position: absolute; left: 0; top: 0; z-index: -1;
+  width: calc(100% + 640px); height: calc(100% + 420px);
+  background: url(./contours.svg) 0 0 / 640px 420px repeat;
+  opacity: .08;
+  animation: iof2-drift 90s linear infinite;
+  pointer-events: none;
+}
+/* a soft sheen passing across the glass */
+.panel::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; z-index: -1;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .07) 50%, transparent);
+  transform: translateX(-100%);
+  animation: iof2-sheen 14s ease-in-out 2s infinite;
+  pointer-events: none;
+}
+@keyframes iof2-drift { to { transform: translate(-640px, -420px); } }
+@keyframes iof2-sheen { 0%, 70% { transform: translateX(0); } 100% { transform: translateX(450%); } }
+
+/* --- header: a red class tab, the timing point as a tracked label ---------------------- */
+.hdr, .ftr { padding: 0 22px; gap: 14px; }
+.hdr { min-height: 74px; padding-top: 4px; }
+/* the red accent line under the header, drawn on entry */
+.hdr::after {
+  content: ""; position: absolute; left: 22px; right: 22px; bottom: 0; height: 2px;
+  background: linear-gradient(90deg, var(--red), rgb(from var(--red) r g b / .35) 45%, transparent);
+  transform-origin: left center;
+}
+.hdr-mark, .ftr-mark { display: none; }
+.hdr-title {
+  padding: 6px 14px 5px; border-radius: 8px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 8%), var(--red));
+  box-shadow: 0 6px 18px -6px var(--red-glow);
+  color: #fff; font-size: 28px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
+}
+.hdr-sub {
+  margin-left: auto; color: var(--muted);
+  font-size: 19px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.hdr-logo, .ftr-logo { align-self: center; height: 50px; width: 100px; padding: 6px 10px; border-radius: 8px; background: #fff; }
+.hdr-sub + .hdr-logo { margin-left: 0; }
+.ftr { min-height: 48px; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.ftr-sep { color: var(--faint); }
+.ftr-page { margin-left: auto; color: var(--text); font-weight: 700; letter-spacing: .08em; }
+.ftr-logo { height: 36px; }
+
+/* --- rows ------------------------------------------------------------------------------- */
+.rows { padding: 6px 12px 10px; }
+.row { min-height: 54px; border-radius: 9px; }
+.row + .row { box-shadow: inset 0 1px 0 var(--rule); }
+/* ranks: a red-edged chip, the leader filled red */
+.c-place {
+  align-self: center !important; min-width: 44px; height: 40px; margin: 0 14px 0 4px; padding: 0 6px;
+  border-radius: 8px; box-shadow: inset 0 0 0 2px rgb(from var(--red) r g b / .85);
+  color: #fff; font-size: 21px; font-weight: 800;
+}
+.c-place:empty { box-shadow: none; }
+.row--leader .c-place {
+  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red));
+  box-shadow: 0 6px 16px -6px var(--red-glow);
+}
+.c-name { padding-right: 16px; font-size: 29px; font-weight: 500; }
+.c-name .nm-family { font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
+.c-name .nm-given { font-weight: 500; }
+.c-id { gap: 10px; padding-right: 16px; color: var(--muted); font-size: 21px; font-weight: 600; }
+.id-flag { height: 24px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
+.id-code { letter-spacing: .06em; }
+.c-time, .c-start, .c-value { padding: 0 12px 0 10px; font-weight: 700; }
+.c-time { min-width: 140px; }
+.row--leader .c-time { color: #fff; }
+.c-start { min-width: 140px; color: var(--sky); justify-content: flex-start; padding-left: 14px; }
+.c-bib {
+  align-self: center !important; min-width: 62px; height: 36px; margin: 0 10px 0 4px; padding: 0 10px;
+  border-radius: 8px; background: rgb(255 255 255 / .1); color: var(--text); font-size: 19px; font-weight: 700;
+}
+.row--status { color: var(--muted); }
+.row--status .c-time { color: var(--faint); font-size: 22px; letter-spacing: .08em; }
+.row--empty .c-name { padding: 0 14px; color: var(--muted); font-weight: 500; }
+.c-change { font-weight: 800; }
+.c-change.up { color: var(--gain); }
+.c-change.down { color: var(--loss); }
+
+/* tables */
+.panel--table .ftr:not(:has(.ftr-page)) { display: none; }
+.panel--table .ftr { min-height: 0; padding: 0 22px 12px; justify-content: flex-end; }
+.panel--table .ftr .ftr-label { display: none; }
+
+/* --- lower thirds ------------------------------------------------------------------------ */
+.panel--lower .hdr { display: none; }
+.panel--lower .rows { padding-top: 10px; padding-bottom: 6px; }
+/* the runner in focus: a red edge and a red wash */
+.panel--lower .row--hl {
+  min-height: 70px;
+  background: linear-gradient(90deg, var(--red-wash), transparent 75%);
+  box-shadow: inset 3px 0 0 var(--red);
+}
+.panel--lower .row--hl .c-name { font-size: 33px; }
+.panel--lower .row--hl .c-time { font-size: 33px; font-weight: 800; }
+.panel--runner .row--ref { min-height: 46px; font-size: 24px; color: var(--muted); }
+.panel--runner .row--ref .c-name { font-size: 24px; }
+.panel--runner .row--ref .c-place { min-width: 36px; height: 34px; font-size: 18px; }
+/* runner on the way: virtual time against the leader */
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--gain); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--loss); }
+.row.is-virtual .c-place:empty::after {
+  content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--red);
+  box-shadow: 0 0 12px var(--red-glow); animation: iof2-pulse 1.2s ease-in-out infinite;
+}
+.panel--lower .ftr { min-height: 46px; border-top: 1px solid var(--rule); }
+.ftr-class { color: var(--text); font-weight: 800; }
+.ftr-ctrl, .ftr-tp { color: var(--sky); font-weight: 700; letter-spacing: .1em; }
+
+/* --- name plates (name, identity, runner focus, free text, speaker) --------------------- */
+.gfx .panel--strap { width: auto; min-width: 580px; max-width: calc(var(--lower-w) * 1.1); }
+.panel--strap .rows { padding: 14px 16px; }
+.panel--strap .row { min-height: 82px; box-shadow: none; }
+.panel--strap .row .c-place {
+  min-width: 64px; height: 60px; margin: 0 18px 0 0; border-radius: 10px;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red));
+  box-shadow: 0 8px 22px -8px var(--red-glow); font-size: 32px;
+}
+.panel--strap .row .c-place:empty { display: none; }
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; font-size: 42px; letter-spacing: -.01em; }
+.panel--strap .row .c-name .nm-family { letter-spacing: 0; }
+.panel--strap .row .c-id { padding-left: 22px; font-size: 20px; letter-spacing: .05em; text-transform: uppercase; }
+.panel--strap .id-flag { height: 30px; }
+.panel--strap .row .c-time {
+  align-self: center !important; margin-left: 14px; min-width: 0; height: 52px; padding: 0 14px;
+  border-radius: 10px; background: rgb(255 255 255 / .1); font-size: 30px; font-weight: 800; justify-content: center;
+}
+/* with a time box the club gets less room around it */
+.panel--strap .row:has(> .c-time) .c-id { padding-left: 16px; }
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time {
+  background: var(--red-wash); box-shadow: inset 0 0 0 2px var(--red);
+}
+.panel--strap .ftr { border-top: 1px solid var(--rule); }
+.panel--extended .row--bio { min-height: 40px; font-size: 24px; }
+.panel--extended .row--bio .c-name { font: 500 24px/1.3 var(--font); color: var(--muted); }
+.panel--extended .row--bio .c-name::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 12px 3px 2px; border-radius: 2px; background: var(--red); }
+.panel--freetext .c-name { font-size: 40px; padding-left: 6px; }
+.c-mic { font-size: 32px; }
+
+/* start group: countdown in the header */
+.panel--startgroup .hdr { display: flex; min-height: 66px; }
+.panel--startgroup .hdr-sub { display: none; }
+.hdr-clock {
+  margin-left: auto; padding: 5px 14px; border-radius: 8px;
+  background: rgb(255 255 255 / .1); color: #fff; font-size: 28px; font-weight: 800;
+  box-shadow: inset 0 0 0 2px var(--red);
+}
+.hdr-clock.is-up { box-shadow: inset 0 0 0 2px var(--edge); color: var(--muted); }
+.panel--startgroup .ftr { display: none; }
+
+/* --- side panels ------------------------------------------------------------------------ */
+.panel--side .hdr { display: none; }
+.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 68px; }
+.panel--side .rows { padding-top: 6px; }
+.panel--side .row { min-height: 50px; }
+.panel--side .c-label { padding: 0 12px; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.panel--side .c-value { min-width: 140px; padding: 0 12px; font-size: 28px; font-weight: 800; }
+.panel--side .ftr { display: none; }
+.panel--splits .hdr-title { font-size: 24px; }
+.panel--splits .c-label { color: var(--text); font-size: 24px; font-weight: 700; letter-spacing: .02em; }
+.panel--splits .c-place { min-width: 38px; height: 36px; font-size: 18px; }
+.panel--splits .c-change { width: 54px; justify-content: center; font-size: 18px; }
+.panel--splits .c-time { min-width: 120px; font-size: 26px; }
+.panel--splits .c-time.is-best { color: var(--gain); }
+
+/* --- podium ----------------------------------------------------------------------------- */
+.panel--podium .podium { gap: 12px; padding: 14px; }
+.panel--podium .pod { border-radius: 12px; background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px var(--edge); }
+.panel--podium .pod > .c-place {
+  width: auto; height: auto; margin: 0; border-radius: 0; align-self: stretch !important;
+  background: rgb(255 255 255 / .06); box-shadow: none; color: #fff; font-size: 36px; font-weight: 800;
+}
+.panel--podium .pod--1 { background: linear-gradient(180deg, var(--red-wash), rgb(255 255 255 / .04)); box-shadow: inset 0 0 0 1px rgb(from var(--red) r g b / .6), 0 0 40px -12px var(--red-glow); }
+.panel--podium .pod--1 > .c-place { background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red)); font-size: 46px; }
+.panel--podium .pod .row { min-height: 86px; box-shadow: none; }
+.panel--podium .pod--1 .row { min-height: 120px; }
+.panel--podium .pod .c-place + .pod-names .row:first-child .c-place { display: none; }
+.pod .pod-time { color: var(--sky); padding: 0; min-width: 0; justify-content: flex-start; font-weight: 700; }
+.panel--podium .ftr { display: none; }
+
+/* --- clock ------------------------------------------------------------------------------ */
+.gfx--clock .panel--clock { align-items: center; padding: 8px; gap: 6px; border-radius: 12px; }
+.clk-label {
+  display: flex; align-items: center; gap: 10px; padding: 0 12px 0 14px;
+  color: var(--muted); font-size: 17px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.clk-label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red-glow); animation: iof2-pulse 1.6s ease-in-out infinite; }
+.clk-time { padding: 4px 16px; min-width: 170px; text-align: center; font-size: 42px; font-weight: 800; line-height: 1.1; }
+.clk-logo { width: 84px; height: 52px; padding: 6px 10px; margin-left: 4px; border-radius: 8px; background: #fff; }
+
+/* --- title card ------------------------------------------------------------------------- */
+.panel--title { border-radius: 18px; }
+.panel--title::before { opacity: .12; }
+.panel--title .hdr { min-height: 60px; padding-top: 18px; }
+.panel--title .hdr::after { display: none; }
+.panel--title .hdr-title { font-size: 20px; letter-spacing: .14em; padding: 6px 12px; }
+.title-body { min-height: 160px; }
+.title-logo { width: 210px; margin: 0 0 22px 22px; padding: 16px; border-radius: 12px; background: #fff; }
+.title-text { padding: 6px 30px 28px; }
+.title-main { font: 800 70px/1.02 var(--font); letter-spacing: -.01em; text-transform: uppercase; }
+.title-sub { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 24px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.title-sub .sep { color: var(--red); }
+.title-sponsors { background: #fff; }
+
+/* --- chart ------------------------------------------------------------------------------ */
+.chart-body { padding: 8px 26px 20px; }
+.chart .grid { stroke: var(--rule); stroke-width: 2; }
+.chart .ax { font-weight: 700; fill: var(--muted); }
+.chart .ln path { stroke-width: 5; }
+.chart .ln-0 path { filter: drop-shadow(0 0 6px var(--red-glow)); }
+.chart .ln-label { font: 700 22px var(--font); }
+.panel--chart .ftr { display: none; }
+
+/* --- motion ------------------------------------------------------------------------------
+ * Plates rise and settle, the red accent line draws, rows cascade, ranks pop. Exits are
+ * quick. The contours and the sheen run while the graphic is visible; only transform and
+ * opacity animate.
+ */
+.gfx {
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease-out: cubic-bezier(.5, 0, .75, 0);
+}
+@keyframes iof2-in { from { opacity: 0; transform: translateY(26px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes iof2-row { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+@keyframes iof2-line { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes iof2-pop { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: none; } }
+@keyframes iof2-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes iof2-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+.gfx:not(.gfx--position-history)[data-state="in"] .panel { animation: iof2-in 700ms var(--ease) both; }
+/* the chart is centred with a transform: it fades instead of moving */
+.gfx--position-history[data-state="in"] .panel { animation: fade-in 340ms var(--ease) both; }
+.gfx--position-history[data-state="leave"] .panel { animation: fade-out 240ms var(--ease-out) both; }
+.gfx[data-state="in"] .hdr::after { animation: iof2-line 700ms var(--ease) 260ms both; }
+.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 300ms var(--ease) 180ms both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: iof2-row 560ms var(--ease) calc(160ms + min(var(--i, 0), 10) * 40ms) both; }
+.gfx[data-state="in"] :is(.c-place:not(:empty), .hdr-title) { animation: iof2-pop 420ms var(--ease) calc(240ms + min(var(--i, 0), 10) * 40ms) both; }
+.gfx[data-state="in"] .title-main { animation: iof2-row 620ms var(--ease) 200ms both; }
+.gfx[data-state="in"] .title-sub { animation: iof2-row 620ms var(--ease) 320ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 320ms var(--ease) calc(280ms + var(--i, 0) * 50ms) both; }
+
+.gfx:not(.gfx--position-history)[data-state="leave"] .panel { animation: iof2-leave 300ms var(--ease-out) both; }
+.gfx[data-state="step-out"] .rows { animation: fade-out 200ms var(--ease-out) both; }
+.gfx[data-state="step"] .row { animation: iof2-row 440ms var(--ease) calc(min(var(--i, 0), 10) * 30ms) both; }
+
+/* the background stands still while the graphic is hidden */
+.gfx[data-state="out"] .panel::before, .gfx[data-state="out"] .panel::after { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+  .panel::before, .panel::after { animation: none !important; }
+  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .hdr-title, .title-main, .title-sub),
+  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
+  .gfx[data-state="leave"] .panel,
+  .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
+  .clk-label::before, .row.is-virtual .c-place:empty::after { animation: none; }
+}
+
+/* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
+   (graphic.js hides smaller logos) */
+.panel--table .hdr-logo { height: 58px; }
