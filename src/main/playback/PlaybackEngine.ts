@@ -1319,7 +1319,7 @@ export class PlaybackEngine {
     // Unique per command: two quick page turns on one graphic must not share a waiting slot
     const responseKey = `${commandKey}#${++this.requestSeq}`;
 
-    // Critical commands that need confirmation (SPX-GC pattern: only track critical commands)
+    // Critical commands that need confirmation (only critical commands are tracked)
     const criticalCommands = ['load', 'play'];
     const requireResponse = criticalCommands.includes(command);
 
@@ -1335,7 +1335,7 @@ export class PlaybackEngine {
       requireResponse
     });
 
-    // Fire-and-forget for non-critical commands (SPX-GC inspired)
+    // Fire-and-forget for non-critical commands
     if (!requireResponse) {
       this.wsServer.broadcastToRoom(SocketRoom.PROGRAM_OUTPUT, {
         spxcmd: 'graphics:command',
@@ -1374,7 +1374,7 @@ export class PlaybackEngine {
             });
             reject(new Error(failedResponse.error || 'Graphics command failed'));
           } else {
-            // Partial success is OK (SPX-GC style: be more forgiving)
+            // Partial success is OK (be forgiving)
             logger.debug('Graphics command completed with partial success', {
               command,
               graphicId,

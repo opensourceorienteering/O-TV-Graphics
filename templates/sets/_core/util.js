@@ -155,7 +155,7 @@ export const isRelayClass = (data) => !!data?.isRelay || /-\d+$/.test(String(dat
 /**
  * What to show next to a name. presentation.identity:
  *  - 'auto' (default): national events show the club; international individual races the flag;
- *    international relays club + flag (the co-stream-gfx rule)
+ *    international relays club + flag
  *  - 'club' | 'flag' | 'both' force it
  * A flag is only shown when a nation can be found; club logos (Eventor) go with the club.
  */

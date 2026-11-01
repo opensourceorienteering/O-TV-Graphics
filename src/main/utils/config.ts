@@ -1,6 +1,6 @@
 /**
  * Configuration Management
- * SPX-inspired config.json handling
+ * config.json handling
  */
 
 import fs from 'fs';

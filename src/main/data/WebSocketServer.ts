@@ -1,6 +1,6 @@
 /**
  * WebSocket Server
- * SPX-inspired Socket.io server for real-time communication
+ * Socket.io server for real-time communication
  */
 
 import { Server as SocketIOServer } from 'socket.io';

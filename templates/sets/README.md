@@ -6,9 +6,9 @@ another set).
 
 | Set | Look |
 |---|---|
-| `standard` | OL-Grafik Standard: the app's dark operator-console language, with charcoal surfaces, orange accents and restrained status colours |
+| `standard` | Standard (ships with the app): floating ink cards, a gradient accent, number chips and springy motion |
 | `iof` | IOF TV graphics: red rank/time boxes, blue bars, uppercase Franklin Gothic, three-layer slide |
-| `cz` | Czech orienteering streams (ČO): orange/beige, italic headers with the control-circle mark; after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx), used with permission |
+| `cz` | ČO: orange and beige, after the Czech orienteering streams, italic headers with the control-circle mark |
 | `classic` | The original OL-Grafik look (brick red + teal), including the original four graphics |
 | `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |
 | `sof` | Svensk Orientering, after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans, the federation logo (`sof/logo.svg`, from the manual, unaltered) on the title card |

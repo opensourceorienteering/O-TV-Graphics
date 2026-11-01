@@ -1,6 +1,6 @@
 /**
  * Project Manager
- * Manages TV-Grafik projects with SPX-style file structure
+ * Manages projects (events) and their rundowns on disk
  */
 
 import fs from 'fs';

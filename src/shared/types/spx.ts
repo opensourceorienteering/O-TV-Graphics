@@ -1,7 +1,6 @@
 /**
- * SPX Graphics Controller Type Definitions
- * Based on SPX-GC template system
- * For backward compatibility with legacy templates
+ * Project, rundown and presentation types for events and their graphics.
+ * The SPX* names are historical; they are kept so stored projects keep loading.
  */
 
 export type SPXFieldType =

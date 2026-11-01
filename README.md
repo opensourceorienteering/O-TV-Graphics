@@ -12,8 +12,10 @@ It runs on Windows, macOS and Linux.
 ## Download
 
 Get Split Control from the website: **<https://opensourceorienteering.github.io/O-TV-Graphics/>**.
-It also has the [manual](https://opensourceorienteering.github.io/O-TV-Graphics/manual.html)
-and an [FAQ](https://opensourceorienteering.github.io/O-TV-Graphics/faq.html).
+It also has the [manual](https://opensourceorienteering.github.io/O-TV-Graphics/manual.html),
+the [looks](https://opensourceorienteering.github.io/O-TV-Graphics/looks.html) to download, a
+[developer guide](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html) with
+a preview tool, and an [FAQ](https://opensourceorienteering.github.io/O-TV-Graphics/faq.html).
 
 Until the first release, test builds are on the
 [Build page](https://github.com/opensourceorienteering/O-TV-Graphics/actions/workflows/build.yml?query=branch%3Amain+is%3Asuccess):
@@ -38,13 +40,15 @@ Prepare the event step by step. A checklist shows what is ready.
 1. **Data source & event info:** the timing source and competition, the date and place.
 2. **Output:** the outputs the event uses in Live (web output, NDI). They turn on
    automatically when the event opens in Live.
-3. **Theme:** the look (template set), colours, logos, language and how runners are
-   shown (club, flag or both).
+3. **Theme:** the look, colours, logos, language and how runners are shown (club, flag or
+   both).
 4. **Templates:** the order of graphics in the Live list, default values for each graphic,
    and which graphics to show in Live.
 5. **Start lists:** refresh from the data source or import IOF XML or CSV, mark favourite
-   runners, assign virtual bibs when the event has none, and export a PDF.
-6. **Final check:** test everything, export or import settings, and go live.
+   runners, assign virtual bibs when the event has none, shorten club names, and export a PDF.
+6. **Radio controls** (optional): rename controls whose names don't read well on air, for
+   the whole competition or per class.
+7. **Final check:** test everything, export or import settings, and go live.
 
 ### Live
 
@@ -62,7 +66,8 @@ running order.
 |---|---|
 | `Space` | Show / hide the selected graphic |
 | `U` | Update the graphic on air with the draft |
-| `H` | Hide the active graphic |
+| `H` | Hide the last graphic shown |
+| `T` | Freeze / resume the running time on air (when you see the runner pass) |
 | `Esc` | Hide all (in a field: leave the field) |
 | `←` / `→` | Previous / next page on Program |
 | `0`–`9` | Choose a graphic by its number |
@@ -82,7 +87,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Eight looks (template sets)**, each with the same 17 graphics:
+- **Eight looks**, each with the same 17 graphics:
   - live split at a radio control, and a runner lower third
   - runner identity, runner focus with a running clock, and a name strap
   - start list and start group (next starters)
@@ -92,15 +97,15 @@ Virtual bibs are found by their number alone: `105` finds V105.
   - race title, course facts, weather, identity plate and commentators
   - timer
 
-  An event uses one set. **Standard ships with the app**; the others are downloads on the
+  An event uses one look. **Standard ships with the app**; the others are downloads on the
   [Looks page](https://opensourceorienteering.github.io/O-TV-Graphics/looks.html) (or
   attached to each release). Import a look's zip in **Graphics library → Import look…**;
   **Export…** saves any look as a zip to share it or move it to another computer.
 
-  | Set | Look |
+  | Look | Style |
   |---|---|
   | **IOF** | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
-  | **ČO** | The Czech orienteering streams, after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx) (used with permission) |
+  | **ČO** | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
   | **Classic** | The original OL-Grafik look, modernised |
   | **Standard** | Modern and playful: floating cards with a gradient accent |
   | **Bold** | Huge condensed uppercase names on ink bands |
@@ -108,7 +113,10 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | **Signal** | Dark glass cards with an RGB-split edge |
   | **Svensk Orientering** | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line, triangle elements and 45° corners, the federation logo, Plus Jakarta Sans |
 
-  The sources of every look are in [`templates/sets/`](templates/sets/).
+  The sources of every look are in [`templates/sets/`](templates/sets/). To build your own,
+  see the [developer guide](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html);
+  its [preview tool](https://opensourceorienteering.github.io/O-TV-Graphics/preview/) runs any
+  look in the browser with a simulated race.
 
 - **Broadcast rules built in.**
   - Clubs, flags or both, following national or international events.
@@ -263,13 +271,18 @@ rename.
 ├── club-logos/          Bundled Eventor club logos
 ├── companion/           Bitfocus Companion module
 ├── public/              Director page and other static pages
-├── site/                Website (GitHub Pages): downloads, manual, FAQ
+├── site/                Website (GitHub Pages): downloads, looks, manual, developer guide,
+│                        preview tool, FAQ
 ├── scripts/             Packaging, template sets, club logos, race replay
 └── docs/
 ```
 
 ## Documentation
 
+- [Manual](https://opensourceorienteering.github.io/O-TV-Graphics/manual.html) and
+  [FAQ](https://opensourceorienteering.github.io/O-TV-Graphics/faq.html) on the website
+- [Developer guide](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html):
+  build and test your own looks
 - [Replay a race](docs/REPLAY-A-RACE.md): rehearse with a finished race played back live
 - [Build & Packaging Guide](docs/BUILD-PACKAGING.md)
 - [Template sets](templates/sets/README.md)
@@ -285,9 +298,7 @@ rename.
 ## Acknowledgments
 
 - [EBU OGraf](https://ograf.ebu.io), the open graphics standard
-- [SPX-GC](https://spx.graphics), for architecture and UX inspiration
 - [Liveresultat](https://liveresultat.orientering.se), for the orienteering results API
-- [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx), for the ČO look
 - [Stagetimer](https://github.com/stagetimerio/grandiose), for the grandiose NDI bindings
 
 ## License

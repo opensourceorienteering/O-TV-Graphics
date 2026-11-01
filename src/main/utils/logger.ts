@@ -1,6 +1,6 @@
 /**
  * Winston Logger Configuration
- * SPX-inspired logging with rotating file streams
+ * Logging with rotating file streams
  */
 
 import winston from 'winston';
