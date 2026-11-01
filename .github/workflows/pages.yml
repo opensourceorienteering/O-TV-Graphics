@@ -1,5 +1,6 @@
 # Publishes the website in site/ (downloads, manual, FAQ) to GitHub Pages.
 # One-time setup: Settings → Pages → Source: GitHub Actions.
+# Publishes only site/: the index.html at the repository root is the app, not the website.
 name: Website
 
 on:
