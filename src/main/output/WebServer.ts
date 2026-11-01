@@ -11,7 +11,7 @@ import { Server as HTTPServer } from 'http';
 import { marked } from 'marked';
 import { getLogger } from '../utils/logger';
 import { createOGrafServerApiRouter } from './OGrafServerApi';
-import { getTemplateManager } from '../templates/OGrafManager';
+import { getTemplateManager, findTemplateManager } from '../templates/OGrafManager';
 import { getClubLogoService } from '../data/ClubLogoService';
 import { createDirectorApiRouter } from './DirectorApi';
 import { createControlApiRouter } from './ControlApi';
@@ -73,14 +73,25 @@ export class WebServer {
     }));
 
     // Serve templates with proper MIME types for ES modules
-    this.app.use('/templates', express.static(templatesPath, {
-      setHeaders: (res, filePath) => {
-        // Ensure .js and .mjs files are served with correct MIME type for ES modules
-        if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
-          res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-        }
+    const templateHeaders = (res: express.Response, filePath: string) => {
+      // Ensure .js and .mjs files are served with correct MIME type for ES modules
+      if (filePath.endsWith('.js') || filePath.endsWith('.mjs')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       }
-    }));
+    };
+    // Imported looks first, then the built-in templates: an imported set replaces a built-in
+    // set of the same id, and imported graphics still load the shared code (sets/_core/)
+    // that ships with the app. The folder is known once the template manager has started.
+    let importedStatic: { dir: string; handler: express.RequestHandler } | undefined;
+    this.app.use('/templates', (req, res, next) => {
+      const dir = findTemplateManager()?.getUserDirectory();
+      if (!dir) return next();
+      if (importedStatic?.dir !== dir) {
+        importedStatic = { dir, handler: express.static(dir, { setHeaders: templateHeaders, dotfiles: 'deny', index: false }) };
+      }
+      return importedStatic.handler(req, res, next);
+    });
+    this.app.use('/templates', express.static(templatesPath, { setHeaders: templateHeaders }));
 
     // Club logos: /club-logos/bundled/... (shipped with the app) and /club-logos/manual/...
     // (added by the operator). Folders are known once the logo service has started.

@@ -420,7 +420,7 @@ export async function summarize(projectId: string): Promise<EventSummary> {
       ok: sets.includes(setId),
       detail: sets.includes(setId)
         ? setId
-        : `Template set "${setId}" is not installed`,
+        : "This look is not installed. Import it in Graphics library, or choose another look.",
     },
     {
       section: "data",

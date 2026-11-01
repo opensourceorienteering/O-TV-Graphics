@@ -7,6 +7,17 @@ import { call } from "./api";
 import { WorkspaceNav } from "./WorkspaceHeader";
 import { ask } from "./ask";
 
+/** Names of the looks, for the event cards (an imported look shows its id) */
+const LOOK_NAMES: Record<string, string> = {
+  standard: "Standard",
+  classic: "Classic",
+  iof: "IOF",
+  cz: "ČO",
+  bold: "Bold",
+  brutal: "Brutal",
+  signal: "Signal",
+};
+
 export function EventsView() {
   const navigate = useNavigate();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -209,9 +220,7 @@ export function EventsView() {
                       </p>
                       <div className="event-meta">
                         <span>
-                          {{ classic: "Classic", iof: "IOF", cz: "ČO" }[
-                            e.templateSet || "classic"
-                          ] || e.templateSet}
+                          {LOOK_NAMES[e.templateSet || ""] || e.templateSet}
                         </span>
                         <span>{e.dataSourceLabel || "Data not connected"}</span>
                       </div>

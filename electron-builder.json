@@ -8,7 +8,10 @@
   "files": [
     "dist",
     "dist-electron",
-    "templates",
+    "templates/system/**/*",
+    "templates/sets/_core/**/*",
+    "templates/sets/standard/**/*",
+    "templates/sets/package.json",
     "club-logos/**/*",
     "node_modules/@stagetimerio/grandiose/package.json",
     "node_modules/@stagetimerio/grandiose/dist/**/*",

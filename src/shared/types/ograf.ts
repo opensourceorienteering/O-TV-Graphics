@@ -225,6 +225,10 @@ export interface TemplateSetInfo {
   colors?: string[];
   fonts?: string;
   templateCount: number;
+  /** built-in: ships with the app; imported: installed from a zip into the templates folder */
+  source?: 'built-in' | 'imported';
+  /** An imported look with the id of a built-in one: it is used instead of the built-in copy */
+  replacesBuiltIn?: boolean;
 }
 
 export const CUSTOM_TEMPLATE_SET = 'custom';

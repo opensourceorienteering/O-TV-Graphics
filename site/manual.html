@@ -15,6 +15,7 @@
       <nav class="site-nav">
         <a href="./#download">Download</a>
         <a href="manual.html" aria-current="page">Manual</a>
+        <a href="looks.html">Looks</a>
         <a href="faq.html">FAQ</a>
         <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
       </nav>
@@ -33,7 +34,7 @@
         <li><a href="#outputs">6. Set up the outputs</a></li>
         <li><a href="#live">7. Run the broadcast</a></li>
         <li><a href="#palette">8. Command palette</a></li>
-        <li><a href="#graphics">9. The graphics</a></li>
+        <li><a href="#graphics">9. The graphics and looks</a></li>
         <li><a href="#director">10. Director page</a></li>
         <li><a href="#remote">11. Stream Deck and remote control</a></li>
         <li><a href="#settings">12. Settings</a></li>
@@ -161,7 +162,8 @@
 
       <h3>Theme</h3>
       <ul>
-        <li><strong>Event theme</strong>: the look (template set). All graphics of the event use it.</li>
+        <li><strong>Event theme</strong>: the look. All graphics of the event use it. Standard comes
+          with the app; <a href="#looks">import</a> others.</li>
         <li><strong>Theme colors</strong>: three colours that every shade, gradient and divider
           follows. <strong>Apply colors</strong>, then <strong>Save event theme</strong>.</li>
         <li><strong>Next to names</strong>: club, flag, both, or automatic (relays show club and flag).</li>
@@ -317,7 +319,7 @@
       <p>Command numbers are the same in every event and set in <strong>Settings → Controls</strong>.</p>
 
       <!-- 9 -->
-      <h2 id="graphics">9. The graphics</h2>
+      <h2 id="graphics">9. The graphics and looks</h2>
       <div class="table-wrap">
       <table>
         <thead><tr><th>Graphic</th><th>What it shows</th></tr></thead>
@@ -340,12 +342,35 @@
         </tbody>
       </table>
       </div>
-      <p>Every graphic exists in all seven looks: <strong>IOF</strong>, <strong>ČO</strong>,
-        <strong>Classic</strong>, <strong>Standard</strong>, <strong>Bold</strong>,
-        <strong>Brutal</strong> and <strong>Signal</strong>. Browse them in
-        <strong>Graphics library</strong>.</p>
       <p>The graphics are standard <a href="https://ograf.ebu.io">EBU OGraf</a> packages, so
         third-party OGraf graphics load too.</p>
+
+      <h3 id="looks">Looks: import, export and share</h3>
+      <p>A look is the style of every graphic: colours, fonts, layout and motion. Every look has
+        the same graphics. <strong>Standard</strong> comes with the app. <strong>IOF</strong>,
+        <strong>ČO</strong>, <strong>Classic</strong>, <strong>Bold</strong>, <strong>Brutal</strong>
+        and <strong>Signal</strong> are on the <a href="looks.html">Looks page</a>.</p>
+      <p>A look is shared as one zip file. Everything is in <strong>Graphics library</strong>:</p>
+      <ul>
+        <li><strong>Import look…</strong>: choose a look's zip (don't unzip it). Split Control shows
+          what it will add or replace before it installs anything. A zip can also hold an OGraf
+          graphic outside any look.</li>
+        <li><strong>Export…</strong> next to a look saves it as a zip, to use on another computer or
+          send to someone. Built-in looks can be exported too.</li>
+        <li><strong>Remove</strong> deletes an imported look. Events that use it need another look
+          before they go live.</li>
+        <li><strong>Get more looks</strong> opens the Looks page; <strong>Open folder</strong> shows
+          where imported looks are kept.</li>
+      </ul>
+      <p>Importing a look with the same name as one you have replaces it. An imported
+        <strong>Standard</strong> is used instead of the built-in one until you remove it.</p>
+      <p>Choose the look of an event in <strong>Plan → Theme</strong>. If an event's look isn't
+        installed on this computer (for example after moving events), Plan says so: import the
+        look, or choose another one.</p>
+      <p class="tip"><strong>Make your own look:</strong> export a look, change its
+        <code>theme.css</code> and <code>set.json</code> (give it a new <code>id</code>), and import
+        it. Graphic ids must be unique, so a new look needs its own graphics; see
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">Template sets</a>.</p>
 
       <!-- 10 -->
       <h2 id="director">10. Director page</h2>

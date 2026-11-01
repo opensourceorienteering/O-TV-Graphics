@@ -120,7 +120,9 @@ async function initializeServices() {
       exists: require('fs').existsSync(templatesDir)
     });
 
-    const templateManager = await initTemplateManager(templatesDir);
+    // Imported looks and graphics live next to the events, where the app can write
+    const userTemplatesDir = path.join(appConfig.general.dataroot, 'templates');
+    const templateManager = await initTemplateManager(templatesDir, userTemplatesDir);
 
     // Discover templates
     const discoveryResult = await templateManager.discoverTemplates();

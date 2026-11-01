@@ -1249,6 +1249,29 @@ progress {
   font-size: 13px;
   line-height: 1.55;
 }
+.template-group-heading .look-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.template-group-heading .look-actions > span {
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.template-group-heading .look-source {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border, #343b44);
+  border-radius: 999px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
 .template-group-heading > span {
   padding-top: 4px;
   color: var(--color-text-secondary);

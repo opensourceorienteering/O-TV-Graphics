@@ -3171,5 +3171,101 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Freeze / resume the running time on air": {
     "sv": "Frys / starta den löpande tiden i sändning",
     "nb": "Frys / start løpende tid på lufta"
+  },
+  "Import look…": {
+    "sv": "Importera tema…",
+    "nb": "Importer tema…"
+  },
+  "Install a look or OGraf graphic from a zip file": {
+    "sv": "Installera ett tema eller en OGraf-grafik från en zip-fil",
+    "nb": "Installer et tema eller en OGraf-grafikk fra en zip-fil"
+  },
+  "Get more looks": {
+    "sv": "Hämta fler teman",
+    "nb": "Hent flere temaer"
+  },
+  "Open folder": {
+    "sv": "Öppna mapp",
+    "nb": "Åpne mappe"
+  },
+  "Imported looks and graphics are kept in this folder": {
+    "sv": "Importerade teman och grafik sparas i den här mappen",
+    "nb": "Importerte temaer og grafikk lagres i denne mappen"
+  },
+  "Imported": {
+    "sv": "Importerat",
+    "nb": "Importert"
+  },
+  "Imported · replaces built-in": {
+    "sv": "Importerat · ersätter inbyggt",
+    "nb": "Importert · erstatter innebygd"
+  },
+  "Export…": {
+    "sv": "Exportera…",
+    "nb": "Eksporter…"
+  },
+  "Save this look as a zip file, to share it or use it on another computer": {
+    "sv": "Spara temat som en zip-fil, för att dela det eller använda det på en annan dator",
+    "nb": "Lagre temaet som en zip-fil, for å dele det eller bruke det på en annen datamaskin"
+  },
+  "Import this zip?": {
+    "sv": "Importera den här zip-filen?",
+    "nb": "Importere denne zip-filen?"
+  },
+  "new look": {
+    "sv": "nytt tema",
+    "nb": "nytt tema"
+  },
+  "replaces the built-in look": {
+    "sv": "ersätter det inbyggda temat",
+    "nb": "erstatter det innebygde temaet"
+  },
+  "replaces the imported look": {
+    "sv": "ersätter det importerade temat",
+    "nb": "erstatter det importerte temaet"
+  },
+  "new graphic": {
+    "sv": "ny grafik",
+    "nb": "ny grafikk"
+  },
+  "replaces the imported graphic": {
+    "sv": "ersätter den importerade grafiken",
+    "nb": "erstatter den importerte grafikken"
+  },
+  "Import failed": {
+    "sv": "Importen misslyckades",
+    "nb": "Importen mislyktes"
+  },
+  "Look exported": {
+    "sv": "Temat exporterat",
+    "nb": "Temaet er eksportert"
+  },
+  "Export failed": {
+    "sv": "Exporten misslyckades",
+    "nb": "Eksporten mislyktes"
+  },
+  "Remove the imported": {
+    "sv": "Ta bort det importerade temat",
+    "nb": "Fjerne det importerte temaet"
+  },
+  "The built-in look is used again.": {
+    "sv": "Det inbyggda temat används igen.",
+    "nb": "Det innebygde temaet brukes igjen."
+  },
+  "These events use it and need another look before they go live:": {
+    "sv": "De här evenemangen använder det och behöver ett annat tema innan de sänds:",
+    "nb": "Disse arrangementene bruker det og trenger et annet tema før de går på lufta:"
+  },
+  "Look removed": {
+    "sv": "Temat borttaget",
+    "nb": "Temaet er fjernet"
+  },
+  "Import a look, or add an OGraf package to the templates folder, then scan the library.": {
+    "sv": "Importera ett tema, eller lägg ett OGraf-paket i mallmappen och skanna sedan biblioteket.",
+    "nb": "Importer et tema, eller legg en OGraf-pakke i malmappen og skann deretter biblioteket."
+  },
+  "This look is not installed. Import it in Graphics library, or choose another look.": {
+    "sv": "Temat är inte installerat. Importera det i Grafikbibliotek, eller välj ett annat tema.",
+    "nb": "Temaet er ikke installert. Importer det i Grafikkbibliotek, eller velg et annet tema."
   }
 };

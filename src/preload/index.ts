@@ -50,6 +50,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'output:startLive',
       'window:openMonitor', 'window:closeMonitor', 'window:monitors',
       'templates:getSets',
+      'templates:pickImport', 'templates:import', 'templates:exportSet', 'templates:removeSet', 'templates:setUsage', 'templates:openFolder',
       'clubLogos:status',
       'clubNames:list',
       'clubNames:set',

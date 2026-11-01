@@ -95,6 +95,14 @@ jobs:
           path: dist-release
           merge-multiple: true
 
+      # Every look as a zip, for Graphics library → Import look…
+      - name: Zip the looks
+        run: |
+          scripts/zip-looks.sh "$RUNNER_TEMP/looks"
+          for f in "$RUNNER_TEMP"/looks/*.zip; do
+            cp "$f" "dist-release/Split-Control-look-$(basename "$f")"
+          done
+
       # Pre-releases (v1.2.0-beta.1) are marked as such and don't become "latest"
       - name: Create the release
         env:

@@ -4,7 +4,7 @@
  */
 
 import { SYSTEM_TEMPLATE_SET, type OGrafTemplateInfo } from '../../shared/types/ograf';
-import { DEFAULT_TEMPLATE_SET, type SPXProject } from '../../shared/types/spx';
+import { LEGACY_TEMPLATE_SET, type SPXProject } from '../../shared/types/spx';
 
 /** Semantic roles for Classic graphics created before v_olgrafik_kind existed. */
 const LEGACY_GRAPHIC_KINDS: Record<string, string> = {
@@ -14,8 +14,9 @@ const LEGACY_GRAPHIC_KINDS: Record<string, string> = {
   'split-time-lower-third-runner': 'runner-lower-third'
 };
 
+/** A project's look; projects from before looks existed used the original (classic) graphics */
 export function projectTemplateSet(project: Pick<SPXProject, 'templateSet'> | null | undefined): string {
-  return project?.templateSet || DEFAULT_TEMPLATE_SET;
+  return project?.templateSet || LEGACY_TEMPLATE_SET;
 }
 
 /** The style-independent role represented by a concrete graphic template. */

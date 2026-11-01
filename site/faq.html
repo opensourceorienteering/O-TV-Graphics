@@ -15,6 +15,7 @@
       <nav class="site-nav">
         <a href="./#download">Download</a>
         <a href="manual.html">Manual</a>
+        <a href="looks.html">Looks</a>
         <a href="faq.html" aria-current="page">FAQ</a>
         <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
       </nav>
@@ -222,17 +223,40 @@
 
     <details>
       <summary>Can I use my own colours and logos?</summary>
-      <div><p>Yes. In <strong>Plan → Theme</strong>, pick three colours that every graphic follows,
+      <div><p>Yes. In <strong>Plan → Theme</strong>, choose a <a href="looks.html">look</a>, pick three colours that every graphic follows,
         add the event logo, and add or replace club logos as <code>&lt;Club name&gt;.png</code> in
         the logo folder.</p></div>
+    </details>
+
+    <details id="more-looks">
+      <summary>Where are the IOF, ČO and other looks?</summary>
+      <div>
+        <p>Only Standard comes with the app. Download the others from the
+          <a href="looks.html">Looks page</a>, then choose <strong>Graphics library → Import look…</strong>
+          in Split Control.</p>
+      </div>
+    </details>
+
+    <details id="look-not-installed">
+      <summary>Plan says "This look is not installed"</summary>
+      <div>
+        <p>The event uses a look that isn't on this computer, for example an event made before
+          looks were downloads, or copied from another computer. Import the look from the
+          <a href="looks.html">Looks page</a>, or choose another look in <strong>Plan → Theme</strong>.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>How do I move a look to another computer?</summary>
+      <div><p>In <strong>Graphics library</strong>, choose <strong>Export…</strong> next to the look.
+        On the other computer, choose <strong>Import look…</strong> and pick the zip.</p></div>
     </details>
 
     <details>
       <summary>Can I make my own graphics?</summary>
       <div>
         <p>Yes. Split Control uses standard <a href="https://ograf.ebu.io">EBU OGraf</a> graphics.
-          Add an OGraf package to the templates folder and scan the library in
-          <strong>Graphics library</strong>.</p>
+          Zip the graphic's folder and choose <strong>Graphics library → Import look…</strong>.</p>
         <p>To build a whole new look, see
           <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">Template sets</a>.</p>
       </div>

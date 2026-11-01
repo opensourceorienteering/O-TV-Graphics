@@ -135,3 +135,14 @@ details > div p:first-child { margin-top: 0; }
   .site-header .inner { flex-wrap: wrap; gap: 8px; }
   .site-nav { margin-left: 0; }
 }
+
+/* Looks */
+.looks-intro { padding-top: 40px; }
+.looks-intro .notice { margin: 20px 0 24px; }
+.looks-grid .look { display: flex; flex-direction: column; gap: 6px; }
+.looks-grid .look .button { margin-top: auto; justify-content: center; }
+.looks-grid .look h3 { margin: 6px 0 0; }
+.swatches { display: flex; gap: 6px; }
+.swatches span { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); }
+.badge { font-size: 0.7rem; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.meta { color: var(--faint); font-size: 0.9rem; }

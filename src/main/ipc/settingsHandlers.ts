@@ -8,6 +8,7 @@ import { getLogger } from '../utils/logger';
 import { getConfig, saveConfig, AppConfig } from '../utils/config';
 import path from 'path';
 import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
+import { findTemplateManager } from '../templates/OGrafManager';
 
 const logger = getLogger();
 
@@ -224,7 +225,8 @@ export function registerSettingsHandlers() {
           configPath: path.join(process.cwd(), 'config.json'),
           dataroot: config.general.dataroot,
           logfolder: config.general.logfolder,
-          templatesDir: path.join(process.cwd(), 'templates')
+          // Where imported looks go; the built-in ones are inside the app
+          templatesDir: findTemplateManager()?.getUserDirectory() || path.join(config.general.dataroot, 'templates')
         }
       };
     } catch (error) {

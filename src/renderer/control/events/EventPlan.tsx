@@ -35,6 +35,7 @@ import { EventInfoForm } from "./EventInfoForm";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 import { EventControls } from "./EventControls";
 import { RETIRED_LOGO_URLS, TYR_LOGO_URL } from "../../../shared/branding";
+import { DEFAULT_TEMPLATE_SET } from "../../../shared/types/spx";
 
 const sections = [
   ["setup", "Data source & event info"],
@@ -206,8 +207,8 @@ export function EventPlan() {
   };
   const previewSet =
     section === "theme"
-      ? themeDraft?.templateSet || event?.templateSet || "classic"
-      : event?.templateSet || "classic";
+      ? themeDraft?.templateSet || event?.templateSet || DEFAULT_TEMPLATE_SET
+      : event?.templateSet || DEFAULT_TEMPLATE_SET;
   const available = templates.filter((t) => t.setId === previewSet);
   useEffect(() => {
     if (!event || !templates.length || !["setup", "theme"].includes(section))

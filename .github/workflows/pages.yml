@@ -1,4 +1,5 @@
-# Publishes the website in site/ (downloads, manual, FAQ) to GitHub Pages.
+# Publishes the website in site/ (downloads, looks, manual, FAQ) to GitHub Pages, with every
+# look in templates/sets/ zipped for download (site/looks/).
 # One-time setup: Settings → Pages → Source: GitHub Actions.
 # Publishes only site/: the index.html at the repository root is the app, not the website.
 name: Website
@@ -9,6 +10,8 @@ on:
     branches: [main]
     paths:
       - "site/**"
+      - "templates/sets/**"
+      - "scripts/zip-looks.sh"
       - ".github/workflows/pages.yml"
 
 permissions:
@@ -28,6 +31,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
+      - name: Zip the looks
+        run: scripts/zip-looks.sh site/looks
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

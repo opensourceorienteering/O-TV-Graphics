@@ -1,5 +1,6 @@
 import type { EventFolder } from "../../shared/types/event";
 import type { SPXProject, ProjectPresentation } from "../../shared/types/spx";
+import { DEFAULT_TEMPLATE_SET } from "../../shared/types/spx";
 const branding = ["logoUrl", "sponsorLogos"] as const;
 const look = [
   "language",
@@ -34,7 +35,7 @@ export function inheritFolder(
   const defaults = folder.defaults;
   let presentation = { ...project.settings?.presentation };
   if (project.folderInheritance.look) {
-    next.templateSet = defaults.templateSet || "classic";
+    next.templateSet = defaults.templateSet || DEFAULT_TEMPLATE_SET;
     presentation = copyKeys(
       presentation,
       (defaults.presentation as ProjectPresentation) || {},

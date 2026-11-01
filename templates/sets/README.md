@@ -10,6 +10,23 @@ another set).
 | `iof` | IOF TV graphics: red rank/time boxes, blue bars, uppercase Franklin Gothic, three-layer slide |
 | `cz` | Czech orienteering streams (ČO): orange/beige, italic headers with the control-circle mark; after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx), used with permission |
 | `classic` | The original OL-Grafik look (brick red + teal), including the original four graphics |
+| `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |
+
+## Shipping and sharing looks
+
+Only `standard` (with `_core/`) ships inside the app. The other looks are downloads: the
+website's Looks page and each release offer every set as a zip, made by
+`scripts/zip-looks.sh`. In the app, **Graphics library → Import look…** installs a zip and
+**Export…** saves one.
+
+- A look zip holds one set folder (`<set>/set.json`, `set.js`, `theme.css`, `fonts/`,
+  `<set>-<kind>/`…); the files may also sit at the top of the zip. One zip may hold several
+  looks, and OGraf graphics outside any set.
+- Imported looks go to `DATAROOT/templates/sets/<set>/` and are served at the same
+  `/templates/sets/<set>/` URL as built-in ones, so their graphics load the app's `_core/`.
+  Keep `_core/` compatible with older looks, or ask people to download the looks again.
+- An imported set with the id of a built-in set is used instead of it until it is removed.
+- Graphic ids must be unique across every installed look; an import that clashes is refused.
 
 ## Layout
 
@@ -46,6 +63,7 @@ is picked up.
 1. Copy a set folder (e.g. `cz`) to `sets/<new-id>/`, delete the `cz-*` graphic folders.
 2. Edit `set.json`, `set.js` (change `id`) and `theme.css`.
 3. Add the set to `SETS` in `scripts/generate-template-sets.js` and run `npm run generate:sets`.
-4. Reload templates in the app; pick the set in Project View → Project graphics.
+4. Reload templates in the app (Graphics library → Scan library); pick the set in Plan → Theme.
+   To try it in an installed app, zip the set folder and import it.
 
 Graphic ids must be unique across sets (the generator prefixes them with the set id).

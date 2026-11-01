@@ -92,7 +92,10 @@ Virtual bibs are found by their number alone: `105` finds V105.
   - race title, course facts, weather, identity plate and commentators
   - timer
 
-  An event uses one set.
+  An event uses one set. **Standard ships with the app**; the others are downloads on the
+  [Looks page](https://opensourceorienteering.github.io/O-TV-Graphics/looks.html) (or
+  attached to each release). Import a look's zip in **Graphics library → Import look…**;
+  **Export…** saves any look as a zip to share it or move it to another computer.
 
   | Set | Look |
   |---|---|
@@ -103,6 +106,8 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | **Bold** | Huge condensed uppercase names on ink bands |
   | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |
   | **Signal** | Dark glass cards with an RGB-split edge |
+
+  The sources of every look are in [`templates/sets/`](templates/sets/).
 
 - **Broadcast rules built in.**
   - Clubs, flags or both, following national or international events.
@@ -185,6 +190,7 @@ npm run lint             # ESLint
 npx vitest run           # tests, once (npm test watches)
 npm run build            # type-check, bundle and package for this platform
 npm run generate:sets    # regenerate the template set packages from templates/sets/_core
+scripts/zip-looks.sh out # zip every look for download (what the website and releases offer)
 npm run companion:package
 ```
 
@@ -202,7 +208,8 @@ git tag v1.2.0
 git push origin v1.2.0
 ```
 
-The build then creates a GitHub release with the installers, and the website's download
+The build then creates a GitHub release with the installers and every look as a zip
+(`Split-Control-look-<set>.zip`), and the website's download
 buttons link to it. A tag with a suffix (`v1.2.0-beta.1`) makes a pre-release, which the
 website doesn't offer.
 
@@ -221,6 +228,7 @@ club logos.
 |---|---|---|
 | Settings | `config.json` in the project folder (git-ignored; start from [config.example.json](config.example.json)) | `config.json` in the app data folder |
 | Events | `DATAROOT/` in the project folder (git-ignored) | `DATAROOT/` in the app data folder |
+| Imported looks | `DATAROOT/templates/` | `DATAROOT/templates/` in the app data folder |
 
 The app data folder is `~/Library/Application Support/OL-Grafik` on macOS and
 `%APPDATA%\OL-Grafik` on Windows. It keeps its old name so existing events survive the
@@ -243,7 +251,8 @@ rename.
 │   │   └── web-output/  Browser source page
 │   ├── preload/
 │   └── shared/          Types and logic shared by main and renderer
-├── templates/sets/      Template sets; shared code in _core/
+├── templates/sets/      Looks (template sets); shared code in _core/. Only standard/ ships
+│                        with the app; the others are zipped for download
 ├── club-logos/          Bundled Eventor club logos
 ├── companion/           Bitfocus Companion module
 ├── public/              Director page and other static pages

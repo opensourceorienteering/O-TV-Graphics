@@ -1,10 +1,45 @@
 import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
-import { Package, RefreshCw, Search } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  FolderOpen,
+  Package,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+} from "lucide-react";
+import { useToast } from "../contexts/ToastContext";
 import type {
   OGrafTemplateInfo,
   TemplateSetInfo,
 } from "../../../shared/types/ograf";
+
+/** Every look as a zip, on the website */
+const LOOKS_URL = "https://opensourceorienteering.github.io/O-TV-Graphics/looks.html";
+
+interface ImportPreview {
+  looks: Array<{ id: string; name: string; graphics: number; replaces?: "imported" | "built-in" }>;
+  graphics: Array<{ id: string; name: string; replaces?: boolean }>;
+}
+
+/** The confirmation shown before an import, in plain words */
+function importQuestion(preview: ImportPreview): string {
+  const lines = [
+    ...preview.looks.map((look) =>
+      look.replaces === "built-in"
+        ? `${look.name}: ${tr("replaces the built-in look")}`
+        : look.replaces === "imported"
+          ? `${look.name}: ${tr("replaces the imported look")}`
+          : `${look.name}: ${tr("new look")} (${look.graphics} ${tr("graphics")})`,
+    ),
+    ...preview.graphics.map(
+      (g) => `${g.name}: ${g.replaces ? tr("replaces the imported graphic") : tr("new graphic")}`,
+    ),
+  ];
+  return `${tr("Import this zip?")}\n\n${lines.join("\n")}`;
+}
 
 export function TemplatesView() {
   const [templates, setTemplates] = useState<OGrafTemplateInfo[]>([]);
@@ -13,6 +48,8 @@ export function TemplatesView() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [setId, setSetId] = useState("all");
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
 
   const loadTemplates = async (reload = false) => {
     setLoading(true);
@@ -48,6 +85,69 @@ export function TemplatesView() {
     void loadTemplates();
   }, []);
 
+  const importLook = async () => {
+    setBusy(true);
+    try {
+      const picked = await window.electronAPI.invoke("templates:pickImport");
+      if (!picked.success) throw new Error(picked.error);
+      if (picked.cancelled) return;
+      if (!confirm(importQuestion(picked.preview))) return;
+      const result = await window.electronAPI.invoke("templates:import", picked.filePath);
+      if (!result.success) throw new Error(result.error);
+      const names = [
+        ...result.preview.looks.map((l: { name: string }) => l.name),
+        ...result.preview.graphics.map((g: { name: string }) => g.name),
+      ].join(", ");
+      toast.showToast("success", `${tr("Imported")}: ${names}`);
+      await loadTemplates();
+    } catch (cause) {
+      toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const exportLook = async (set: TemplateSetInfo) => {
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:exportSet", set.id);
+      if (!result.success) throw new Error(result.error);
+      if (!result.cancelled) toast.showToast("success", `${tr("Look exported")}: ${result.filePath}`);
+    } catch (cause) {
+      toast.showToast("error", `${tr("Export failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeLook = async (set: TemplateSetInfo) => {
+    const usage = await window.electronAPI.invoke("templates:setUsage", set.id);
+    const events: string[] = usage?.success ? usage.events : [];
+    const message = [
+      set.replacesBuiltIn
+        ? `${tr("Remove the imported")} ${set.name}? ${tr("The built-in look is used again.")}`
+        : `${tr("Remove the imported")} ${set.name}?`,
+      !set.replacesBuiltIn && events.length
+        ? `${tr("These events use it and need another look before they go live:")} ${events.join(", ")}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    if (!confirm(message)) return;
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:removeSet", set.id);
+      if (!result.success) throw new Error(result.error);
+      toast.showToast("success", `${tr("Look removed")}: ${set.name}`);
+      if (setId === set.id && !set.replacesBuiltIn) setSetId("all");
+      await loadTemplates();
+    } catch (cause) {
+      toast.showToast("error", cause instanceof Error ? cause.message : String(cause), 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const shown = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return templates.filter(
@@ -78,18 +178,47 @@ export function TemplatesView() {
           <h1>{tr("Graphics library")}</h1>
           <p>{tr("Browse the graphics available when you prepare an event.")}</p>
         </div>
-        <button
-          className="studio-button"
-          onClick={() => void loadTemplates(true)}
-          disabled={loading}
-        >
-          <RefreshCw
-            size={16}
-            aria-hidden="true"
-            className={loading ? "icon-spin" : ""}
-          />
-          {loading ? "Scanning…" : tr("Scan library")}
-        </button>
+        <div className="row wrap">
+          <button
+            className="studio-button primary"
+            onClick={() => void importLook()}
+            disabled={busy || loading}
+            title={tr("Install a look or OGraf graphic from a zip file")}
+          >
+            <Upload size={16} aria-hidden="true" />
+            {tr("Import look…")}
+          </button>
+          <button
+            className="studio-button"
+            onClick={() =>
+              void window.electronAPI.invoke("window:openExternal", LOOKS_URL).catch(() => undefined)
+            }
+            title={LOOKS_URL}
+          >
+            <ExternalLink size={16} aria-hidden="true" />
+            {tr("Get more looks")}
+          </button>
+          <button
+            className="studio-button"
+            onClick={() => void window.electronAPI.invoke("templates:openFolder").catch(() => undefined)}
+            title={tr("Imported looks and graphics are kept in this folder")}
+          >
+            <FolderOpen size={16} aria-hidden="true" />
+            {tr("Open folder")}
+          </button>
+          <button
+            className="studio-button"
+            onClick={() => void loadTemplates(true)}
+            disabled={loading}
+          >
+            <RefreshCw
+              size={16}
+              aria-hidden="true"
+              className={loading ? "icon-spin" : ""}
+            />
+            {loading ? "Scanning…" : tr("Scan library")}
+          </button>
+        </div>
       </header>
 
       {error && (
@@ -147,10 +276,44 @@ export function TemplatesView() {
               <section className="template-group" key={set.id || "all"}>
                 <div className="template-group-heading">
                   <div>
-                    <h2>{set.name}</h2>
+                    <h2>
+                      {set.name}{" "}
+                      {set.source && (
+                        <span className="look-source">
+                          {set.source === "imported"
+                            ? set.replacesBuiltIn
+                              ? tr("Imported · replaces built-in")
+                              : tr("Imported")
+                            : tr("Built in")}
+                        </span>
+                      )}
+                    </h2>
                     {set.description && <p>{set.description}</p>}
                   </div>
-                  <span>{group.length}  {tr("graphics")}</span>
+                  <div className="look-actions">
+                    <span>{group.length}  {tr("graphics")}</span>
+                    {set.source && (
+                      <button
+                        className="studio-button"
+                        onClick={() => void exportLook(set)}
+                        disabled={busy}
+                        title={tr("Save this look as a zip file, to share it or use it on another computer")}
+                      >
+                        <Download size={15} aria-hidden="true" />
+                        {tr("Export…")}
+                      </button>
+                    )}
+                    {set.source === "imported" && (
+                      <button
+                        className="studio-button"
+                        onClick={() => void removeLook(set)}
+                        disabled={busy}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                        {tr("Remove")}
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="template-grid">
                   {group.map((template) => (
@@ -216,7 +379,7 @@ export function TemplatesView() {
           <p>
             {templates.length
               ? tr("Change the search or graphic-set filter.")
-              : tr("Add an OGraf package to the templates folder, then scan the library.")}
+              : tr("Import a look, or add an OGraf package to the templates folder, then scan the library.")}
           </p>
           {templates.length ? (
             <button

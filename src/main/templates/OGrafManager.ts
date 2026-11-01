@@ -44,12 +44,19 @@ interface TemplateCacheEntry {
  */
 export class OGrafManager {
   private templatesDir: string;
+  /** Writable folder for imported looks and graphics (same layout as templatesDir) */
+  private userDir?: string;
   private cache: Map<string, TemplateCacheEntry>;
   private sets: Map<string, TemplateSetInfo> = new Map();
   private setOfManifest: Map<string, string> = new Map();
+  /** Root folder (templatesDir or userDir) each manifest was found in */
+  private rootOfManifest: Map<string, string> = new Map();
+  /** Folder of each set found by the last discovery */
+  private setDirs: Map<string, string> = new Map();
 
-  constructor(templatesDir: string) {
+  constructor(templatesDir: string, userDir?: string) {
     this.templatesDir = templatesDir;
+    this.userDir = userDir;
     this.cache = new Map();
   }
 
@@ -77,6 +84,15 @@ export class OGrafManager {
     }
 
     logger.debug('Templates directory verified', { path: this.templatesDir });
+
+    if (this.userDir) {
+      try {
+        fsSync.mkdirSync(path.join(this.userDir, 'sets'), { recursive: true });
+      } catch (error) {
+        logger.warn('Could not create the imported templates folder', { path: this.userDir, error: (error as Error).message });
+        this.userDir = undefined;
+      }
+    }
   }
 
   /**
@@ -90,23 +106,34 @@ export class OGrafManager {
     try {
       // Graphics live in template sets (templates/sets/<set>/<graphic>/); graphics directly in
       // templates/ form the "custom" set; templates/system/ holds tools that belong to no set.
+      // Imported looks (userDir) are scanned first: an imported set replaces a built-in set
+      // with the same id.
       const systemDir = path.join(this.templatesDir, SYSTEM_TEMPLATE_SET);
       this.sets.clear();
-      const candidates: Array<{ dir: string; name: string; setId: string }> = [];
-      const entries = await fs.readdir(this.templatesDir, { withFileTypes: true });
-      for (const entry of entries) {
-        if (!entry.isDirectory() || entry.name === 'sets' || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_')) continue;
-        candidates.push({ dir: path.join(this.templatesDir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET });
-      }
-      if (fsSync.existsSync(systemDir)) {
-        for (const g of await fs.readdir(systemDir, { withFileTypes: true })) {
-          if (g.isDirectory() && !g.name.startsWith('_')) candidates.push({ dir: path.join(systemDir, g.name), name: g.name, setId: SYSTEM_TEMPLATE_SET });
+      this.setDirs.clear();
+      this.setOfManifest.clear();
+      this.rootOfManifest.clear();
+      const candidates: Array<{ dir: string; name: string; setId: string; root: string }> = [];
+      const roots = [
+        ...(this.userDir && fsSync.existsSync(this.userDir) ? [{ dir: this.userDir, imported: true }] : []),
+        { dir: this.templatesDir, imported: false }
+      ];
+      for (const root of roots) {
+        const entries = await fs.readdir(root.dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory() || entry.name === 'sets' || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
+          candidates.push({ dir: path.join(root.dir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET, root: root.dir });
         }
-      }
-      const setsDir = path.join(this.templatesDir, 'sets');
-      if (fsSync.existsSync(setsDir)) {
+        const setsDir = path.join(root.dir, 'sets');
+        if (!fsSync.existsSync(setsDir)) continue;
         for (const setEntry of await fs.readdir(setsDir, { withFileTypes: true })) {
-          if (!setEntry.isDirectory() || setEntry.name.startsWith('_')) continue;
+          if (!setEntry.isDirectory() || setEntry.name.startsWith('_') || setEntry.name.startsWith('.')) continue;
+          const existing = this.sets.get(setEntry.name);
+          if (existing) {
+            // An imported copy of this look is already loaded
+            if (!root.imported) existing.replacesBuiltIn = true;
+            continue;
+          }
           const setDir = path.join(setsDir, setEntry.name);
           let meta: Partial<TemplateSetInfo> = {};
           try {
@@ -114,6 +141,7 @@ export class OGrafManager {
           } catch {
             logger.warn('Template set without a readable set.json', { set: setEntry.name });
           }
+          this.setDirs.set(setEntry.name, setDir);
           this.sets.set(setEntry.name, {
             id: setEntry.name,
             name: meta.name || setEntry.name,
@@ -121,22 +149,29 @@ export class OGrafManager {
             author: meta.author,
             colors: meta.colors,
             fonts: meta.fonts,
-            templateCount: 0
+            templateCount: 0,
+            source: root.imported ? 'imported' : 'built-in'
           });
           for (const g of await fs.readdir(setDir, { withFileTypes: true })) {
-            if (!g.isDirectory() || g.name === 'fonts' || g.name.startsWith('_')) continue;
-            candidates.push({ dir: path.join(setDir, g.name), name: g.name, setId: setEntry.name });
+            if (!g.isDirectory() || g.name === 'fonts' || g.name.startsWith('_') || g.name.startsWith('.')) continue;
+            candidates.push({ dir: path.join(setDir, g.name), name: g.name, setId: setEntry.name, root: root.dir });
           }
+        }
+      }
+      if (fsSync.existsSync(systemDir)) {
+        for (const g of await fs.readdir(systemDir, { withFileTypes: true })) {
+          if (g.isDirectory() && !g.name.startsWith('_')) candidates.push({ dir: path.join(systemDir, g.name), name: g.name, setId: SYSTEM_TEMPLATE_SET, root: this.templatesDir });
         }
       }
 
       // Check for manifest files in parallel; .ograf.json first (spec), manifest.json as fallback
       const templateDirs = await Promise.all(
-        candidates.map(async ({ dir: templateDir, name, setId }) => {
+        candidates.map(async ({ dir: templateDir, name, setId, root }) => {
           const ografManifestPath = path.join(templateDir, `${name}.ograf.json`);
           try {
             await fs.access(ografManifestPath);
             this.setOfManifest.set(ografManifestPath, setId);
+            this.rootOfManifest.set(ografManifestPath, root);
             return ografManifestPath;
           } catch {
             const legacyManifestPath = path.join(templateDir, 'manifest.json');
@@ -144,6 +179,7 @@ export class OGrafManager {
               await fs.access(legacyManifestPath);
               logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
               this.setOfManifest.set(legacyManifestPath, setId);
+              this.rootOfManifest.set(legacyManifestPath, root);
               return legacyManifestPath;
             } catch {
               logger.debug('Skipping directory without manifest', { dir: name });
@@ -283,7 +319,7 @@ export class OGrafManager {
       if (existing && existing.manifestPath !== manifestPath) {
         return {
           success: false,
-          error: `Duplicate graphic id "${manifest.id}" (already used by ${path.relative(this.templatesDir, existing.manifestPath)})`
+          error: `Duplicate graphic id "${manifest.id}" (already used by ${existing.manifestPath})`
         };
       }
 
@@ -368,7 +404,9 @@ export class OGrafManager {
 
     // URL path below templates/ ("sets/iof/iof-results", or "my-graphic" outside sets)
     const templateDir = path.dirname(manifestPath);
-    const directoryName = path.relative(this.templatesDir, templateDir).split(path.sep).join('/');
+    // Imported graphics are served from the same /templates/ URL as built-in ones
+    const root = this.rootOfManifest.get(manifestPath) ?? this.templatesDir;
+    const directoryName = path.relative(root, templateDir).split(path.sep).join('/');
     const setId = this.setOfManifest.get(manifestPath) ?? CUSTOM_TEMPLATE_SET;
     const zoneValue = (manifest as any).v_olgrafik_zone;
     const zone: GraphicZone | undefined = ['main', 'lower', 'side', 'corner', 'full'].includes(zoneValue) ? zoneValue : undefined;
@@ -476,6 +514,16 @@ export class OGrafManager {
   getTemplatesDirectory(): string {
     return this.templatesDir;
   }
+
+  /** Writable folder for imported looks and graphics, if there is one */
+  getUserDirectory(): string | undefined {
+    return this.userDir;
+  }
+
+  /** Folder of a set found by the last discovery */
+  getSetDirectory(setId: string): string | undefined {
+    return this.setDirs.get(setId);
+  }
 }
 
 /**
@@ -486,13 +534,18 @@ let managerInstance: OGrafManager | null = null;
 /**
  * Initialize the template manager
  */
-export async function initTemplateManager(templatesDir: string): Promise<OGrafManager> {
+export async function initTemplateManager(templatesDir: string, userDir?: string): Promise<OGrafManager> {
   if (!managerInstance) {
-    managerInstance = new OGrafManager(templatesDir);
+    managerInstance = new OGrafManager(templatesDir, userDir);
     await managerInstance.initialize();
-    logger.info('OGRAF Template Manager initialized', { templatesDir });
+    logger.info('OGRAF Template Manager initialized', { templatesDir, userDir });
   }
   return managerInstance;
+}
+
+/** The template manager, or undefined before it is initialised */
+export function findTemplateManager(): OGrafManager | undefined {
+  return managerInstance ?? undefined;
 }
 
 /**

@@ -46,6 +46,15 @@ export function deskTemplateInfo(project: SPXProject, key: string): OGrafTemplat
     ?? inSet.find(t => def.fallbackIds?.includes(t.manifest.id));
 }
 
+/** Why the event's look has no graphic for a desk template */
+function missingGraphic(project: SPXProject, label: string): Error {
+  const setId = project.templateSet || DEFAULT_TEMPLATE_SET;
+  const installed = getTemplateManager().getTemplateSets().some(s => s.id === setId);
+  return err(installed
+    ? `The "${setId}" look has no ${label} graphic`
+    : `The "${setId}" look is not installed. Import it in Graphics library, or choose another look in Plan → Theme.`);
+}
+
 /** Which desk templates the event's set provides */
 export async function deskTemplates(projectId: string) {
   const project = await loadEvent(projectId);
@@ -181,7 +190,7 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
   const def = DESK_TEMPLATES.find(t => t.key === draft.key);
   if (!def) throw err('Unknown graphic');
   const t = deskTemplateInfo(project, draft.key);
-  if (!t) throw err(`The "${project.templateSet || DEFAULT_TEMPLATE_SET}" look has no ${def.label} graphic`);
+  if (!t) throw missingGraphic(project, def.label);
   validate(def, draft, t);
   if (def.live && (!project.dataSource?.sourceId || !project.dataSource.competitionId))
     throw err('Timing data is not set up for this event (Settings → Data)');
@@ -339,7 +348,7 @@ async function writeDraftForPreview(projectId: string, draft: DeskDraft) {
   const def = DESK_TEMPLATES.find(t => t.key === draft.key);
   if (!def) throw err('Unknown graphic');
   const template = deskTemplateInfo(project, draft.key);
-  if (!template) throw err(`The "${project.templateSet || DEFAULT_TEMPLATE_SET}" look has no ${def.label} graphic`);
+  if (!template) throw missingGraphic(project, def.label);
   validate(def, draft, template);
   if (def.live && (!project.dataSource?.sourceId || !project.dataSource.competitionId))
     throw err('Timing data is not set up for this event (Settings → Data)');

@@ -300,7 +300,10 @@ export interface ProjectPresentation {
   themeColors?: string[];
 }
 
-export const DEFAULT_TEMPLATE_SET = 'classic';
+/** The look new events start with: the one look that ships with the app */
+export const DEFAULT_TEMPLATE_SET = 'standard';
+/** Projects from before template sets used the original graphics */
+export const LEGACY_TEMPLATE_SET = 'classic';
 
 /**
  * Project list item (for project browser)
