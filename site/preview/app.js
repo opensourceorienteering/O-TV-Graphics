@@ -146,6 +146,7 @@ async function clearUploads() {
 // --- the graphic ---------------------------------------------------------------------------
 
 let tagSeq = 0;
+const tags = new Map();
 async function chooseGraphic(folder) {
   const g = state.look?.graphics.find((x) => x.folder === folder);
   if (!g) return;
@@ -158,8 +159,13 @@ async function chooseGraphic(folder) {
   try {
     const url = `${state.look.base || TEMPLATES}sets/${state.look.id}/${g.folder}/${g.main}`;
     const mod = await import(url);
-    const tag = `pv-graphic-${++tagSeq}`;
-    customElements.define(tag, mod.default);
+    // a graphic's class can be registered once only: reuse its tag when it is chosen again
+    let tag = tags.get(mod.default);
+    if (!tag) {
+      tag = `pv-graphic-${++tagSeq}`;
+      customElements.define(tag, mod.default);
+      tags.set(mod.default, tag);
+    }
     const el = document.createElement(tag);
     $('host').append(el);
     state.el = el;

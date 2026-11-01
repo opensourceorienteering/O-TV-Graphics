@@ -178,7 +178,7 @@
 .panel--runner .row--hl.is-running .c-time { color: var(--yellow); }
 
 /* footer under lower thirds: class and timing point */
-.panel--lower .ftr { min-height: 46px; font-size: 20px; }
+.panel--lower .ftr { min-height: 46px; font-size: 20px; border-top: 0; }  /* no divider: it would cut the triangles */
 .ftr-class { color: var(--text); font-weight: 800; font-style: italic; }
 .ftr-ctrl, .ftr-tp { color: var(--yellow); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 18px; }
 
