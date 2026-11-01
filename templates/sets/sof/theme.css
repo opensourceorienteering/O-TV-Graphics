@@ -147,6 +147,13 @@
 /* tables */
 .panel--table .ftr:not(:has(.ftr-page)) { display: none; }
 .panel--table .ftr { border-top: 0; min-height: 0; padding: 0 26px; justify-content: flex-start; }
+
+/* A visible footer shares its line with the bottom-right triangles instead of sitting above
+   the room kept for them: the plate ends with the footer, the triangles and the yellow line. */
+.panel:is(.panel--lower:not(.panel--strap), .panel--table:has(.ftr-page)) { padding-bottom: var(--line); }
+.panel:is(.panel--lower:not(.panel--strap), .panel--table:has(.ftr-page)) > .ftr {
+  min-height: calc(var(--tri) * 2); padding-right: calc(var(--tri) * 2 + 14px);
+}
 .panel--table .ftr .ftr-label { display: none; }
 .panel--table .ftr-page { margin-left: 0; }
 
@@ -176,12 +183,12 @@
 .ftr-ctrl, .ftr-tp { color: var(--yellow); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 18px; }
 
 /* --- name plates (name, identity, runner focus, free text, speaker) -----------------------
- * The manual's name plate for video: a Sverigeblå plate, the name in white bold italic, the
+ * The manual's name plate for video: a plate in the blue gradient, the name in white bold italic, the
  * club in yellow uppercase, one yellow triangle in the bottom-right corner.
  */
 .gfx .panel--strap {
   width: auto; min-width: 560px; max-width: calc(var(--lower-w) * 1.1);
-  clip-path: none; background: var(--blue); padding-bottom: 0;
+  clip-path: none; background: var(--grad); padding-bottom: 0;
   --tri: 30px;
 }
 .panel--strap::before {
@@ -254,7 +261,7 @@
 
 /* --- podium ------------------------------------------------------------------------------- */
 .panel--podium .podium { gap: 14px; padding: 14px 14px 0; }
-.panel--podium .pod { background: color-mix(in srgb, var(--blue) 85%, transparent); }
+.panel--podium .pod { background: var(--grad); box-shadow: inset 0 0 0 1px var(--rule); }
 .panel--podium .pod > .c-place {
   width: auto; height: auto; margin: 0; border: 0; border-radius: 0; align-self: stretch !important;
   background: color-mix(in oklab, var(--deep) 70%, var(--blue)); color: var(--yellow); font: 600 34px/1 var(--font);
