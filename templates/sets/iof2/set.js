@@ -8,7 +8,6 @@ export default {
   durations: { in: 760, out: 340, stepOut: 180, step: 460 },
   rowsPerPage: 10,
   colorVars: ['--red', '--blue', '--green'],
-  // the timing tower is narrow: "T. ALEXANDERSSON", as on F1 timing screens
-  nameStyle: { table: 'initial', lower: 'full', strap: 'full' },
+  nameStyle: { table: 'full', lower: 'full', strap: 'full' },
   labels: { standingsAt: 'Standings at', startList: 'Start list', positionHistory: 'Position history', podium: 'Flower ceremony' }
 };

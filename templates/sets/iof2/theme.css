@@ -6,7 +6,7 @@
  *    numbers carry the brand (SVG, "Designing the modern scorebug", 2026).
  *  - Light as the material: brand elements that emit and refract light instead of flat
  *    plates (UEFA Champions League 2024–27 identity).
- *  - A dark, animated motion background inside the panel, square corners (F1 2025 timing tower).
+ *  - A dark, animated motion background inside the panel, square corners (F1 2025).
  *  - Motion as part of the system: elements leave the way they came (NBC Paris 2024).
  *  - Translucency over blur: heavy glassmorphism isn't a broadcast trend; subtle see-through
  *    plates are. (A browser source can't blur the picture behind it anyway: the switcher
@@ -51,8 +51,8 @@
   --fs: 30px;
   --margin-x: 100px;
   --margin-y: 100px;
-  --tower-w: 640px;
-  --table-top: 196px;   /* the tower starts under the scorebug */
+  --table-top: 196px;   /* under the scorebug */
+  --table-x: 380px;     /* large and centred: 1160 px wide */
   --lower-w: 860px;
   --side-w: 470px;
   --podium-x: 320px;
@@ -135,10 +135,11 @@
 .c-change.up { color: var(--gain); }
 .c-change.down { color: var(--loss); }
 
-/* --- the timing tower: results and start lists, down the left side ----------------------- */
-.gfx--results .panel, .gfx--start-list .panel {
-  left: var(--margin-x); right: auto; top: var(--table-top); width: var(--tower-w);
-}
+/* --- results and start lists: large and centred ---------------------------------------- */
+.panel--table .row { min-height: 56px; }
+.panel--table .c-name { font-size: 32px; }
+.panel--table .c-time { font-size: 32px; min-width: 130px; }
+.panel--table .c-place { min-width: 50px; height: 42px; font-size: 26px; }
 /* the negative IOF logo at the right end of the header */
 .panel--table .hdr::after {
   content: ""; order: 10; flex: none; width: 76px; height: 32px;
@@ -146,9 +147,8 @@
 }
 .panel--table .ftr:not(:has(.ftr-page)) { display: none; }
 .panel--table .ftr .ftr-label { display: none; }
-.panel--table .c-id { max-width: 200px; }
-.panel--table .id-club { max-width: 190px; }
-.panel--startlist .c-start { padding: 0 14px 0 4px; font-size: 25px; }
+.panel--table .c-id { font-size: 23px; }
+.panel--startlist .c-start { padding: 0 18px 0 4px; font-size: 29px; }
 
 /* --- live split and runner lower third: the runner in focus on the bright band ----------- */
 .panel--lower .hdr { display: none; }
