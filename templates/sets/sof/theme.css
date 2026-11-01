@@ -1,0 +1,344 @@
+/*
+ * Svensk Orientering
+ * After Svensk Orientering's graphic manual (version 1.0, 2026):
+ * - Sverigeblå plates on the Skymningsblå gradient (Sverigeblå → Vinnarblå)
+ * - Sverigegul for numbers, highlights, the yellow line and one triangle
+ * - triangle elements from the control flag: one top left, two bottom right, always the same
+ *   size; the yellow line along the bottom edge
+ * - Plus Jakarta Sans: bold italic for competition headings ("fart och riktning framåt"),
+ *   bold uppercase with wide tracking for detail headings, semibold numbers in circles
+ * - only palette colours: Sjöblå, Skogsgrön, Kontroll-orange and Violett for charts and details
+ *
+ * Three colours drive everything (Plan → Theme colours):
+ *   --blue    Sverigeblå: plates, triangles, the bright end of the gradient
+ *   --yellow  Sverigegul: numbers, highlights, the yellow line
+ *   --deep    Vinnarblå: backgrounds, the dark end of the gradient
+ */
+@import url('../_core/base.css');
+
+.gfx {
+  --blue: #0F347C;
+  --yellow: #FFDD00;
+  --deep: #001A4F;
+
+  /* the rest of the palette */
+  --sky: #69BFEB;      /* Sjöblå */
+  --light: #E8F4FC;    /* Himmelsblå */
+  --orange: #FCBD40;   /* Kontroll-orange */
+  --green: #84D099;    /* Skogsgrön */
+  --violet: #9B9BE0;   /* Violett */
+
+  --grad: linear-gradient(180deg, var(--blue) 0%, var(--deep) 100%);
+  --text: #fff;
+  --muted: color-mix(in oklab, #fff 72%, var(--blue));
+  --faint: color-mix(in oklab, #fff 48%, var(--blue));
+  --rule: color-mix(in srgb, #fff 16%, transparent);      /* thin strokes */
+  --raised: color-mix(in oklab, var(--blue) 70%, #fff 8%);
+  --on-yellow: var(--deep);
+  --gain: var(--green);
+  --loss: var(--orange);
+  --chart-grid: var(--rule);
+  --chart-axis: var(--muted);
+
+  --font: "Plus Jakarta Sans", Arial, sans-serif;
+  --fs: 30px;
+  --margin-x: 96px;
+  --margin-y: 90px;
+  --table-top: 200px;  /* below the corner clock */
+  --table-x: 400px;
+  --lower-w: 820px;
+  --side-w: 480px;
+  --podium-x: 250px;
+  --title-x: 300px;
+  --radius: 16px;
+  --tri: 24px;         /* triangle elements: one size per graphic */
+  --line: 6px;         /* the yellow line */
+  --shadow: 0 22px 44px -14px rgb(0 10 40 / .6);
+  --line-0: var(--yellow); --line-1: var(--sky); --line-2: var(--green); --line-3: var(--orange);
+  --line-4: var(--violet); --line-5: #fff; --line-6: var(--light); --line-7: var(--faint);
+
+  font-feature-settings: "tnum" 1;
+}
+
+/* --- plates ------------------------------------------------------------------------------
+ * The plate carries the top-left triangle as a background; ::before holds the two bottom-right
+ * triangles (Sverigeblå above, Sverigegul below, as in the manual) and ::after the yellow line,
+ * so they can animate on their own.
+ */
+.panel {
+  overflow: hidden;
+  /* square where the triangles sit (top left, bottom right), rounded elsewhere */
+  border-radius: 0 var(--radius) 0 var(--radius);
+  color: var(--text);
+  background:
+    linear-gradient(135deg, var(--sky) 50%, transparent 50%) left top / var(--tri) var(--tri) no-repeat,
+    var(--grad);
+  box-shadow: var(--shadow);
+  padding-bottom: calc(var(--tri) * 2 + var(--line));
+}
+.panel::before {
+  content: ""; position: absolute; right: 0; bottom: var(--line);
+  width: calc(var(--tri) * 2); height: calc(var(--tri) * 2);
+  background:
+    linear-gradient(135deg, var(--blue) 50%, transparent 50%) right top / var(--tri) var(--tri) no-repeat,
+    linear-gradient(-45deg, var(--yellow) 50%, transparent 50%) left bottom / var(--tri) var(--tri) no-repeat;
+  pointer-events: none;
+}
+.panel::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: var(--line);
+  background: var(--yellow); transform-origin: left center;
+}
+/* The top-left triangle is Sjöblå (klarblå): the gradient starts in Sverigeblå, where a
+   Sverigeblå triangle would vanish. The manual allows blue, klarblå, yellow and white
+   triangles on dark blue. */
+
+/* header: class (bold italic) left, detail heading (yellow, uppercase) right */
+.hdr, .ftr { padding: 0 26px; gap: 16px; }
+.hdr { min-height: 76px; padding-top: 6px; border-bottom: 1px solid var(--rule); }
+.hdr-mark, .ftr-mark { display: none; }
+.hdr-title { font: italic 800 36px/1.1 var(--font); letter-spacing: -.01em; }
+.hdr-sub {
+  margin-left: auto; color: var(--yellow);
+  font-size: 20px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+.hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 10px; border-radius: 8px; background: #fff; }
+.hdr-sub + .hdr-logo { margin-left: 0; }
+.ftr { min-height: 50px; color: var(--muted); font-size: 20px; font-weight: 600; border-top: 1px solid var(--rule); }
+.ftr-sep { color: var(--faint); }
+.ftr-page { margin-left: auto; color: var(--yellow); font-size: 20px; font-weight: 700; letter-spacing: .05em; }
+.ftr-logo { height: 36px; }
+
+/* --- rows --------------------------------------------------------------------------------- */
+.rows { padding: 4px 14px 0; }
+.row { min-height: 54px; border-bottom: 1px solid var(--rule); }
+.rows > .row:last-child { border-bottom: 0; }
+/* places: semibold numbers in a yellow ring, the leader filled */
+.c-place {
+  align-self: center !important; width: 42px; height: 42px; margin: 0 14px 0 6px;
+  border-radius: 50%; border: 2px solid var(--yellow); color: var(--yellow);
+  font-size: 21px; font-weight: 600;
+}
+.c-place:empty { border-color: transparent; }
+.row--leader .c-place { background: var(--yellow); color: var(--on-yellow); }
+.c-name { padding-right: 16px; font-size: 29px; font-weight: 600; }
+.c-name b, .c-name .nm-family { font-weight: 800; }
+.c-id { gap: 10px; padding-right: 18px; color: var(--muted); font-size: 22px; font-weight: 600; }
+.id-flag { height: 26px; border-radius: 4px; }
+.id-code { letter-spacing: .03em; }
+.c-time, .c-start, .c-value { padding: 0 14px 0 10px; font-weight: 700; }
+.c-time { min-width: 150px; }
+.row--leader .c-time { color: var(--yellow); }
+.c-start { min-width: 140px; color: var(--yellow); justify-content: flex-start; padding-left: 14px; }
+/* bibs: the "02" box of the manual, outlined */
+.c-bib {
+  align-self: center !important; min-width: 64px; height: 38px; margin: 0 10px 0 6px; padding: 0 10px;
+  border-radius: 9px; border: 2px solid var(--faint); color: var(--text); font-size: 20px; font-weight: 600;
+}
+.row--status { color: var(--muted); }
+.row--status .c-time { color: var(--faint); font-size: 24px; }
+.row--empty .c-name { padding: 0 16px; color: var(--muted); font-weight: 500; }
+.c-change { font-weight: 700; }
+.c-change.up { color: var(--gain); }
+.c-change.down { color: var(--loss); }
+
+/* tables */
+.panel--table .ftr:not(:has(.ftr-page)) { display: none; }
+.panel--table .ftr { border-top: 0; min-height: 0; padding: 0 26px; justify-content: flex-start; }
+.panel--table .ftr .ftr-label { display: none; }
+.panel--table .ftr-page { margin-left: 0; }
+
+/* --- lower thirds ------------------------------------------------------------------------ */
+.panel--lower .hdr { display: none; }
+.panel--lower .rows { padding-top: 10px; }
+.panel--lower .row { min-height: 54px; }
+.panel--lower .row--hl { min-height: 70px; }
+/* the runner in focus: a thin yellow stroke before the name (manual: tunna streck) */
+.panel--lower .row--hl::before {
+  content: ""; position: absolute; left: -14px; top: 14px; bottom: 14px; width: 4px; background: var(--yellow);
+}
+.panel--lower .row--hl .c-name { font-size: 33px; font-weight: 800; font-style: italic; }
+.panel--lower .row--hl .c-time { color: var(--text); font-size: 33px; font-weight: 800; }
+.panel--runner .row--ref { min-height: 46px; font-size: 24px; color: var(--muted); }
+.panel--runner .row--ref .c-name { font-size: 24px; }
+.panel--runner .row--ref .c-place { width: 34px; height: 34px; font-size: 18px; }
+/* runner on the way: virtual time against the leader */
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--green); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--orange); }
+.row.is-virtual .c-place:empty::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--yellow); animation: sof-pulse 1.2s ease-in-out infinite; }
+.panel--runner .row--hl.is-running .c-time { color: var(--yellow); }
+
+/* footer under lower thirds: class and timing point */
+.panel--lower .ftr { min-height: 46px; font-size: 20px; }
+.ftr-class { color: var(--text); font-weight: 800; font-style: italic; }
+.ftr-ctrl, .ftr-tp { color: var(--yellow); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-size: 18px; }
+
+/* --- name plates (name, identity, runner focus, free text, speaker) -----------------------
+ * The manual's name plate for video: a Sverigeblå plate, the name in white bold italic, the
+ * club in yellow uppercase, one yellow triangle in the bottom-right corner.
+ */
+.gfx .panel--strap {
+  width: auto; min-width: 560px; max-width: calc(var(--lower-w) * 1.1);
+  border-radius: 4px; background: var(--blue); padding-bottom: 0;
+  --tri: 30px;
+}
+.panel--strap::before {
+  bottom: 0; width: var(--tri); height: var(--tri);
+  background: linear-gradient(-45deg, var(--yellow) 50%, transparent 50%);
+}
+.panel--strap::after { display: none; }
+.panel--strap .rows { padding: 14px 52px 14px 18px; }
+.panel--strap .row { min-height: 80px; border-bottom: 0; }
+.panel--strap .row--hl::before { display: none; }
+.panel--strap .row .c-place {
+  align-self: center !important; width: 64px; height: 64px; margin: 0 22px 0 4px;
+  background: var(--yellow); border: 0; color: var(--on-yellow); font-size: 30px; font-weight: 700;
+}
+.panel--strap .row .c-place:empty { display: none; }
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; font-size: 46px; font-weight: 800; font-style: italic; letter-spacing: -.01em; }
+.panel--strap .row .c-name b, .panel--strap .row .c-name .nm-family { font-weight: 800; }
+.panel--strap .row .c-id {
+  padding-left: 26px; color: var(--yellow); font-size: 22px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.panel--strap .id-flag { height: 30px; }
+.panel--strap .row .c-time {
+  align-self: center !important; margin-left: 18px; min-width: 0; height: 54px; padding: 0 18px;
+  border-radius: 9px; border: 2px solid var(--yellow); color: var(--yellow);
+  font-size: 32px; font-weight: 700; justify-content: center;
+}
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { background: var(--yellow); color: var(--on-yellow); }
+.panel--strap .ftr { border-top: 1px solid var(--rule); padding: 0 18px; margin-right: 34px; }
+.panel--extended .row--bio { min-height: 40px; font-size: 24px; }
+.panel--extended .row--bio .c-name { font: 500 24px/1.3 var(--font); color: var(--light); letter-spacing: 0; }
+/* triangle bullets (manual 4.10) */
+.panel--extended .row--bio .c-name::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 12px;
+  background: linear-gradient(-45deg, var(--yellow) 50%, transparent 50%);
+}
+.panel--freetext .c-name { font-size: 40px; padding-left: 6px; }
+.c-mic { font-size: 32px; }
+
+/* start group: countdown in the header */
+.panel--startgroup .hdr { display: flex; min-height: 66px; }
+.panel--startgroup .hdr-sub { display: none; }
+.hdr-clock {
+  margin-left: auto; padding: 5px 16px; border-radius: 9px;
+  background: var(--yellow); color: var(--on-yellow); font-size: 28px; font-weight: 700;
+}
+.hdr-clock.is-up { background: transparent; color: var(--yellow); box-shadow: inset 0 0 0 2px var(--yellow); }
+.panel--startgroup .ftr { display: none; }
+
+/* --- side panels -------------------------------------------------------------------------- */
+.panel--side .hdr { display: none; }
+.panel--info .hdr { display: flex; min-height: 66px; }
+.panel--side .rows { padding-top: 6px; }
+.panel--info .rows { padding-top: 0; }
+.panel--side .row { min-height: 50px; }
+.panel--side .c-label {
+  padding: 0 14px; color: var(--muted); font-size: 20px; font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase;
+}
+.panel--side .c-value { min-width: 140px; padding: 0 14px; font-size: 28px; font-weight: 700; }
+.panel--side .ftr { display: none; }
+.panel--splits .hdr { display: flex; min-height: 66px; }
+.panel--splits .hdr-title { font-size: 30px; }
+.panel--splits .c-label { color: var(--text); font-size: 24px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+.panel--splits .c-place { width: 38px; height: 38px; font-size: 19px; }
+.panel--splits .c-change { width: 54px; justify-content: center; font-size: 19px; }
+.panel--splits .c-time { min-width: 120px; font-size: 26px; }
+.panel--splits .c-time.is-best { color: var(--green); }
+.panel--splits .c-time.is-behind { color: var(--text); }
+
+/* --- podium ------------------------------------------------------------------------------- */
+.panel--podium .podium { gap: 14px; padding: 14px 14px 0; }
+.panel--podium .pod { border-radius: 10px; background: color-mix(in srgb, var(--blue) 85%, transparent); }
+.panel--podium .pod > .c-place {
+  width: auto; height: auto; margin: 0; border: 0; border-radius: 0; align-self: stretch !important;
+  background: color-mix(in oklab, var(--deep) 70%, var(--blue)); color: var(--yellow); font: 600 34px/1 var(--font);
+}
+.panel--podium .pod--1 { box-shadow: inset 0 4px 0 var(--yellow); }
+.panel--podium .pod--1 > .c-place { background: var(--yellow); color: var(--on-yellow); font-size: 44px; }
+.panel--podium .pod .row { min-height: 84px; border-bottom: 0; }
+.panel--podium .pod--1 .row { min-height: 118px; }
+.panel--podium .pod .c-name { font-weight: 800; font-style: italic; }
+.panel--podium .pod .c-place + .pod-names .row:first-child .c-place { display: none; }
+.pod .pod-time { color: var(--yellow); padding: 0; min-width: 0; justify-content: flex-start; font-weight: 700; }
+.panel--podium .ftr { display: none; }
+
+/* --- clock -------------------------------------------------------------------------------- */
+.gfx--clock .panel--clock { align-items: center; padding: 8px 8px calc(8px + var(--line)); gap: 4px; border-radius: 12px; --tri: 14px; }
+.panel--clock::before { bottom: var(--line); }
+.clk-label {
+  padding: 0 14px 0 20px; color: var(--yellow);
+  font-size: 18px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+}
+.clk-time { padding: 4px 30px 4px 12px; min-width: 170px; text-align: center; font-size: 42px; font-weight: 800; line-height: 1.1; }
+.clk-logo { width: 84px; height: 52px; padding: 6px 10px; margin-left: 4px; border-radius: 8px; background: #fff; }
+
+/* --- title card --------------------------------------------------------------------------
+ * The manual's title plate: title in white, place in yellow, both bold italic.
+ */
+.panel--title { --tri: 34px; --line: 10px; padding-bottom: calc(var(--line) + 18px); }
+.panel--title .hdr { min-height: 58px; padding-top: 10px; padding-left: 52px; border-bottom: 0; }
+.panel--title .hdr-title { font: 700 22px/1 var(--font); font-style: normal; color: var(--yellow); letter-spacing: .05em; text-transform: uppercase; }
+.title-body { min-height: 150px; }
+.title-logo { width: 220px; margin: 0 0 12px 30px; padding: 18px; border-radius: 12px; background: #fff; }
+.title-text { padding: 4px 52px 12px; }
+.title-main { font: italic 800 68px/1.04 var(--font); letter-spacing: -.015em; }
+.title-sub { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font: italic 800 34px/1.15 var(--font); color: var(--yellow); }
+.title-sub .sep { color: var(--yellow); }
+.title-sponsors { background: #fff; }
+
+/* --- chart -------------------------------------------------------------------------------- */
+.chart-body { padding: 8px 28px 4px; }
+.chart .grid { stroke: var(--rule); stroke-width: 2; }
+.chart .ax { font-weight: 700; fill: var(--muted); }
+.chart .ln path { stroke-width: 6; }
+.chart .ln-label { font: 700 24px var(--font); }
+.panel--chart .ftr { display: none; }
+
+/* --- motion -------------------------------------------------------------------------------
+ * Forward: plates slide in from the left (the direction of the italic), rows follow, the
+ * yellow line draws from the left and the triangles land last. Exits are short.
+ * Only transform and opacity animate.
+ */
+.gfx {
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease-out: cubic-bezier(.5, 0, .9, .4);
+}
+@keyframes sof-in { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+@keyframes sof-row { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@keyframes sof-line { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes sof-tri { from { opacity: 0; transform: translate(-14px, 14px); } to { opacity: 1; transform: none; } }
+@keyframes sof-pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes sof-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(32px); } }
+@keyframes sof-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+
+.gfx:not(.gfx--position-history)[data-state="in"] .panel { animation: sof-in 620ms var(--ease) both; }
+/* the chart is centred with a transform: it fades instead of moving */
+.gfx--position-history[data-state="in"] .panel { animation: fade-in 320ms var(--ease) both; }
+.gfx--position-history[data-state="leave"] .panel { animation: fade-out 240ms var(--ease-out) both; }
+.gfx[data-state="in"] .panel::after { animation: sof-line 620ms var(--ease) 220ms both; }
+.gfx[data-state="in"] .panel::before { animation: sof-tri 420ms var(--ease) 480ms both; }
+.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 280ms var(--ease) 160ms both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: sof-row 520ms var(--ease) calc(120ms + min(var(--i, 0), 10) * 40ms) both; }
+.gfx[data-state="in"] :is(.c-place:not(:empty), .hdr-clock) { animation: sof-pop 380ms var(--ease) calc(240ms + min(var(--i, 0), 10) * 40ms) both; }
+.gfx[data-state="in"] .title-main { animation: sof-row 560ms var(--ease) 180ms both; }
+.gfx[data-state="in"] .title-sub { animation: sof-row 560ms var(--ease) 300ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 320ms var(--ease) calc(280ms + var(--i, 0) * 50ms) both; }
+
+.gfx:not(.gfx--position-history)[data-state="leave"] .panel { animation: sof-leave 300ms var(--ease-out) both; }
+.gfx[data-state="step-out"] .rows { animation: fade-out 180ms var(--ease-out) both; }
+.gfx[data-state="step"] .row { animation: sof-row 420ms var(--ease) calc(min(var(--i, 0), 10) * 30ms) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gfx[data-state="in"] :is(.panel, .panel::before, .panel::after, .row, .pod, .chart .ln, .c-place, .hdr-clock, .title-main, .title-sub),
+  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
+  .gfx[data-state="leave"] .panel,
+  .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
+  .row.is-virtual .c-place:empty::after { animation: none; }
+}
+
+/* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
+   (graphic.js hides smaller logos) */
+.panel--table .hdr-logo { height: 58px; }

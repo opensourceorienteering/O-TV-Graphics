@@ -1,0 +1,12 @@
+{
+  "id": "sof",
+  "name": "Svensk Orientering",
+  "description": "After Svensk Orientering's graphic manual (2026): Sverigeblå plates on a deep blue gradient, Sverigegul numbers and accents, the yellow line and triangle elements from the control flag, Plus Jakarta Sans with bold italic for competition headings.",
+  "author": "Split Control",
+  "colors": [
+    "#0F347C",
+    "#FFDD00",
+    "#001A4F"
+  ],
+  "fonts": "Plus Jakarta Sans (OFL)"
+}

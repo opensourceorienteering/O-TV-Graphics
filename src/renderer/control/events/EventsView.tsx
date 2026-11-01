@@ -16,6 +16,7 @@ const LOOK_NAMES: Record<string, string> = {
   bold: "Bold",
   brutal: "Brutal",
   signal: "Signal",
+  sof: "Svensk Orientering",
 };
 
 export function EventsView() {

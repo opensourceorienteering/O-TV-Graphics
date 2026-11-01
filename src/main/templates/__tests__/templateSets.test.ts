@@ -26,10 +26,10 @@ describe('template set discovery', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('finds the seven bundled sets', () => {
+  it('finds the eight sets in the repository', () => {
     const sets = manager.getTemplateSets();
-    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'cz', 'iof', 'signal', 'standard']);
-    for (const id of ['signal', 'brutal', 'bold']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
+    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'cz', 'iof', 'signal', 'sof', 'standard']);
+    for (const id of ['signal', 'brutal', 'bold', 'sof']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
     expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 17 });
     expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
     expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);

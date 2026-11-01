@@ -82,7 +82,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Seven looks (template sets)**, each with the same 17 graphics:
+- **Eight looks (template sets)**, each with the same 17 graphics:
   - live split at a radio control, and a runner lower third
   - runner identity, runner focus with a running clock, and a name strap
   - start list and start group (next starters)
@@ -106,6 +106,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | **Bold** | Huge condensed uppercase names on ink bands |
   | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |
   | **Signal** | Dark glass cards with an RGB-split edge |
+  | **Svensk Orientering** | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line and triangle elements, Plus Jakarta Sans |
 
   The sources of every look are in [`templates/sets/`](templates/sets/).
 

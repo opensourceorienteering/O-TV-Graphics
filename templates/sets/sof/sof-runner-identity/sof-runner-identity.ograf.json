@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "sof-runner-identity",
+  "version": "1.0.0",
+  "name": "Svensk Orientering – Runner identity",
+  "description": "One runner from the competition: bib, name, club or flag, class and a detail line.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "detail": {
+        "type": "string",
+        "title": "Detail text",
+        "description": "Optional line under the name, e.g. \"Defending champion\""
+      },
+      "bio": {
+        "type": "string",
+        "title": "Bio",
+        "description": "Optional: one fact per line; shows the extended athlete presentation",
+        "multiline": true
+      },
+      "showBib": {
+        "type": "boolean",
+        "title": "Show bib",
+        "description": "Show the bib number",
+        "default": true
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "sof",
+  "v_olgrafik_kind": "runner-identity",
+  "v_olgrafik_zone": "lower"
+}

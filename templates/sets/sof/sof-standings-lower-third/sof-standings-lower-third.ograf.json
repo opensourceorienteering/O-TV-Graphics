@@ -1,0 +1,64 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "sof-standings-lower-third",
+  "version": "1.0.0",
+  "name": "Svensk Orientering – Standings lower third",
+  "description": "Top runners at the finish or a radio control. With a runner selected: that runner and the runners around them, highlighted.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "rows": {
+        "type": "number",
+        "title": "Rows",
+        "description": "Runners to show",
+        "default": 3
+      },
+      "nameStyle": {
+        "type": "string",
+        "title": "Names",
+        "description": "Last name only adds the first initial when two runners share it (\"HUBMANN D.\")",
+        "enum": [
+          "",
+          "family",
+          "full",
+          "given-initial"
+        ],
+        "enumNames": [
+          "Look default",
+          "Last name only",
+          "Full name",
+          "First name + last initial"
+        ],
+        "default": ""
+      },
+      "positionChange": {
+        "type": "boolean",
+        "title": "Position change",
+        "description": "Show places gained ▲ or lost ▼ since the previous split",
+        "default": false
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "sof",
+  "v_olgrafik_kind": "standings-lower-third",
+  "v_olgrafik_zone": "lower"
+}
