@@ -1,12 +1,12 @@
 {
   "id": "iof2",
   "name": "IOF 2.0",
-  "description": "IOF in the language of top-level sports TV: an F1-style timing tower for results and start lists, a scorebug clock with the IOF logo, solid near-black bars with condensed type, IOF Red as the hero colour, slanted number boxes and fast wipes.",
+  "description": "IOF in the language of top-level sports TV: SHL on TV4's light plates, navy number boxes, red diagonal tabs and hanging navy tabs; an F1-style timing tower for results and start lists; a scorebug clock with the IOF logo; fast wipes. IOF Red, Blue and Green.",
   "author": "Split Control, after the IOF broadcast graphics guidelines",
   "colors": [
     "#e30420",
     "#307ea1",
     "#00794c"
   ],
-  "fonts": "Barlow Condensed (OFL)"
+  "fonts": "Barlow (OFL)"
 }

@@ -105,7 +105,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | Look | Style |
   |---|---|
   | **IOF** | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
-  | **IOF 2.0** | IOF in the language of top-level sports TV (F1, Premier League, SHL): a timing tower for results, a scorebug clock with the IOF logo, solid near-black bars, IOF Red, condensed type, fast wipes |
+  | **IOF 2.0** | IOF in the language of top-level sports TV: SHL on TV4's light plates, navy number boxes and red diagonal tabs, an F1-style timing tower, a scorebug clock with the IOF logo, fast wipes |
   | **Contours** | Tinted glass in deep blue with map contour lines drifting behind, red rank chips and accents, uppercase family names |
   | **ČO** | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
   | **Classic** | The original OL-Grafik look, modernised |
