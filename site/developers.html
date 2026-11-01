@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Developers · Split Control</title>
+  <meta name="description" content="Build your own looks for Split Control: how a look is made, the markup and data each graphic gets, and a preview tool with a simulated race.">
+  <link rel="icon" href="logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="./"><img src="logo.svg" alt="">Split Control</a>
+      <nav class="site-nav">
+        <a href="./#download">Download</a>
+        <a href="manual.html">Manual</a>
+        <a href="looks.html">Looks</a>
+        <a href="developers.html" aria-current="page">Developers</a>
+        <a href="faq.html">FAQ</a>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="doc">
+    <nav class="toc" aria-label="Contents">
+      <p>Contents</p>
+      <ol>
+        <li><a href="#preview">Preview tool</a></li>
+        <li><a href="#how">How a look works</a></li>
+        <li><a href="#quick">Change an existing look</a></li>
+        <li><a href="#new">Make a new look</a></li>
+        <li><a href="#css">Styling the graphics</a></li>
+        <li><a href="#motion">Motion</a></li>
+        <li><a href="#data">The data graphics get</a></li>
+        <li><a href="#test">Test before race day</a></li>
+        <li><a href="#share">Share a look</a></li>
+        <li><a href="#ograf">Other OGraf graphics</a></li>
+      </ol>
+    </nav>
+
+    <article class="doc-body">
+      <h1>Developers</h1>
+      <p class="section-intro">Split Control's graphics are plain web files: HTML, CSS and JavaScript
+        modules following the <a href="https://ograf.ebu.io">EBU OGraf</a> standard. A
+        <strong>look</strong> is a family of graphics sharing one style. This page shows how to make
+        your own and test it.</p>
+
+      <div class="notice">
+        <p><strong>Preview tool:</strong> try every look with a simulated race, or load your own
+          look's zip, right in your browser.</p>
+        <p><a class="button primary" href="preview/" style="margin-top:8px">Open the preview</a></p>
+      </div>
+
+      <h2 id="preview">Preview tool</h2>
+      <p>The <a href="preview/">preview</a> runs the real graphics, the same files the app uses,
+        without installing anything:</p>
+      <ul>
+        <li><strong>Look and graphic:</strong> every look on this site, plus any look you load as a
+          zip. Your zip stays in your browser; nothing is uploaded.</li>
+        <li><strong>Show, Update, pages, Hide</strong> as on the Live desk, with the same keys:
+          <kbd>Space</kbd>, <kbd>U</kbd>, <kbd>←</kbd> <kbd>→</kbd>, <kbd>H</kbd>.</li>
+        <li><strong>Race simulator:</strong> twelve runners start at a two-minute interval and pass
+          four radio controls and the finish, with one mispunch and one runner who gives up. Run it at
+          1× to 60×, or jump two minutes ahead. With <strong>Live updates</strong> on, graphics on air
+          change as results come in, as they do in the app.</li>
+        <li><strong>Data:</strong> timing point, runner, broadcast language, clubs or flags, the three
+          theme colours, and any extra fields as JSON (titles, texts, names).</li>
+        <li><strong>Backgrounds:</strong> forest, transparent, dark and light, to check contrast.</li>
+      </ul>
+      <p>Load the same zip again after a change: it replaces the earlier copy. <strong>Remove loaded
+        looks</strong> clears them all.</p>
+
+      <h2 id="how">How a look works</h2>
+      <p>Every look has the same 17 graphics. The markup is shared: it comes from
+        <code>sets/_core/</code>, which ships with the app. A look only decides the
+        <strong>style and motion</strong>, mostly in one CSS file.</p>
+      <pre><code>sets/
+├── _core/                 shared code (ships with the app, not part of a look)
+│   ├── graphic.js         the OGraf Web Component: lifecycle, pages, clocks, scaling
+│   ├── views.js           data → markup for every graphic
+│   └── base.css           placement and structure shared by all looks
+└── my-look/               one look
+    ├── set.json           name, description, the three theme colours
+    ├── set.js             durations, name styles, labels (read by the graphics)
+    ├── theme.css          the style and the motion
+    ├── fonts/             fonts.css + font files (use fonts you may share, e.g. OFL)
+    └── my-look-results/   one folder per graphic: manifest + a 4-line graphic.js
+        ├── my-look-results.ograf.json
+        └── graphic.js</code></pre>
+      <p>A graphic's <code>graphic.js</code> is only this:</p>
+      <pre><code>import { createGraphic } from '../../_core/graphic.js';
+import set from '../set.js';
+export default createGraphic('results', set);</code></pre>
+      <p>Because graphics import <code>../../_core/</code>, a look always runs with the shared code of
+        the app it's in. That keeps every look up to date with new features and fixes.</p>
+
+      <h2 id="quick">Change an existing look</h2>
+      <p>For new colours, fonts or details on a look you already use, no tools are needed:</p>
+      <ol>
+        <li>In Split Control, <strong>Graphics library → Export…</strong> next to the look, or
+          download it from the <a href="looks.html">Looks page</a>.</li>
+        <li>Unzip it and edit <code>theme.css</code> (and <code>set.json</code> for the name and
+          colours). <strong>Keep the look's id</strong> (<code>"id"</code> in <code>set.json</code>).</li>
+        <li>Zip the look's folder again and load it in the <a href="preview/">preview</a> to check it.</li>
+        <li>Import it in the app: it replaces the look with the same id. For a built-in look like
+          Standard, removing your copy brings the original back.</li>
+      </ol>
+
+      <h2 id="new">Make a new look</h2>
+      <p>A new look needs its own id, and its graphics need unique ids. The repository has a generator
+        that writes all 17 graphic folders for you.</p>
+      <ol>
+        <li>Get the code: <code>git clone https://github.com/opensourceorienteering/O-TV-Graphics</code>,
+          then <code>npm install</code> (Node.js 22 or newer).</li>
+        <li>Copy a look that is close to what you want, e.g. <code>templates/sets/standard</code> to
+          <code>templates/sets/my-look</code>, and delete its graphic folders
+          (<code>standard-*</code>).</li>
+        <li>Edit <code>set.json</code> (id, name, description, colours) and <code>set.js</code>
+          (<code>id</code>, and <code>colorVars</code>: the CSS variables the three theme colours set).</li>
+        <li>Add the look to <code>SETS</code> in <code>scripts/generate-template-sets.js</code> and run
+          <code>npm run generate:sets</code>.</li>
+        <li>Style it in <code>theme.css</code>. To see changes, either run the app
+          (<code>npm run dev</code>, then <strong>Scan library</strong>), or zip the folder and load
+          it in the <a href="preview/">preview</a>.</li>
+      </ol>
+      <p>Every look in the repository is a working example. <code>standard</code> is a good start;
+        <code>sof</code> follows a full graphic manual. See also
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">templates/sets/README.md</a>.</p>
+
+      <h2 id="css">Styling the graphics</h2>
+      <p>Start <code>theme.css</code> with <code>@import url('../_core/base.css');</code>. The
+        canvas is 1920 × 1080; graphics scale to the output size.</p>
+      <h3>Markup</h3>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td><code>.gfx.gfx--&lt;kind&gt;</code></td><td>The graphic, e.g. <code>.gfx--results</code>. Carries <code>data-state</code> (see Motion).</td></tr>
+          <tr><td><code>.panel.panel--&lt;type&gt;</code></td><td>One block: <code>--table</code>, <code>--lower</code>, <code>--strap</code>, <code>--side</code>, <code>--title</code>, <code>--clock</code>, <code>--podium</code>, <code>--chart</code>…</td></tr>
+          <tr><td><code>.hdr</code> / <code>.ftr</code></td><td>Header and footer: <code>.hdr-title</code>, <code>.hdr-sub</code>, <code>.hdr-logo</code>, <code>.ftr-page</code>…</td></tr>
+          <tr><td><code>.rows &gt; .row</code></td><td>Table rows. <code>--i</code> is the row's index, for staggered animation. <code>.row--leader</code>, <code>.row--hl</code> (the runner in focus), <code>.row--status</code> (MP, DNF…).</td></tr>
+          <tr><td>Cells</td><td><code>.c-place</code>, <code>.c-name</code>, <code>.c-id</code> (club, flag), <code>.c-time</code>, <code>.c-bib</code>, <code>.c-start</code>, <code>.c-label</code>, <code>.c-value</code>, <code>.c-change</code></td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3>Variables</h3>
+      <p>Placement is set with variables, so a look rarely needs to move panels itself:
+        <code>--margin-x</code>, <code>--margin-y</code>, <code>--table-top</code>,
+        <code>--table-x</code>, <code>--lower-w</code>, <code>--side-w</code>,
+        <code>--title-x</code>, <code>--podium-x</code>. Chart lines use <code>--line-0</code> to
+        <code>--line-7</code>.</p>
+      <h3>Theme colours</h3>
+      <p>Operators can change three colours per event (Plan → Theme). <code>colorVars</code> in
+        <code>set.js</code> names the CSS variables they set, and <code>colors</code> in
+        <code>set.json</code> gives the defaults, in the same order. Derive every other shade from
+        those three (<code>color-mix()</code>, relative colours), so a change follows everywhere.</p>
+      <h3>Rules every look follows</h3>
+      <ul>
+        <li>Keep the centre of the picture clear: lower thirds bottom left, side panels bottom right,
+          the clock top right.</li>
+        <li>Numbers use tabular figures, so running times don't wobble.</li>
+        <li>Names and texts end in an ellipsis instead of overflowing. Check long names and accents
+          (Å, Ä, Ö, Ø).</li>
+        <li>The event logo appears only on the start list, results and race title card, at least
+          42 px tall.</li>
+        <li>Fonts must be licensed for sharing; include the licence in <code>fonts/</code>.</li>
+      </ul>
+
+      <h2 id="motion">Motion</h2>
+      <p>The graphic sets <code>data-state</code> on <code>.gfx</code>; animate with CSS keyframes
+        for each state. The durations in <code>set.js</code> say how long each state lasts.</p>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td><code>in</code></td><td>Entering (<code>durations.in</code>)</td></tr>
+          <tr><td><code>on</code></td><td>On air. Live changes flash with <code>.is-changed</code>; rows slide to their new place.</td></tr>
+          <tr><td><code>step-out</code> / <code>step</code></td><td>Changing page (<code>durations.stepOut</code>, <code>durations.step</code>)</td></tr>
+          <tr><td><code>leave</code></td><td>Leaving (<code>durations.out</code>)</td></tr>
+          <tr><td><code>out</code></td><td>Hidden</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Animate only <code>transform</code> and <code>opacity</code>: they stay smooth in NDI
+        capture. Add a <code>prefers-reduced-motion</code> block.</p>
+
+      <h2 id="data">The data graphics get</h2>
+      <p>The app sends the same data to every look. The main fields:</p>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td><code>results[]</code></td><td>Runners at the shown timing point: <code>name</code>, <code>club</code>, <code>country</code>, <code>bib</code>, <code>position</code>, <code>time</code>, <code>diff</code>, <code>statusCode</code> (0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ), <code>startTimeMs</code>, <code>splitTimes[]</code></td></tr>
+          <tr><td><code>className</code>, <code>controlCode</code>, <code>splitControls[]</code></td><td>Class, timing point (<code>S</code>, a control code or <code>F</code>) and the class's radio controls</td></tr>
+          <tr><td><code>runnerName</code>, <code>runnerClub</code>, <code>runnerBib</code></td><td>The runner in focus (lower thirds, identity, runner focus)</td></tr>
+          <tr><td><code>title</code>, <code>series</code>, <code>place</code>, <code>date</code>, <code>text</code>, <code>name</code>…</td><td>Fields the operator fills in</td></tr>
+          <tr><td><code>presentation</code></td><td><code>language</code>, <code>identity</code> (club, flag, both), <code>themeColors</code>, <code>logoUrl</code></td></tr>
+          <tr><td><code>clockOffsetMs</code></td><td>Server time minus this computer's time, for running clocks</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>The preview's <strong>More data (JSON)</strong> box shows and edits these fields.</p>
+
+      <h2 id="test">Test before race day</h2>
+      <ul>
+        <li>All 17 graphics, on air and while changing page.</li>
+        <li>Long names and clubs, accents, and 10+ runners (the results table pages).</li>
+        <li>Clubs, flags, and both; English and Swedish labels.</li>
+        <li>Live updates: run the simulator at 20× with a results table on air.</li>
+        <li>Transparent and light backgrounds.</li>
+        <li>In the app: Plan → Theme preview, then the web output in OBS or vMix.</li>
+        <li>To rehearse with real timing data, <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/REPLAY-A-RACE.md">replay a finished race</a>.</li>
+      </ul>
+
+      <h2 id="share">Share a look</h2>
+      <ul>
+        <li><strong>As a zip:</strong> zip the look's folder (<code>my-look/</code> at the top of the
+          zip). Anyone can import it in <strong>Graphics library → Import look…</strong>.</li>
+        <li><strong>On this site:</strong> open a pull request adding your look to
+          <code>templates/sets/</code>. Every look there appears on the
+          <a href="looks.html">Looks page</a> and in the preview.</li>
+      </ul>
+
+      <h2 id="ograf">Other OGraf graphics</h2>
+      <p>Graphics that aren't part of a look also work: any
+        <a href="https://github.com/ebu/ograf">EBU OGraf v1</a> package (a folder with
+        <code>&lt;name&gt;.ograf.json</code> and its module) can be imported as a zip and appears in
+        Split Control's Graphics library. Split Control also speaks the OGraf Server API at
+        <code>http://&lt;computer&gt;:5657/ograf/v1</code>.</p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>Split Control (formerly OL-Grafik) is open source.</span>
+      <span>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">Source code</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/issues">Report a problem</a> ·
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/releases">All releases</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

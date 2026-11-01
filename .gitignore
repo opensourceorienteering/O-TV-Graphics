@@ -63,3 +63,4 @@ ExampleApp/
 companion/pkg/
 companion/*.tgz
 site/looks/
+_site/

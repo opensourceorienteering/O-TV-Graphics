@@ -106,7 +106,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | **Bold** | Huge condensed uppercase names on ink bands |
   | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |
   | **Signal** | Dark glass cards with an RGB-split edge |
-  | **Svensk Orientering** | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line and triangle elements, Plus Jakarta Sans |
+  | **Svensk Orientering** | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line, triangle elements and 45° corners, the federation logo, Plus Jakarta Sans |
 
   The sources of every look are in [`templates/sets/`](templates/sets/).
 
@@ -216,9 +216,15 @@ website doesn't offer.
 
 ### Website
 
-The website (downloads, manual, FAQ) is plain HTML in [`site/`](site/).
+The website (downloads, looks, manual, developer guide with the preview tool, FAQ) is plain
+HTML in [`site/`](site/). [`scripts/build-site.sh`](scripts/build-site.sh) adds every look,
+zipped for download and unzipped for the preview, and
 [`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes it to GitHub Pages when
-`site/` changes on `main`. Preview it with `npx serve site` or by opening `site/index.html`.
+`site/` or a look changes on `main`. Try it locally:
+
+```bash
+scripts/build-site.sh _site && npx serve _site
+```
 
 See the [Build & Packaging Guide](docs/BUILD-PACKAGING.md) for local builds and
 club logos.

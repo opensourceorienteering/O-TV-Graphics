@@ -140,7 +140,8 @@ details > div p:first-child { margin-top: 0; }
 .looks-intro { padding-top: 40px; }
 .looks-intro .notice { margin: 20px 0 24px; }
 .looks-grid .look { display: flex; flex-direction: column; gap: 6px; }
-.looks-grid .look .button { margin-top: auto; justify-content: center; }
+.looks-grid .look .button { justify-content: center; }
+.looks-grid .pv-try { margin-top: auto; font-weight: 600; }
 .looks-grid .look h3 { margin: 6px 0 0; }
 .swatches { display: flex; gap: 6px; }
 .swatches span { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); }

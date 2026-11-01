@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Preview · Split Control</title>
+  <meta name="description" content="Try Split Control's looks and graphics in your browser with a simulated race, or load your own look to check it.">
+  <link rel="icon" href="../logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../style.css">
+  <link rel="stylesheet" href="preview.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="../"><img src="../logo.svg" alt="">Split Control</a>
+      <nav class="site-nav">
+        <a href="../#download">Download</a>
+        <a href="../manual.html">Manual</a>
+        <a href="../looks.html">Looks</a>
+        <a href="../developers.html" aria-current="page">Developers</a>
+        <a href="../faq.html">FAQ</a>
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="pv">
+    <div class="pv-head">
+      <h1>Preview</h1>
+      <p class="section-intro">Try every look and graphic with a simulated race, or load your own look's
+        zip to check it before you import it in Split Control. Everything runs in your browser;
+        nothing is uploaded.</p>
+    </div>
+
+    <div class="pv-grid">
+      <!-- left: what to show -->
+      <aside class="pv-panel pv-side">
+        <label class="pv-field">Look
+          <select id="look"></select>
+        </label>
+        <p id="look-desc" class="pv-note"></p>
+        <div class="pv-drop" id="drop">
+          <input type="file" id="file" accept=".zip" hidden>
+          <button type="button" class="button" id="pick">Load a look (zip)…</button>
+          <span>or drop a zip here</span>
+          <button type="button" class="pv-link" id="clear-uploads" hidden>Remove loaded looks</button>
+        </div>
+
+        <p class="pv-label">Graphic</p>
+        <div id="graphics" class="pv-list" role="listbox" aria-label="Graphics"></div>
+      </aside>
+
+      <!-- centre: the output -->
+      <section class="pv-centre">
+        <div class="pv-stage-wrap">
+          <div id="stage" class="pv-stage bg-photo">
+            <div id="host"></div>
+            <span id="onair" class="pv-onair">Not on air</span>
+          </div>
+        </div>
+        <div class="pv-transport">
+          <button type="button" class="button primary" id="show" title="Space">Show</button>
+          <button type="button" class="button" id="update" title="U">Update</button>
+          <button type="button" class="button" id="prev" title="←">◀ Page</button>
+          <button type="button" class="button" id="next" title="→">Page ▶</button>
+          <button type="button" class="button" id="hide" title="H">Hide</button>
+          <label class="pv-check"><input type="checkbox" id="live" checked> Live updates</label>
+          <label class="pv-field pv-inline">Background
+            <select id="bg">
+              <option value="photo">Forest</option>
+              <option value="checker">Transparent</option>
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </div>
+        <p id="status" class="pv-note" role="status"></p>
+      </section>
+
+      <!-- right: data and the race -->
+      <aside class="pv-panel pv-side">
+        <p class="pv-label">Race</p>
+        <div class="pv-clock"><span id="sim-time">14:00:00</span><small id="sim-state">paused</small></div>
+        <div class="pv-row">
+          <button type="button" class="button primary" id="sim-play">Start race</button>
+          <button type="button" class="button" id="sim-reset" title="Back to before the first start">Reset</button>
+        </div>
+        <div class="pv-row">
+          <label class="pv-field pv-inline">Speed
+            <select id="sim-speed">
+              <option value="1">1×</option>
+              <option value="5">5×</option>
+              <option value="20" selected>20×</option>
+              <option value="60">60×</option>
+            </select>
+          </label>
+          <button type="button" class="button" id="sim-jump">+2 min</button>
+        </div>
+        <ol id="sim-log" class="pv-log" aria-label="Race events"></ol>
+
+        <p class="pv-label">Data</p>
+        <label class="pv-field">Timing point
+          <select id="control"></select>
+        </label>
+        <label class="pv-field">Runner
+          <select id="runner"></select>
+        </label>
+        <label class="pv-field">Language on air
+          <select id="language">
+            <option value="en">English</option>
+            <option value="sv">Svenska</option>
+            <option value="nb">Norsk</option>
+            <option value="cs">Čeština</option>
+          </select>
+        </label>
+        <label class="pv-field">Next to names
+          <select id="identity">
+            <option value="club">Club</option>
+            <option value="flag">Flag</option>
+            <option value="both">Club and flag</option>
+          </select>
+        </label>
+        <div class="pv-field">Theme colours
+          <div class="pv-colors" id="colors"></div>
+        </div>
+        <details class="pv-more">
+          <summary>More data (JSON)</summary>
+          <textarea id="extra" spellcheck="false" rows="8"></textarea>
+          <p class="pv-note">Merged into the graphic's data: titles, texts, names. Press Update.</p>
+        </details>
+      </aside>
+    </div>
+
+    <p class="pv-foot">Keys: <kbd>Space</kbd> show / hide · <kbd>U</kbd> update · <kbd>←</kbd> <kbd>→</kbd> pages ·
+      <kbd>H</kbd> hide. Look files and the data each graphic gets are described in
+      <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">Template sets</a>.</p>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

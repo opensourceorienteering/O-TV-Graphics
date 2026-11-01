@@ -20,6 +20,7 @@
           <h3>${esc(look.name)}${look.builtIn ? ' <span class="badge">Comes with the app</span>' : ""}</h3>
           <p>${esc(look.description)}</p>
           <p class="meta">${look.graphics} graphics${look.fonts ? ` · ${esc(look.fonts)}` : ""}</p>
+          <a class="pv-try" href="preview/?look=${encodeURIComponent(look.id)}">Try it in the preview →</a>
           <a class="button ${look.builtIn ? "" : "primary"}" href="looks/${encodeURIComponent(look.file)}" download>
             Download · ${kb(look.size)}</a>
         </article>`
