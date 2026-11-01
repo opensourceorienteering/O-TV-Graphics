@@ -1,0 +1,12 @@
+{
+  "id": "contours",
+  "name": "Contours",
+  "description": "Tinted glass plates in deep blue with map contour lines drifting behind and a soft passing sheen, red rank chips and accents, green gains, Franklin Gothic with uppercase family names, soft rising motion.",
+  "author": "Split Control",
+  "colors": [
+    "#e30420",
+    "#307ea1",
+    "#00794c"
+  ],
+  "fonts": "Libre Franklin (OFL) stands in for ITC Franklin Gothic"
+}

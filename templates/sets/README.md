@@ -8,7 +8,8 @@ another set).
 |---|---|
 | `standard` | Standard (ships with the app): floating ink cards, a gradient accent, number chips and springy motion |
 | `iof` | IOF TV graphics: red rank/time boxes, blue bars, uppercase Franklin Gothic, three-layer slide |
-| `iof2` | IOF 2.0: tinted glass plates in deep IOF blue, drifting map contour lines (`contours.svg`), IOF Red chips and accents, uppercase family names |
+| `iof2` | IOF 2.0: F1-style timing tower for results and start lists, a scorebug clock top left with the IOF logo, solid near-black bars, Barlow Condensed, IOF Red wipes |
+| `contours` | Contours: tinted glass plates in deep blue, drifting map contour lines (`contours.svg`), red chips and accents, uppercase family names |
 | `cz` | ČO: orange and beige, after the Czech orienteering streams, italic headers with the control-circle mark |
 | `classic` | The original OL-Grafik look (brick red + teal), including the original four graphics |
 | `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |

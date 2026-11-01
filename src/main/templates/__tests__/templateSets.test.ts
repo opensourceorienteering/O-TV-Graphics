@@ -26,10 +26,10 @@ describe('template set discovery', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('finds the nine sets in the repository', () => {
+  it('finds the ten sets in the repository', () => {
     const sets = manager.getTemplateSets();
-    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
-    for (const id of ['signal', 'brutal', 'bold', 'sof', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
+    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
+    for (const id of ['signal', 'brutal', 'bold', 'sof', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
     expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 17 });
     expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
     expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);

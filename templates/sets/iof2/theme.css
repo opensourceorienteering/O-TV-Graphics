@@ -1,13 +1,16 @@
 /*
- * IOF 2.0: a modern take on the IOF broadcast style.
- * - IOF colours: Red #e30420 for ranks, accents and the runner in focus, Blue #307ea1 as the
- *   source of the deep glass, Green #00794c for gains. Franklin Gothic (Libre Franklin).
- * - Tinted glass plates the video shows through (no background blur: the picture behind is
- *   mixed in later by the production switcher), with hairline highlights.
- * - Map contour lines drift slowly inside every plate (contours.svg, a seamless tile), and a
- *   soft sheen passes now and then. Both animate only transform and opacity.
- * - Family names in IOF capitals, given names in normal case; small labels tracked wide.
- * - 100 px broadcast margins, as in the IOF look.
+ * IOF 2.0: IOF in the language of top-level sports TV.
+ *
+ * Inspiration
+ *  - F1: a timing tower down the left side (results, start lists), slanted position boxes, a
+ *    coloured stripe per row, a white highlight row for the runner in focus, fast wipes.
+ *  - Premier League: a compact scorebug top left with the IOF logo, a big confident title card,
+ *    a colour bar sweeping across ahead of the content.
+ *  - SHL: solid near-black bars, crisp white condensed type, one strong accent, nothing extra.
+ *
+ * IOF: Red #e30420 is the hero colour (leader, focus, wipes, tabs), Blue #307ea1 the row stripe
+ * and secondary accent, Green #00794c gains. The official IOF logo (iof-logo.svg, unaltered) on
+ * a white plate in the scorebug, the tower header and the title card. 100 px safe margins.
  *
  * Three colours drive everything (Plan → Theme colours): --red, --blue, --green.
  */
@@ -18,327 +21,283 @@
   --blue: #307ea1;
   --green: #00794c;
 
-  /* derived: deep glass from IOF Blue, a lighter blue for text accents, gains readable on dark */
-  --glass-top: color-mix(in oklab, var(--blue) 46%, #04111d);
-  --glass-bottom: color-mix(in oklab, var(--blue) 20%, #020a12);
-  --glass: linear-gradient(160deg, rgb(from var(--glass-top) r g b / .84), rgb(from var(--glass-bottom) r g b / .9));
-  --edge: rgb(255 255 255 / .14);
-  --rule: rgb(255 255 255 / .09);
-  --sky: color-mix(in oklab, var(--blue) 55%, #fff);
-  --gain: color-mix(in oklab, var(--green) 60%, #8dffc4);
-  --loss: color-mix(in oklab, var(--red) 70%, #ffb3b3);
-  --red-glow: rgb(from var(--red) r g b / .45);
-  --red-wash: rgb(from var(--red) r g b / .16);
-  --text: #f4f7fa;
-  --muted: rgb(225 235 245 / .66);
-  --faint: rgb(225 235 245 / .42);
-  --chart-grid: var(--rule);
+  --ink: #0b0f14;                                     /* bars */
+  --ink-2: #131a22;                                   /* every other row */
+  --steel: #222b36;                                   /* secondary bars */
+  --text: #fff;
+  --muted: #9aa7b5;
+  --on-red: #fff;
+  --blue-hi: color-mix(in oklab, var(--blue) 70%, #fff);
+  --gain: color-mix(in oklab, var(--green) 55%, #7dffbf);
+  --loss: color-mix(in oklab, var(--red) 75%, #ff9c9c);
+  --chart-grid: rgb(255 255 255 / .1);
   --chart-axis: var(--muted);
 
-  --font: "ITC Franklin Gothic Std", ITCFranklinGothicStd, "Libre Franklin", "Franklin Gothic Medium", Arial, sans-serif;
+  --font: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --fs: 30px;
   --margin-x: 100px;
   --margin-y: 100px;
-  --table-top: 200px;  /* below the corner clock */
-  --table-x: 400px;
-  --lower-w: 880px;
+  --cut: 16px;          /* the angled corner of every bar */
+  --slant: -12deg;      /* number boxes and tabs lean forward */
+  --tower-w: 620px;
+  --table-top: 200px;   /* the tower starts under the scorebug */
+  --lower-w: 860px;
   --side-w: 470px;
-  --podium-x: 300px;
-  --title-x: 330px;
-  --radius: 14px;
-  --line-0: var(--red); --line-1: #fff; --line-2: var(--sky); --line-3: var(--gain);
-  --line-4: #f9b122; --line-5: #e5007d; --line-6: #9fc9df; --line-7: var(--faint);
+  --podium-x: 330px;
+  --title-x: 300px;
+  --line-0: var(--red); --line-1: #fff; --line-2: var(--blue-hi); --line-3: var(--gain);
+  --line-4: #f9b122; --line-5: #e5007d; --line-6: #8fd3ff; --line-7: var(--muted);
 
-  font-feature-settings: "tnum" 1, "lnum" 1;
+  font-feature-settings: "tnum" 1;
+  font-weight: 600;
 }
 
-/* --- glass plates --------------------------------------------------------------------- */
+/* --- bars: solid, square, one angled corner -------------------------------------------- */
 .panel {
-  overflow: hidden;
-  isolation: isolate;
-  border-radius: var(--radius);
-  background: var(--glass);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / .18),      /* top highlight */
-    inset 0 0 0 1px var(--edge),                /* hairline edge */
-    0 24px 60px -24px rgb(0 8 16 / .7);
+  background: var(--ink);
   color: var(--text);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+  overflow: hidden;
 }
-/* drifting contour lines: one tile larger than the plate, moved by exactly one tile */
-.panel::before {
-  content: ""; position: absolute; left: 0; top: 0; z-index: -1;
-  width: calc(100% + 640px); height: calc(100% + 420px);
-  background: url(./contours.svg) 0 0 / 640px 420px repeat;
-  opacity: .08;
-  animation: iof2-drift 90s linear infinite;
-  pointer-events: none;
-}
-/* a soft sheen passing across the glass */
+/* the red sweep that leads every entry (see Motion) */
 .panel::after {
-  content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; z-index: -1;
-  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .07) 50%, transparent);
-  transform: translateX(-100%);
-  animation: iof2-sheen 14s ease-in-out 2s infinite;
-  pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background: linear-gradient(90deg, transparent 0 82%, var(--red) 82% 100%);
+  transform: translateX(-100%); opacity: 0;
 }
-@keyframes iof2-drift { to { transform: translate(-640px, -420px); } }
-@keyframes iof2-sheen { 0%, 70% { transform: translateX(0); } 100% { transform: translateX(450%); } }
 
-/* --- header: a red class tab, the timing point as a tracked label ---------------------- */
-.hdr, .ftr { padding: 0 22px; gap: 14px; }
-.hdr { min-height: 74px; padding-top: 4px; }
-/* the red accent line under the header, drawn on entry */
-.hdr::after {
-  content: ""; position: absolute; left: 22px; right: 22px; bottom: 0; height: 2px;
-  background: linear-gradient(90deg, var(--red), rgb(from var(--red) r g b / .35) 45%, transparent);
-  transform-origin: left center;
-}
+/* the white IOF logo plate, used by the scorebug, the tower and the title card */
+.gfx { --logo-plate: #fff url(./iof-logo.svg) center / 74% auto no-repeat; }
+
+/* --- header: logo plate, class, timing point -------------------------------------------- */
+.hdr, .ftr { gap: 14px; }
+.hdr { min-height: 64px; padding: 0 20px 0 0; background: var(--ink); border-bottom: 3px solid var(--red); }
 .hdr-mark, .ftr-mark { display: none; }
-.hdr-title {
-  padding: 6px 14px 5px; border-radius: 8px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 8%), var(--red));
-  box-shadow: 0 6px 18px -6px var(--red-glow);
-  color: #fff; font-size: 28px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase;
-}
-.hdr-sub {
-  margin-left: auto; color: var(--muted);
-  font-size: 19px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-}
-.hdr-logo, .ftr-logo { align-self: center; height: 50px; width: 100px; padding: 6px 10px; border-radius: 8px; background: #fff; }
+.hdr-title { padding-left: 18px; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
+.hdr-sub { margin-left: auto; color: var(--muted); font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.hdr-logo, .ftr-logo { align-self: stretch; width: 96px; padding: 6px 10px; background: #fff; }
 .hdr-sub + .hdr-logo { margin-left: 0; }
-.ftr { min-height: 48px; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.ftr-sep { color: var(--faint); }
-.ftr-page { margin-left: auto; color: var(--text); font-weight: 700; letter-spacing: .08em; }
-.ftr-logo { height: 36px; }
+.ftr { min-height: 44px; padding: 0 18px; color: var(--muted); font-size: 20px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--steel); }
+.ftr-sep { color: var(--red); }
+.ftr-page { margin-left: auto; color: var(--text); }
 
-/* --- rows ------------------------------------------------------------------------------- */
-.rows { padding: 6px 12px 10px; }
-.row { min-height: 54px; border-radius: 9px; }
-.row + .row { box-shadow: inset 0 1px 0 var(--rule); }
-/* ranks: a red-edged chip, the leader filled red */
+/* --- rows -------------------------------------------------------------------------------- */
+.row { min-height: 46px; background: var(--ink); }
+.rows > .row:nth-child(even) { background: var(--ink-2); }
+/* position: a slanted box, then the row's colour stripe */
 .c-place {
-  align-self: center !important; min-width: 44px; height: 40px; margin: 0 14px 0 4px; padding: 0 6px;
-  border-radius: 8px; box-shadow: inset 0 0 0 2px rgb(from var(--red) r g b / .85);
-  color: #fff; font-size: 21px; font-weight: 800;
+  align-self: stretch !important; min-width: 54px; margin-right: 14px; padding: 0 8px;
+  color: var(--text); font-size: 26px; font-weight: 800;
+  box-shadow: inset -4px 0 0 var(--blue);
 }
-.c-place:empty { box-shadow: none; }
-.row--leader .c-place {
-  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red));
-  box-shadow: 0 6px 16px -6px var(--red-glow);
-}
-.c-name { padding-right: 16px; font-size: 29px; font-weight: 500; }
-.c-name .nm-family { font-weight: 800; text-transform: uppercase; letter-spacing: .01em; }
+.c-place:empty { box-shadow: inset -4px 0 0 var(--steel); }
+.row--leader .c-place { background: var(--red); box-shadow: none; }
+.c-name { padding-right: 14px; font-size: 28px; font-weight: 600; text-transform: uppercase; letter-spacing: .01em; }
+.c-name .nm-family { font-weight: 800; }
 .c-name .nm-given { font-weight: 500; }
-.c-id { gap: 10px; padding-right: 16px; color: var(--muted); font-size: 21px; font-weight: 600; }
-.id-flag { height: 24px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); }
+.c-id { gap: 10px; padding-right: 14px; color: var(--muted); font-size: 21px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.id-flag { height: 22px; }
 .id-code { letter-spacing: .06em; }
-.c-time, .c-start, .c-value { padding: 0 12px 0 10px; font-weight: 700; }
-.c-time { min-width: 140px; }
-.row--leader .c-time { color: #fff; }
-.c-start { min-width: 140px; color: var(--sky); justify-content: flex-start; padding-left: 14px; }
-.c-bib {
-  align-self: center !important; min-width: 62px; height: 36px; margin: 0 10px 0 4px; padding: 0 10px;
-  border-radius: 8px; background: rgb(255 255 255 / .1); color: var(--text); font-size: 19px; font-weight: 700;
-}
+.c-time, .c-start, .c-value { padding: 0 16px 0 10px; font-size: 28px; font-weight: 700; }
+.c-time { min-width: 116px; }
+.row--leader .c-time { color: var(--text); }
+.c-start { min-width: 120px; color: var(--text); justify-content: flex-start; }
+.c-bib { align-self: center !important; min-width: 50px; margin: 0 10px 0 2px; color: var(--muted); font-size: 22px; font-weight: 700; }
 .row--status { color: var(--muted); }
-.row--status .c-time { color: var(--faint); font-size: 22px; letter-spacing: .08em; }
-.row--empty .c-name { padding: 0 14px; color: var(--muted); font-weight: 500; }
-.c-change { font-weight: 800; }
+.row--status .c-time { color: var(--muted); font-size: 22px; letter-spacing: .08em; }
+.row--empty .c-name { padding: 0 18px; color: var(--muted); }
+.c-change { font-size: 20px; font-weight: 800; }
 .c-change.up { color: var(--gain); }
 .c-change.down { color: var(--loss); }
 
-/* tables */
+/* --- the timing tower: results and start lists, down the left side ----------------------- */
+.gfx--results .panel, .gfx--start-list .panel {
+  left: var(--margin-x); right: auto; top: var(--table-top); width: var(--tower-w);
+}
+.panel--table .hdr { flex-wrap: nowrap; }
+/* the IOF logo plate opens the tower */
+.panel--table .hdr::before { content: ""; order: -1; flex: none; align-self: stretch; width: 92px; background: var(--logo-plate); }
+.panel--table .hdr-title { padding-left: 4px; }
 .panel--table .ftr:not(:has(.ftr-page)) { display: none; }
-.panel--table .ftr { min-height: 0; padding: 0 22px 12px; justify-content: flex-end; }
 .panel--table .ftr .ftr-label { display: none; }
+.panel--table .c-time { min-width: 104px; }
+/* a narrow tower: club codes, not long names */
+.panel--table .c-id { max-width: 170px; }
+.panel--table .id-club { max-width: 160px; }
+.panel--startlist .c-start { min-width: 104px; color: var(--muted); }
 
-/* --- lower thirds ------------------------------------------------------------------------ */
+/* --- lower thirds: the F1 battle box ------------------------------------------------------ */
 .panel--lower .hdr { display: none; }
-.panel--lower .rows { padding-top: 10px; padding-bottom: 6px; }
-/* the runner in focus: a red edge and a red wash */
-.panel--lower .row--hl {
-  min-height: 70px;
-  background: linear-gradient(90deg, var(--red-wash), transparent 75%);
-  box-shadow: inset 3px 0 0 var(--red);
-}
-.panel--lower .row--hl .c-name { font-size: 33px; }
-.panel--lower .row--hl .c-time { font-size: 33px; font-weight: 800; }
-.panel--runner .row--ref { min-height: 46px; font-size: 24px; color: var(--muted); }
+.panel--lower .row { min-height: 48px; }
+/* the runner in focus: a white row, a red position box */
+.panel--lower .row--hl { min-height: 58px; background: #fff !important; color: var(--ink); }
+.panel--lower .row--hl .c-place { background: var(--red); color: #fff; box-shadow: none; }
+.panel--lower .row--hl .c-name { font-size: 32px; }
+.panel--lower .row--hl .c-id { color: #4a5563; }
+.panel--lower .row--hl .c-time { font-size: 32px; font-weight: 800; }
+.panel--runner .row--ref { min-height: 42px; color: var(--muted); }
 .panel--runner .row--ref .c-name { font-size: 24px; }
-.panel--runner .row--ref .c-place { min-width: 36px; height: 34px; font-size: 18px; }
-/* runner on the way: virtual time against the leader */
-.row.is-virtual .c-time:has(.is-ahead) { color: var(--gain); }
-.row.is-virtual .c-time:has(.is-behind) { color: var(--loss); }
-.row.is-virtual .c-place:empty::after {
-  content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--red);
-  box-shadow: 0 0 12px var(--red-glow); animation: iof2-pulse 1.2s ease-in-out infinite;
-}
-.panel--lower .ftr { min-height: 46px; border-top: 1px solid var(--rule); }
+.panel--runner .row--ref .c-place { font-size: 20px; }
+/* runner on the way: a running clock against the leader, ahead green / behind red */
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--green); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--red); }
+.row.is-virtual .c-place:empty { background: var(--red); }
+.row.is-virtual .c-place:empty::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: i2-pulse 1s ease-in-out infinite; }
+.panel--lower .ftr { min-height: 40px; }
 .ftr-class { color: var(--text); font-weight: 800; }
-.ftr-ctrl, .ftr-tp { color: var(--sky); font-weight: 700; letter-spacing: .1em; }
+.ftr-ctrl, .ftr-tp { color: var(--text); font-weight: 700; letter-spacing: .08em; }
 
-/* --- name plates (name, identity, runner focus, free text, speaker) --------------------- */
-.gfx .panel--strap { width: auto; min-width: 580px; max-width: calc(var(--lower-w) * 1.1); }
-.panel--strap .rows { padding: 14px 16px; }
-.panel--strap .row { min-height: 82px; box-shadow: none; }
+/* --- name straps: a driver card ---------------------------------------------------------
+ * Number in a red slanted block, given name above the FAMILY NAME, club to the right,
+ * a red base line; the detail line underneath on a steel bar.
+ */
+.gfx .panel--strap { width: auto; min-width: 560px; max-width: calc(var(--lower-w) * 1.1); border-bottom: 4px solid var(--red); }
+.panel--strap .rows { padding: 0; }
+.panel--strap .row { min-height: 96px; background: var(--ink) !important; color: var(--text); }
 .panel--strap .row .c-place {
-  min-width: 64px; height: 60px; margin: 0 18px 0 0; border-radius: 10px;
-  background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red));
-  box-shadow: 0 8px 22px -8px var(--red-glow); font-size: 32px;
+  min-width: 96px; margin: 0 22px 0 0; padding: 0 18px 0 12px;
+  background: var(--red); box-shadow: none; font-size: 50px; font-weight: 800;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 18px) 100%, 0 100%);
 }
 .panel--strap .row .c-place:empty { display: none; }
-.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; font-size: 42px; letter-spacing: -.01em; }
-.panel--strap .row .c-name .nm-family { letter-spacing: 0; }
-.panel--strap .row .c-id { padding-left: 22px; font-size: 20px; letter-spacing: .05em; text-transform: uppercase; }
+.panel--strap .row:not(:has(> .c-place:not(:empty))) .c-name { padding-left: 24px; }
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; padding: 10px 14px 10px 0; line-height: 1; }
+.panel--strap .row .c-name .nm-given { display: block; font-size: 26px; font-weight: 500; color: var(--muted); }
+.panel--strap .row .c-name .nm-family { display: block; margin-top: 2px; font-size: 52px; font-weight: 800; letter-spacing: .005em; }
+.panel--strap .row .c-id { padding: 0 22px 0 18px; color: var(--text); font-size: 24px; font-weight: 700; letter-spacing: .05em; }
+/* the club sits on the family name's line */
+.panel--strap .row .c-id { align-items: flex-end; padding-bottom: 20px; }
 .panel--strap .id-flag { height: 30px; }
 .panel--strap .row .c-time {
-  align-self: center !important; margin-left: 14px; min-width: 0; height: 52px; padding: 0 14px;
-  border-radius: 10px; background: rgb(255 255 255 / .1); font-size: 30px; font-weight: 800; justify-content: center;
+  align-self: stretch !important; min-width: 0; margin-left: 0; padding: 0 22px;
+  background: var(--steel); font-size: 38px; font-weight: 800; justify-content: center;
 }
-/* with a time box the club gets less room around it */
-.panel--strap .row:has(> .c-time) .c-id { padding-left: 16px; }
-.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time {
-  background: var(--red-wash); box-shadow: inset 0 0 0 2px var(--red);
-}
-.panel--strap .ftr { border-top: 1px solid var(--rule); }
-.panel--extended .row--bio { min-height: 40px; font-size: 24px; }
-.panel--extended .row--bio .c-name { font: 500 24px/1.3 var(--font); color: var(--muted); }
-.panel--extended .row--bio .c-name::before { content: ""; display: inline-block; width: 8px; height: 8px; margin: 0 12px 3px 2px; border-radius: 2px; background: var(--red); }
-.panel--freetext .c-name { font-size: 40px; padding-left: 6px; }
-.c-mic { font-size: 32px; }
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { background: #fff; color: var(--ink); }
+.panel--strap .ftr { min-height: 40px; }
+.panel--extended .row--bio { min-height: 40px; background: var(--steel) !important; }
+.panel--extended .row--bio .c-name { padding: 6px 24px; font-size: 22px; font-weight: 500; text-transform: none; color: var(--text); }
+.panel--extended .row--bio .c-name .nm-given, .panel--extended .row--bio .c-name .nm-family { display: inline; font-size: inherit; color: inherit; }
+.panel--freetext .row .c-name { font-size: 46px; font-weight: 800; padding-left: 24px; }
+.panel--speaker .row .c-place, .c-mic { font-size: 34px; }
 
-/* start group: countdown in the header */
-.panel--startgroup .hdr { display: flex; min-height: 66px; }
+/* start group: a countdown block in the header */
+.panel--startgroup .hdr { display: flex; min-height: 58px; padding-right: 0; }
 .panel--startgroup .hdr-sub { display: none; }
-.hdr-clock {
-  margin-left: auto; padding: 5px 14px; border-radius: 8px;
-  background: rgb(255 255 255 / .1); color: #fff; font-size: 28px; font-weight: 800;
-  box-shadow: inset 0 0 0 2px var(--red);
-}
-.hdr-clock.is-up { box-shadow: inset 0 0 0 2px var(--edge); color: var(--muted); }
+.hdr-clock { align-self: stretch; display: flex; align-items: center; margin-left: auto; padding: 0 20px; background: var(--red); color: #fff; font-size: 30px; font-weight: 800; }
+.hdr-clock.is-up { background: var(--steel); }
 .panel--startgroup .ftr { display: none; }
 
-/* --- side panels ------------------------------------------------------------------------ */
+/* --- side panels: course, weather, split comparison --------------------------------------- */
 .panel--side .hdr { display: none; }
-.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 68px; }
-.panel--side .rows { padding-top: 6px; }
-.panel--side .row { min-height: 50px; }
-.panel--side .c-label { padding: 0 12px; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
-.panel--side .c-value { min-width: 140px; padding: 0 12px; font-size: 28px; font-weight: 800; }
+.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 58px; }
+.panel--side .row { min-height: 46px; }
+.panel--side .c-label { padding: 0 18px; color: var(--muted); font-size: 21px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.panel--side .c-value { min-width: 130px; padding: 0 18px; font-size: 30px; font-weight: 800; }
 .panel--side .ftr { display: none; }
-.panel--splits .hdr-title { font-size: 24px; }
-.panel--splits .c-label { color: var(--text); font-size: 24px; font-weight: 700; letter-spacing: .02em; }
-.panel--splits .c-place { min-width: 38px; height: 36px; font-size: 18px; }
-.panel--splits .c-change { width: 54px; justify-content: center; font-size: 18px; }
-.panel--splits .c-time { min-width: 120px; font-size: 26px; }
+.panel--splits .hdr-title { font-size: 28px; }
+.panel--splits .c-label { color: var(--text); font-size: 26px; letter-spacing: .04em; }
+.panel--splits .c-place { min-width: 46px; font-size: 22px; }
+.panel--splits .c-change { width: 54px; justify-content: center; }
+.panel--splits .c-time { min-width: 110px; font-size: 28px; }
 .panel--splits .c-time.is-best { color: var(--gain); }
 
-/* --- podium ----------------------------------------------------------------------------- */
-.panel--podium .podium { gap: 12px; padding: 14px; }
-.panel--podium .pod { border-radius: 12px; background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px var(--edge); }
-.panel--podium .pod > .c-place {
-  width: auto; height: auto; margin: 0; border-radius: 0; align-self: stretch !important;
-  background: rgb(255 255 255 / .06); box-shadow: none; color: #fff; font-size: 36px; font-weight: 800;
-}
-.panel--podium .pod--1 { background: linear-gradient(180deg, var(--red-wash), rgb(255 255 255 / .04)); box-shadow: inset 0 0 0 1px rgb(from var(--red) r g b / .6), 0 0 40px -12px var(--red-glow); }
-.panel--podium .pod--1 > .c-place { background: linear-gradient(180deg, color-mix(in oklab, var(--red), #fff 10%), var(--red)); font-size: 46px; }
-.panel--podium .pod .row { min-height: 86px; box-shadow: none; }
-.panel--podium .pod--1 .row { min-height: 120px; }
+/* --- podium: three cards, the winner taller ---------------------------------------------- */
+.panel--podium { background: transparent; }
+.panel--podium .hdr { border-bottom: 0; }
+.panel--podium .podium { gap: 10px; padding: 10px 0 0; background: transparent; }
+.panel--podium .pod { background: var(--ink); border-top: 4px solid var(--steel); }
+.panel--podium .pod > .c-place { background: var(--steel); box-shadow: none; font-size: 44px; font-weight: 800; margin: 0; }
+.panel--podium .pod--1 { border-top-color: var(--red); }
+.panel--podium .pod--1 > .c-place { background: var(--red); font-size: 56px; }
+.panel--podium .pod .row { min-height: 92px; background: transparent !important; }
+.panel--podium .pod--1 .row { min-height: 126px; }
 .panel--podium .pod .c-place + .pod-names .row:first-child .c-place { display: none; }
-.pod .pod-time { color: var(--sky); padding: 0; min-width: 0; justify-content: flex-start; font-weight: 700; }
+.pod .pod-time { color: var(--muted); padding: 0; min-width: 0; justify-content: flex-start; font-weight: 700; }
 .panel--podium .ftr { display: none; }
 
-/* --- clock ------------------------------------------------------------------------------ */
-.gfx--clock .panel--clock { align-items: center; padding: 8px; gap: 6px; border-radius: 12px; }
+/* --- the scorebug: race clock top left ------------------------------------------------------ */
+.gfx--clock .panel { left: var(--margin-x); right: auto; }
+.gfx--clock .panel--clock { align-items: stretch; padding: 0; gap: 0; --cut: 12px; }
+.gfx--clock .panel--clock::before { content: ""; order: -1; flex: none; width: 92px; background: var(--logo-plate); }
 .clk-label {
-  display: flex; align-items: center; gap: 10px; padding: 0 12px 0 14px;
-  color: var(--muted); font-size: 17px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+  display: flex; align-items: center; padding: 0 18px; background: var(--red);
+  color: #fff; font-size: 22px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
 }
-.clk-label::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red-glow); animation: iof2-pulse 1.6s ease-in-out infinite; }
-.clk-time { padding: 4px 16px; min-width: 170px; text-align: center; font-size: 42px; font-weight: 800; line-height: 1.1; }
-.clk-logo { width: 84px; height: 52px; padding: 6px 10px; margin-left: 4px; border-radius: 8px; background: #fff; }
+.clk-time { display: flex; align-items: center; justify-content: center; padding: 6px 26px 6px 20px; min-width: 160px; font-size: 44px; font-weight: 800; line-height: 1; }
+.clk-logo { width: 84px; padding: 6px 10px; background: #fff; }
 
-/* --- title card ------------------------------------------------------------------------- */
-.panel--title { border-radius: 18px; }
-.panel--title::before { opacity: .12; }
-.panel--title .hdr { min-height: 60px; padding-top: 18px; }
-.panel--title .hdr::after { display: none; }
-.panel--title .hdr-title { font-size: 20px; letter-spacing: .14em; padding: 6px 12px; }
-.title-body { min-height: 160px; }
-.title-logo { width: 210px; margin: 0 0 22px 22px; padding: 16px; border-radius: 12px; background: #fff; }
-.title-text { padding: 6px 30px 28px; }
-.title-main { font: 800 70px/1.02 var(--font); letter-spacing: -.01em; text-transform: uppercase; }
-.title-sub { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 24px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+/* --- title card --------------------------------------------------------------------------- */
+.panel--title { --cut: 28px; border-bottom: 6px solid var(--red); }
+.panel--title .hdr { min-height: 0; padding: 22px 0 0 34px; background: transparent; border-bottom: 0; }
+.panel--title .hdr-title {
+  padding: 6px 16px 5px; background: var(--red); font-size: 24px; letter-spacing: .1em;
+  transform: skewX(var(--slant));
+}
+.title-body { position: relative; min-height: 150px; padding-right: 200px; }
+/* the IOF logo plate at the right end */
+.title-body::after { content: ""; position: absolute; right: 0; top: -58px; bottom: 0; width: 170px; background: var(--logo-plate); background-size: 70% auto; }
+.title-logo { width: 200px; margin: 0 0 18px 34px; padding: 16px; background: #fff; }
+.title-text { padding: 8px 34px 22px; }
+.title-main { font: 800 84px/0.95 var(--font); text-transform: uppercase; letter-spacing: .005em; }
+.title-sub { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: var(--muted); font-size: 28px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .title-sub .sep { color: var(--red); }
 .title-sponsors { background: #fff; }
 
-/* --- chart ------------------------------------------------------------------------------ */
-.chart-body { padding: 8px 26px 20px; }
-.chart .grid { stroke: var(--rule); stroke-width: 2; }
+/* --- chart -------------------------------------------------------------------------------- */
+.chart-body { padding: 10px 26px 20px; }
+.chart .grid { stroke: var(--chart-grid); stroke-width: 2; }
 .chart .ax { font-weight: 700; fill: var(--muted); }
 .chart .ln path { stroke-width: 5; }
-.chart .ln-0 path { filter: drop-shadow(0 0 6px var(--red-glow)); }
-.chart .ln-label { font: 700 22px var(--font); }
+.chart .ln-label { font: 700 24px var(--font); text-transform: uppercase; }
 .panel--chart .ftr { display: none; }
 
 /* --- motion ------------------------------------------------------------------------------
- * Plates rise and settle, the red accent line draws, rows cascade, ranks pop. Exits are
- * quick. The contours and the sheen run while the graphic is visible; only transform and
- * opacity animate.
+ * Fast and decisive: each bar wipes open from the left behind a red sweep, rows snap in one
+ * after another, numbers land. Exits wipe away to the right. Transform, opacity and the
+ * bar's clip only.
  */
 .gfx {
-  --ease: cubic-bezier(.16, 1, .3, 1);
+  --ease: cubic-bezier(.25, 1, .5, 1);
   --ease-out: cubic-bezier(.5, 0, .75, 0);
+  --shut: polygon(0 0, 0 0, 0 0, 0 100%, 0 100%);
+  --open: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+  --gone: polygon(100% 0, 100% 0, 100% var(--cut), 100% 100%, 100% 100%);
 }
-@keyframes iof2-in { from { opacity: 0; transform: translateY(26px) scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes iof2-row { from { opacity: 0; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
-@keyframes iof2-line { from { transform: scaleX(0); } to { transform: none; } }
-@keyframes iof2-pop { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: none; } }
-@keyframes iof2-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(12px) scale(.98); } }
-@keyframes iof2-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+@keyframes i2-wipe { from { clip-path: var(--shut); } to { clip-path: var(--open); } }
+@keyframes i2-wipe-out { from { clip-path: var(--open); } to { clip-path: var(--gone); } }
+@keyframes i2-sweep { 0% { opacity: 1; transform: translateX(-100%); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(18%); } }
+@keyframes i2-row { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+@keyframes i2-land { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes i2-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 
-.gfx:not(.gfx--position-history)[data-state="in"] .panel { animation: iof2-in 700ms var(--ease) both; }
-/* the chart is centred with a transform: it fades instead of moving */
-.gfx--position-history[data-state="in"] .panel { animation: fade-in 340ms var(--ease) both; }
-.gfx--position-history[data-state="leave"] .panel { animation: fade-out 240ms var(--ease-out) both; }
-.gfx[data-state="in"] .hdr::after { animation: iof2-line 700ms var(--ease) 260ms both; }
-.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 300ms var(--ease) 180ms both; }
-.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: iof2-row 560ms var(--ease) calc(160ms + min(var(--i, 0), 10) * 40ms) both; }
-.gfx[data-state="in"] :is(.c-place:not(:empty), .hdr-title) { animation: iof2-pop 420ms var(--ease) calc(240ms + min(var(--i, 0), 10) * 40ms) both; }
-.gfx[data-state="in"] .title-main { animation: iof2-row 620ms var(--ease) 200ms both; }
-.gfx[data-state="in"] .title-sub { animation: iof2-row 620ms var(--ease) 320ms both; }
-.gfx[data-state="in"] .chart .ln { animation: fade-in 320ms var(--ease) calc(280ms + var(--i, 0) * 50ms) both; }
+.gfx[data-state="in"] .panel { animation: i2-wipe 520ms var(--ease) both; }
+.gfx[data-state="in"] .panel::after { animation: i2-sweep 560ms var(--ease) both; }
+.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 220ms var(--ease) 260ms both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: i2-row 380ms var(--ease) calc(220ms + min(var(--i, 0), 10) * 32ms) both; }
+.gfx[data-state="in"] :is(.c-place:not(:empty), .c-time, .clk-time) { animation: i2-land 300ms var(--ease) calc(320ms + min(var(--i, 0), 10) * 32ms) both; }
+.gfx[data-state="in"] .title-main { animation: i2-row 480ms var(--ease) 220ms both; }
+.gfx[data-state="in"] .title-sub { animation: i2-row 480ms var(--ease) 320ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 300ms var(--ease) calc(320ms + var(--i, 0) * 40ms) both; }
+/* the chart is centred with a transform: its bar still wipes, which only clips */
 
-.gfx:not(.gfx--position-history)[data-state="leave"] .panel { animation: iof2-leave 300ms var(--ease-out) both; }
-.gfx[data-state="step-out"] .rows { animation: fade-out 200ms var(--ease-out) both; }
-.gfx[data-state="step"] .row { animation: iof2-row 440ms var(--ease) calc(min(var(--i, 0), 10) * 30ms) both; }
-
-/* the background stands still while the graphic is hidden */
-.gfx[data-state="out"] .panel::before, .gfx[data-state="out"] .panel::after { animation-play-state: paused; }
+.gfx[data-state="leave"] .panel { animation: i2-wipe-out 320ms var(--ease-out) both; }
+.gfx[data-state="step-out"] .rows { animation: fade-out 160ms var(--ease-out) both; }
+.gfx[data-state="step"] .row { animation: i2-row 340ms var(--ease) calc(min(var(--i, 0), 10) * 26ms) both; }
+/* the podium cards stand apart: the panel is see-through, so each card wipes */
+.gfx--podium[data-state="in"] .panel { animation: none; clip-path: none; }
+.gfx--podium[data-state="in"] .pod { animation: i2-row 420ms var(--ease) calc(120ms + var(--j, 0) * 60ms) both; }
+.gfx--podium .panel { clip-path: none; }
+.gfx--podium .panel::after { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel::before, .panel::after { animation: none !important; }
-  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .hdr-title, .title-main, .title-sub),
+  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .c-time, .clk-time, .title-main, .title-sub),
   .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
+  .gfx[data-state="in"] .panel::after { animation: none !important; }
   .gfx[data-state="leave"] .panel,
   .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
-  .clk-label::before, .row.is-virtual .c-place:empty::after { animation: none; }
+  .row.is-virtual .c-place:empty::after { animation: none; }
 }
 
-/* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
-   (graphic.js hides smaller logos) */
+/* Start lists and results carry the event logo next to the IOF plate: a box tall enough to
+   draw it at least 42 px (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; }
-
-/* --- the IOF logo (iof-logo.svg, the official logo, unaltered) ------------------------
- * The sender at the top right of the race title card, and at the right end of the header of
- * results and start lists, straight on the glass. */
-.panel--title .title-body { position: relative; padding-right: 200px; }
-.panel--title .title-body::after {
-  content: ""; position: absolute; right: 34px; top: -34px; width: 150px; height: 62px;
-  background: url(./iof-logo.svg) center / contain no-repeat;
-}
-.panel--table .hdr::before {
-  content: ""; order: 10; flex: none; width: 82px; height: 34px;
-  background: url(./iof-logo.svg) center / contain no-repeat;
-}
-/* always at the far right, after an event logo */

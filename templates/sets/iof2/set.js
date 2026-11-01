@@ -5,9 +5,10 @@ export default {
   timingHeader: true,
   theme: new URL('./theme.css', import.meta.url).href,
   fonts: new URL('./fonts/fonts.css', import.meta.url).href,
-  durations: { in: 950, out: 380, stepOut: 220, step: 600 },
+  durations: { in: 760, out: 340, stepOut: 180, step: 460 },
   rowsPerPage: 10,
   colorVars: ['--red', '--blue', '--green'],
-  nameStyle: { table: 'full', lower: 'full', strap: 'full' },
+  // the timing tower is narrow: "T. ALEXANDERSSON", as on F1 timing screens
+  nameStyle: { table: 'initial', lower: 'full', strap: 'full' },
   labels: { standingsAt: 'Standings at', startList: 'Start list', positionHistory: 'Position history', podium: 'Flower ceremony' }
 };

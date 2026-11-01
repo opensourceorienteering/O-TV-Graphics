@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "contours-runner-lower-third",
+  "version": "1.0.0",
+  "name": "Contours – Runner lower third",
+  "description": "One runner: place and time at the timing point, or a running clock until they get there; the leader for comparison.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "showLeader": {
+        "type": "boolean",
+        "title": "Show leader",
+        "description": "Show the leader below the runner",
+        "default": true
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "contours",
+  "v_olgrafik_kind": "runner-lower-third",
+  "v_olgrafik_zone": "lower"
+}

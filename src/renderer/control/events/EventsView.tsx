@@ -13,6 +13,7 @@ const LOOK_NAMES: Record<string, string> = {
   classic: "Classic",
   iof: "IOF",
   iof2: "IOF 2.0",
+  contours: "Contours",
   cz: "ČO",
   bold: "Bold",
   brutal: "Brutal",

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "contours-weather",
+  "version": "1.0.0",
+  "name": "Contours – Weather",
+  "description": "Weather at the arena: conditions, temperature, wind, humidity (text only).",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "title": "Title",
+        "description": "Place (default: race location)"
+      },
+      "condition": {
+        "type": "string",
+        "title": "Conditions",
+        "description": "e.g. Sunny"
+      },
+      "temperature": {
+        "type": "string",
+        "title": "Temperature (°C)",
+        "description": "e.g. 18"
+      },
+      "wind": {
+        "type": "string",
+        "title": "Wind (km/h)",
+        "description": "e.g. 12"
+      },
+      "humidity": {
+        "type": "string",
+        "title": "Humidity (%)",
+        "description": "e.g. 60"
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "contours",
+  "v_olgrafik_kind": "weather",
+  "v_olgrafik_zone": "side"
+}
