@@ -1,7 +1,7 @@
 {
   "id": "iof2",
   "name": "IOF 2.0",
-  "description": "A modern take on the IOF broadcast style: tinted glass plates in deep IOF blue with map contour lines drifting behind, IOF Red rank chips and accents, IOF Green gains, Franklin Gothic with uppercase family names, soft rising motion.",
+  "description": "A modern take on the IOF broadcast style: tinted glass plates in deep IOF blue with map contour lines drifting behind, IOF Red rank chips and accents, IOF Green gains, Franklin Gothic with uppercase family names, soft rising motion. The IOF logo on the race title card and the results and start list headers.",
   "author": "Split Control, after the IOF broadcast graphics guidelines",
   "colors": [
     "#e30420",

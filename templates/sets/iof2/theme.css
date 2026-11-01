@@ -328,3 +328,17 @@
 /* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
    (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; }
+
+/* --- the IOF logo (iof-logo.svg, the official logo, unaltered) ------------------------
+ * The sender at the top right of the race title card, and at the right end of the header of
+ * results and start lists, straight on the glass. */
+.panel--title .title-body { position: relative; padding-right: 200px; }
+.panel--title .title-body::after {
+  content: ""; position: absolute; right: 34px; top: -34px; width: 150px; height: 62px;
+  background: url(./iof-logo.svg) center / contain no-repeat;
+}
+.panel--table .hdr::before {
+  content: ""; order: 10; flex: none; width: 82px; height: 34px;
+  background: url(./iof-logo.svg) center / contain no-repeat;
+}
+/* always at the far right, after an event logo */
