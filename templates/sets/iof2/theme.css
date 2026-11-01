@@ -1,21 +1,23 @@
 /*
- * IOF 2.0: the IOF brand (IOF Brand Book 1.0) in the language of top-level sports TV.
+ * IOF 2.0: the IOF brand as light.
  *
- * IOF Brand Book
- *  - Colours: IOF Red #e30420, IOF Green #00794c, IOF Blue #307ea1; the preferred 20 % tint
- *    (IOF Green 20 %, #cee1d8). No other colours, except the brand's WOD colours in charts.
- *  - Typography: Franklin Gothic Heavy for headings in the IOF colours, Franklin Gothic Book
- *    in black for text (Libre Franklin is the free stand-in).
- *  - Tables: an IOF Green header row with white text, rows alternating white and the 20 % tint.
- *  - LINES: a red line above a green line.
- *  - Pattern: white fading through green into blue, with the negative (white) logo on it.
- *  - The IOF logo (iof-logo.svg, unaltered) on white with clear space, or in white on the
- *    pattern; always horizontal.
- * Sports TV
- *  - F1: results and start lists as a timing tower down the left side, the runner in focus
- *    highlighted in the live split, fast wipes.
- *  - Premier League: a compact scorebug top left with the IOF logo for the race clock.
- *  - SHL on TV4: light plates, square number boxes, clean mixed-case type.
+ * Research behind it (2024–2026 sports broadcast packages)
+ *  - Minimal and clear: no heavy gradients or decoration, the live picture breathes; type and
+ *    numbers carry the brand (SVG, "Designing the modern scorebug", 2026).
+ *  - Light as the material: brand elements that emit and refract light instead of flat
+ *    plates (UEFA Champions League 2024–27 identity).
+ *  - A dark, animated motion background inside the panel, square corners (F1 2025 timing tower).
+ *  - Motion as part of the system: elements leave the way they came (NBC Paris 2024).
+ *  - Translucency over blur: heavy glassmorphism isn't a broadcast trend; subtle see-through
+ *    plates are. (A browser source can't blur the picture behind it anyway: the switcher
+ *    mixes the video in later.)
+ *
+ * IOF brand (IOF Brand Book 1.0, orienteering.sport)
+ *  - IOF Blue #307ea1 leads, as on orienteering.sport; IOF Red #e30420 and IOF Green #00794c
+ *    are accents. Franklin Gothic (Libre Franklin as the free stand-in), Heavy for numbers.
+ *  - The brand pattern (a soft blur of white, green and blue) becomes the light that drifts
+ *    inside every plate; the LINES (red over green) run as hairlines along the bottom; the
+ *    negative (white) IOF logo.
  *
  * Three colours drive everything (Plan → Theme colours): --red, --blue, --green.
  */
@@ -26,13 +28,21 @@
   --blue: #307ea1;
   --green: #00794c;
 
-  --tint: color-mix(in srgb, var(--green) 20%, #fff);   /* the brand's 20 % (#cee1d8) */
-  --text: #000;
-  --muted: #4d4d4d;
-  --rule: rgb(0 0 0 / .1);
-  --pattern: linear-gradient(180deg, #fff 0%, color-mix(in srgb, var(--green) 35%, #fff) 38%, var(--green) 66%, var(--blue) 100%);
-  --gain: var(--green);
-  --loss: var(--red);
+  /* the glass: deep tints of IOF Blue */
+  --deep: color-mix(in oklab, var(--blue) 34%, #02090f);
+  --deeper: color-mix(in oklab, var(--blue) 16%, #010407);
+  --glass: linear-gradient(170deg, rgb(from var(--deep) r g b / .8), rgb(from var(--deeper) r g b / .88));
+  --text: #fff;
+  --muted: rgb(220 234 242 / .68);
+  --faint: rgb(220 234 242 / .4);
+  --rule: rgb(255 255 255 / .08);
+  --edge: rgb(255 255 255 / .16);
+  --band: rgb(255 255 255 / .94);          /* the bright band: the runner in focus, times on name plates */
+  --on-band: #0c1a22;
+  --sky: color-mix(in oklab, var(--blue) 55%, #fff);
+  --gain: color-mix(in oklab, var(--green) 45%, #9dffd0);
+  --loss: color-mix(in oklab, var(--red) 65%, #ffb4bb);
+  --red-glow: rgb(from var(--red) r g b / .5);
   --chart-grid: var(--rule);
   --chart-axis: var(--muted);
 
@@ -41,66 +51,87 @@
   --fs: 30px;
   --margin-x: 100px;
   --margin-y: 100px;
-  --tower-w: 660px;
+  --tower-w: 640px;
   --table-top: 196px;   /* the tower starts under the scorebug */
   --lower-w: 860px;
   --side-w: 470px;
-  --podium-x: 330px;
+  --podium-x: 320px;
   --title-x: 300px;
-  --shadow: 0 14px 30px -14px rgb(0 0 0 / .5);
-  /* chart lines: IOF colours first, then the brand's WOD colours */
-  --line-0: var(--red); --line-1: var(--green); --line-2: var(--blue); --line-3: #f9b122;
-  --line-4: #e5007d; --line-5: #009ee3; --line-6: #ec6607; --line-7: #0050a0;
+  /* chart lines: IOF colours, then the brand's WOD colours */
+  --line-0: var(--red); --line-1: #fff; --line-2: var(--sky); --line-3: var(--gain);
+  --line-4: #f9b122; --line-5: #e5007d; --line-6: #009ee3; --line-7: #ec6607;
 
   font-feature-settings: "tnum" 1;
   font-weight: 500;
 }
 
-/* --- plates: white, with the brand's LINES on top (red, white gap, then the green header) - */
-.panel { background: #fff; color: var(--text); box-shadow: var(--shadow); overflow: hidden; border-top: 4px solid var(--red); }
-/* the red sweep that leads every entry (see Motion) */
+/* --- plates: tinted glass with the brand pattern drifting inside as light ---------------- */
+.panel {
+  overflow: hidden; isolation: isolate;
+  background:
+    /* LINES: red over green, as hairlines along the bottom */
+    linear-gradient(var(--red), var(--red)) left 0 bottom 5px / 38% 2px no-repeat,
+    linear-gradient(var(--green), var(--green)) left 0 bottom 1px / 62% 2px no-repeat,
+    var(--glass);
+  box-shadow: inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--rule), 0 24px 56px -24px rgb(0 0 0 / .65);
+  color: var(--text);
+  padding-bottom: 8px;
+}
+/* the brand pattern as moving light: green and blue glows and a white haze, drifting */
+.panel::before {
+  content: ""; position: absolute; inset: -45%; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(28% 34% at 26% 32%, rgb(from var(--green) r g b / .5), transparent 72%),
+    radial-gradient(32% 38% at 74% 66%, rgb(from var(--blue) r g b / .55), transparent 72%),
+    radial-gradient(18% 22% at 58% 26%, rgb(255 255 255 / .1), transparent 70%);
+  animation: i2-aurora 26s ease-in-out infinite alternate;
+}
+/* a band of light that passes on entry and on live changes of a whole table */
 .panel::after {
-  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
-  background: linear-gradient(90deg, transparent 0 84%, var(--red) 84% 100%);
-  transform: translateX(-100%); opacity: 0;
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 45%; z-index: 2; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .22) 45%, rgb(255 255 255 / .05) 60%, transparent);
+  transform: translateX(-120%); opacity: 0;
+}
+@keyframes i2-aurora {
+  0% { transform: translate(-4%, -3%) rotate(0deg) scale(1); }
+  50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); }
+  100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); }
 }
 
-/* --- header: the IOF Green table header ------------------------------------------------- */
-.hdr, .ftr { gap: 14px; }
-.hdr { min-height: 60px; padding: 0 18px; background: var(--green); color: #fff; border-top: 3px solid #fff; }
+/* --- header: class, timing point, the white IOF logo ------------------------------------- */
+.hdr, .ftr { padding: 0 22px; gap: 14px; }
+.hdr { min-height: 70px; border-bottom: 1px solid var(--rule); }
 .hdr-mark, .ftr-mark { display: none; }
-.hdr-title { font: 900 32px/1.1 var(--heavy); }
-.hdr-sub { margin-left: auto; font-size: 22px; font-weight: 600; }
-.hdr-logo, .ftr-logo { align-self: stretch; width: 96px; padding: 6px 8px; background: #fff; }
+.hdr-title { font: 900 34px/1.1 var(--heavy); letter-spacing: .005em; }
+.hdr-sub { margin-left: auto; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 8px; background: #fff; }
 .hdr-sub + .hdr-logo { margin-left: 0; }
-.ftr { min-height: 40px; padding: 0 18px; color: var(--muted); font-size: 19px; font-weight: 600; background: var(--tint); }
-.ftr-sep { color: var(--green); }
-.ftr-page { margin-left: auto; color: var(--green); font-weight: 800; }
+.ftr { min-height: 44px; color: var(--muted); font-size: 17px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.ftr-sep { color: var(--faint); }
+.ftr-page { margin-left: auto; color: var(--text); }
 
-/* --- rows: white and the 20 % tint ---------------------------------------------------------- */
-.rows { padding: 0; }
-.row { min-height: 48px; padding: 0 12px; }
-.rows > .row:nth-child(even) { background: var(--tint); }
-/* the number box: IOF Blue with white figures; the leader IOF Red */
+/* --- rows -------------------------------------------------------------------------------- */
+.rows { padding: 6px 12px 6px; }
+.row { min-height: 50px; }
+.row + .row { box-shadow: inset 0 1px 0 var(--rule); }
+/* places: heavy numerals; the leader on a red chip */
 .c-place {
-  align-self: center !important; min-width: 44px; height: 36px; margin-right: 16px; padding: 0 6px;
-  background: var(--blue); color: #fff; font: 800 22px/1 var(--heavy);
+  align-self: center !important; min-width: 44px; height: 38px; margin: 0 12px 0 0; padding: 0 6px;
+  color: var(--text); font: 900 24px/1 var(--heavy);
 }
-.c-place:empty { background: transparent; }
-.row--leader .c-place { background: var(--red); }
+.row--leader .c-place { background: var(--red); box-shadow: 0 6px 18px -6px var(--red-glow); }
 .c-name { padding-right: 14px; font-size: 29px; font-weight: 500; }
 .c-name .nm-family { font-family: var(--heavy); font-weight: 800; }
-.c-id { gap: 10px; padding-right: 14px; color: var(--muted); font-size: 22px; font-weight: 500; }
-.id-flag { height: 22px; box-shadow: 0 0 0 1px rgb(0 0 0 / .12); }
-.c-time, .c-start, .c-value { padding: 0 4px 0 10px; font: 800 29px/1 var(--heavy); color: var(--text); }
+.c-id { gap: 10px; padding-right: 14px; color: var(--muted); font-size: 21px; font-weight: 600; }
+.id-flag { height: 22px; box-shadow: 0 0 0 1px rgb(255 255 255 / .25); }
+.c-time, .c-start, .c-value { padding: 0 8px 0 10px; font: 800 29px/1 var(--heavy); }
 .c-time { min-width: 110px; }
-.row--leader .c-time { color: var(--red); }
-.c-start { min-width: 120px; justify-content: flex-start; }
-.c-bib { align-self: center !important; min-width: 48px; margin: 0 12px 0 0; color: var(--muted); font-size: 22px; font-weight: 600; }
+.c-start { min-width: 0; justify-content: flex-start; color: var(--sky); }
+.c-bib { align-self: center !important; min-width: 44px; margin: 0 10px 0 0; color: var(--faint); font-size: 20px; font-weight: 700; }
 .row--status { color: var(--muted); }
-.row--status .c-time { color: var(--muted); font-size: 22px; }
-.row--empty .c-name { padding: 0 6px; color: var(--muted); }
-.c-change { font-size: 20px; font-weight: 800; }
+.row--status .c-time { color: var(--faint); font-size: 20px; letter-spacing: .12em; }
+.row--empty .c-name { padding: 0 8px; color: var(--muted); }
+.c-change { font-size: 19px; font-weight: 800; }
 .c-change.up { color: var(--gain); }
 .c-change.down { color: var(--loss); }
 
@@ -108,7 +139,7 @@
 .gfx--results .panel, .gfx--start-list .panel {
   left: var(--margin-x); right: auto; top: var(--table-top); width: var(--tower-w);
 }
-/* the IOF logo in white on the green header, at the right end (the negative logo) */
+/* the negative IOF logo at the right end of the header */
 .panel--table .hdr::after {
   content: ""; order: 10; flex: none; width: 76px; height: 32px;
   background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
@@ -117,117 +148,120 @@
 .panel--table .ftr .ftr-label { display: none; }
 .panel--table .c-id { max-width: 200px; }
 .panel--table .id-club { max-width: 190px; }
-.panel--startlist .c-start { min-width: 0; padding: 0 12px 0 0; color: var(--blue); font-size: 25px; }
-.panel--startlist .c-bib { min-width: 40px; margin-right: 8px; font-size: 20px; }
+.panel--startlist .c-start { padding: 0 14px 0 4px; font-size: 25px; }
 
-/* --- live split and runner lower third: the runner in focus on an IOF Blue row ------------ */
+/* --- live split and runner lower third: the runner in focus on the bright band ----------- */
 .panel--lower .hdr { display: none; }
-.panel--lower .row--hl { min-height: 60px; background: var(--blue) !important; color: #fff; }
-.panel--lower .row--hl .c-place { background: var(--red); }
+.panel--lower .row--hl {
+  min-height: 62px; margin: 3px -12px; padding: 0 12px;
+  background: var(--band); color: var(--on-band); box-shadow: none;
+}
+.panel--lower .row--hl + .row { box-shadow: none; }
+.panel--lower .row--hl .c-place { color: #fff; background: var(--red); box-shadow: none; }
 .panel--lower .row--hl .c-name { font-size: 32px; }
-.panel--lower .row--hl .c-id { color: rgb(255 255 255 / .8); }
-.panel--lower .row--hl .c-time { color: #fff; font-size: 32px; }
+.panel--lower .row--hl .c-id { color: #4a5a64; }
+.panel--lower .row--hl .c-time { font-size: 32px; }
 .panel--runner .row--ref { min-height: 42px; color: var(--muted); }
 .panel--runner .row--ref .c-name { font-size: 24px; }
-.panel--runner .row--ref .c-place { height: 30px; min-width: 38px; font-size: 18px; }
+.panel--runner .row--ref .c-place { height: 30px; font-size: 19px; }
 /* runner on the way: a running clock against the leader */
-.row.is-virtual .c-time:has(.is-ahead) { color: #bff5d9; }
-.row.is-virtual .c-time:has(.is-behind) { color: #ffd0d4; }
+.row.is-virtual .c-time:has(.is-ahead) { color: var(--green); }
+.row.is-virtual .c-time:has(.is-behind) { color: var(--red); }
 .row.is-virtual .c-place:empty { background: var(--red); }
 .row.is-virtual .c-place:empty::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: i2-pulse 1s ease-in-out infinite; }
-.panel--lower .ftr { min-height: 40px; }
-.ftr-class { color: var(--green); font-weight: 900; font-family: var(--heavy); }
-.ftr-ctrl, .ftr-tp { color: var(--text); font-weight: 600; }
+.panel--lower .ftr { min-height: 42px; }
+.ftr-class { color: var(--text); font-weight: 900; font-family: var(--heavy); letter-spacing: .02em; }
+.ftr-ctrl, .ftr-tp { color: var(--sky); }
 
-/* --- name plates: a white bar, the number box, the detail on the tint underneath ---------- */
+/* --- name plates ----------------------------------------------------------------------- */
 .gfx .panel--strap { width: auto; min-width: 560px; max-width: calc(var(--lower-w) * 1.1); }
-.panel--strap .row, .panel--strap .row--hl { min-height: 88px; padding: 0; background: #fff !important; color: var(--text); }
+.panel--strap .rows { padding: 12px 14px 8px; }
+.panel--strap .row, .panel--strap .row--hl { min-height: 84px; margin: 0; padding: 0; background: transparent; color: var(--text); box-shadow: none; }
 .panel--strap .row .c-place {
-  align-self: stretch !important; height: auto; min-width: 88px; margin: 0 22px 0 0;
-  background: var(--green); font-size: 44px;
+  min-width: 70px; height: 64px; margin-right: 20px;
+  background: var(--red); box-shadow: 0 10px 26px -10px var(--red-glow); font-size: 36px;
 }
 .panel--strap .row .c-place:empty { display: none; }
-.panel--strap .row:not(:has(> .c-place:not(:empty))) .c-name { padding-left: 26px; }
-.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; font-size: 44px; }
-.panel--strap .row--hl .c-id, .panel--strap .row .c-id { padding: 0 24px 0 18px; color: var(--muted); font-size: 24px; font-weight: 600; }
+.panel--strap .row .c-name { flex: 0 1 auto; margin-right: auto; font-size: 42px; }
+.panel--strap .row .c-name .nm-family { font-weight: 900; }
+.panel--strap .row .c-id, .panel--strap .row--hl .c-id { padding-left: 20px; color: var(--muted); font-size: 19px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .panel--strap .id-flag { height: 30px; }
 .panel--strap .row .c-time {
-  align-self: stretch !important; min-width: 0; margin-left: 0; padding: 0 24px;
-  background: var(--red); color: #fff; font-size: 38px; justify-content: center;
+  align-self: center !important; min-width: 0; height: 54px; margin-left: 12px; padding: 0 14px;
+  background: var(--band); color: var(--on-band); font-size: 32px; justify-content: center;
 }
-.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { background: var(--blue); }
-.panel--strap .ftr { min-height: 40px; background: var(--tint); color: var(--text); font-weight: 600; }
-.panel--extended .row--bio { min-height: 40px; background: var(--tint) !important; }
-.panel--extended .row--bio .c-name { padding: 6px 26px; font-size: 22px; font-weight: 500; color: var(--text); }
-.panel--freetext .row .c-name { font-size: 44px; font-family: var(--heavy); font-weight: 800; color: var(--blue); }
+.panel--start .row.is-counting .c-time, .panel--start .row.is-running .c-time { background: var(--red); color: #fff; }
+.panel--strap .ftr { min-height: 44px; border-top: 1px solid var(--rule); }
+.panel--extended .row--bio { min-height: 40px; }
+.panel--extended .row--bio .c-name { font: 500 23px/1.3 var(--font); color: var(--muted); }
+.panel--freetext .row .c-name { font-size: 44px; font-family: var(--heavy); font-weight: 800; }
 .c-mic { font-size: 34px; }
 
-/* start group: the green header, a red countdown */
-.panel--startgroup .hdr { display: flex; min-height: 58px; padding-right: 0; }
+/* start group: the countdown on the bright band */
+.panel--startgroup .hdr { display: flex; min-height: 62px; }
 .panel--startgroup .hdr-sub { display: none; }
-.hdr-clock { align-self: stretch; display: flex; align-items: center; margin-left: auto; padding: 0 22px; background: var(--red); color: #fff; font: 900 30px/1 var(--heavy); }
-.hdr-clock.is-up { background: var(--blue); }
+.hdr-clock { margin-left: auto; padding: 6px 16px; background: var(--band); color: var(--on-band); font: 900 28px/1 var(--heavy); }
+.hdr-clock.is-up { background: var(--red); color: #fff; }
 .panel--startgroup .ftr { display: none; }
 
 /* --- side panels: course, weather, split comparison --------------------------------------- */
 .panel--side .hdr { display: none; }
-.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 56px; }
+.panel--info .hdr, .panel--splits .hdr { display: flex; min-height: 62px; }
 .panel--info .hdr-title, .panel--splits .hdr-title { font-size: 28px; }
-.panel--side .row { min-height: 46px; }
-.panel--side .c-label { padding: 0 4px; color: var(--muted); font-size: 22px; font-weight: 600; }
-.panel--side .c-value { min-width: 130px; padding: 0 4px; font-size: 30px; color: var(--blue); }
+.panel--side .row { min-height: 48px; }
+.panel--side .c-label { padding: 0 6px; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.panel--side .c-value { min-width: 130px; padding: 0 6px; font-size: 30px; }
 .panel--side .ftr { display: none; }
-.panel--splits .c-label { color: var(--text); font: 800 26px/1.1 var(--heavy); }
-.panel--splits .c-place { min-width: 40px; height: 32px; font-size: 19px; }
+.panel--splits .c-label { color: var(--text); font: 800 25px/1.1 var(--heavy); letter-spacing: .02em; text-transform: none; }
+.panel--splits .c-place { min-width: 40px; height: 34px; font-size: 20px; }
 .panel--splits .c-change { width: 54px; justify-content: center; }
 .panel--splits .c-time { min-width: 110px; font-size: 28px; }
-.panel--splits .c-time.is-best { color: var(--green); }
+.panel--splits .c-time.is-best { color: var(--gain); }
 
-/* --- podium: the green header, three white cards ------------------------------------------ */
-.panel--podium .podium { gap: 12px; padding: 14px; background: var(--tint); }
-.panel--podium .pod { background: #fff; }
-.panel--podium .pod > .c-place { height: auto; margin: 0; background: var(--blue); font-size: 44px; }
-.panel--podium .pod--1 > .c-place { background: var(--red); font-size: 56px; }
-.panel--podium .pod .row { min-height: 92px; background: transparent !important; }
-.panel--podium .pod--1 .row { min-height: 124px; }
+/* --- podium ------------------------------------------------------------------------------- */
+.panel--podium .podium { gap: 12px; padding: 14px; }
+.panel--podium .pod { background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px var(--rule); }
+.panel--podium .pod > .c-place { height: auto; margin: 0; background: rgb(255 255 255 / .08); font-size: 46px; box-shadow: none; }
+.panel--podium .pod--1 { background: rgb(255 255 255 / .1); box-shadow: inset 0 2px 0 var(--red), inset 0 0 0 1px var(--rule); }
+.panel--podium .pod--1 > .c-place { background: var(--red); font-size: 58px; }
+.panel--podium .pod .row { min-height: 92px; box-shadow: none; }
+.panel--podium .pod--1 .row { min-height: 126px; }
 .panel--podium .pod .c-place + .pod-names .row:first-child .c-place { display: none; }
-.pod .pod-time { color: var(--green); padding: 0; min-width: 0; justify-content: flex-start; }
+.pod .pod-time { color: var(--sky); padding: 0; min-width: 0; justify-content: flex-start; }
 .panel--podium .ftr { display: none; }
 
-/* --- the scorebug: race clock top left ------------------------------------------------------ */
+/* --- the scorebug: race clock top left ----------------------------------------------------- */
 .gfx--clock .panel { left: var(--margin-x); right: auto; }
-.gfx--clock .panel--clock { align-items: stretch; padding: 0; gap: 0; }
-.gfx--clock .panel--clock::before { content: ""; order: -1; flex: none; width: 100px; background: url(./iof-logo.svg) center / 70% auto no-repeat; }
-.clk-label { display: flex; align-items: center; padding: 0 18px; background: var(--green); color: #fff; font-size: 21px; font-weight: 700; }
-.clk-time { display: flex; align-items: center; justify-content: center; padding: 6px 22px; min-width: 160px; color: var(--text); font: 900 42px/1 var(--heavy); }
-.clk-logo { width: 84px; padding: 6px 10px; }
-
-/* --- title card: a brand cover --------------------------------------------------------------
- * White, the title in IOF Blue Heavy, LINES (red over green) under it, the pattern at the right
- * end with the negative IOF logo.
- */
-.panel--title { border-top: 0; }
-.panel--title .hdr { min-height: 0; padding: 26px 0 0 34px; background: transparent; border-top: 0; color: var(--green); }
-.panel--title .hdr-title { font-size: 24px; }
-.title-body { position: relative; min-height: 136px; padding-right: 230px; }
-.panel--title::before {
-  content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 210px; background: var(--pattern);
-}
-/* the negative logo on the pattern */
-.panel--title .title-body::after {
-  content: ""; position: absolute; right: 30px; bottom: 26px; width: 150px; height: 60px;
+.gfx--clock .panel--clock { align-items: center; padding: 8px 10px 14px; gap: 2px; }
+.gfx--clock .panel--clock::before { inset: -120%; }
+.panel--clock > .clk-label::before {
+  content: ""; display: inline-block; flex: none; width: 70px; height: 30px; margin-right: 16px;
   background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
 }
-.title-logo { width: 200px; margin: 0 0 18px 34px; padding: 16px; background: #fff; }
-.title-text { padding: 4px 34px 30px; }
-.title-main { font: 900 72px/1.02 var(--heavy); color: var(--blue); }
-/* LINES: red over green */
-.title-main::after {
-  content: ""; display: block; width: 320px; height: 12px; margin: 16px 0 14px;
-  background: linear-gradient(var(--red) 0 4px, transparent 4px 8px, var(--green) 8px 12px);
+.clk-label { display: flex; align-items: center; padding: 0 16px 0 10px; color: var(--muted); font-size: 17px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.clk-time { padding: 2px 14px; min-width: 160px; text-align: center; font: 900 42px/1.1 var(--heavy); }
+.clk-logo { width: 84px; height: 50px; padding: 6px 10px; background: #fff; }
+
+/* --- title card: the brand pattern shines brightest here ------------------------------------ */
+.panel--title { padding-bottom: 12px; }
+.panel--title::before {
+  background:
+    radial-gradient(30% 40% at 30% 30%, rgb(from var(--green) r g b / .7), transparent 72%),
+    radial-gradient(34% 44% at 72% 64%, rgb(from var(--blue) r g b / .75), transparent 72%),
+    radial-gradient(20% 26% at 56% 24%, rgb(255 255 255 / .16), transparent 70%);
 }
-.title-sub { display: flex; flex-wrap: wrap; gap: 12px; color: var(--text); font-size: 26px; font-weight: 500; }
-.title-sub .sep { color: var(--green); }
+.panel--title .hdr { min-height: 0; padding-top: 24px; border-bottom: 0; }
+.panel--title .hdr-title { color: var(--sky); font-size: 20px; letter-spacing: .16em; text-transform: uppercase; }
+.title-body { position: relative; min-height: 140px; padding-right: 210px; }
+.panel--title .title-body::after {
+  content: ""; position: absolute; right: 34px; top: -40px; width: 156px; height: 64px;
+  background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
+}
+.title-logo { width: 200px; margin: 0 0 16px 22px; padding: 16px; background: #fff; }
+.title-text { padding: 4px 22px 18px; }
+.title-main { font: 900 76px/1.02 var(--heavy); letter-spacing: -.005em; }
+.title-sub { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; color: var(--muted); font-size: 24px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.title-sub .sep { color: var(--red); }
 .title-sponsors { background: #fff; }
 
 /* --- chart -------------------------------------------------------------------------------- */
@@ -235,44 +269,49 @@
 .chart .grid { stroke: var(--rule); stroke-width: 2; }
 .chart .ax { font-weight: 700; fill: var(--muted); }
 .chart .ln path { stroke-width: 5; }
+.chart .ln-0 path { filter: drop-shadow(0 0 6px var(--red-glow)); }
 .chart .ln-label { font: 800 23px var(--heavy); }
 .panel--chart .ftr { display: none; }
 
 /* --- motion ------------------------------------------------------------------------------
- * Clean and quick: each plate wipes open from the left behind a red sweep, rows slide in one
- * after another, number boxes land. Exits wipe away to the right. Transform, opacity and the
- * plate's clip only.
+ * Light-led: a plate fades and rises in while a band of light passes over it, rows follow one
+ * after another, numerals land; the plate leaves the way it came. The light inside drifts the
+ * whole time it is on air. Transform and opacity only.
  */
 .gfx {
-  --ease: cubic-bezier(.25, 1, .5, 1);
+  --ease: cubic-bezier(.16, 1, .3, 1);
   --ease-out: cubic-bezier(.5, 0, .75, 0);
 }
-@keyframes i2-wipe { from { clip-path: inset(-60px 100% -60px 0); } to { clip-path: inset(-60px 0 -60px 0); } }
-@keyframes i2-wipe-out { from { clip-path: inset(-60px 0 -60px 0); } to { clip-path: inset(-60px 0 -60px 100%); } }
-@keyframes i2-sweep { 0% { opacity: 1; transform: translateX(-100%); } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(16%); } }
-@keyframes i2-row { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@keyframes i2-land { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes i2-lines { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes i2-in { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes i2-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-28px); } }
+@keyframes i2-light { 0% { opacity: 1; transform: translateX(-120%); } 100% { opacity: 1; transform: translateX(260%); } }
+@keyframes i2-row { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+@keyframes i2-land { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes i2-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 
-.gfx[data-state="in"] .panel { animation: i2-wipe 520ms var(--ease) both; }
-.gfx[data-state="in"] .panel::after { animation: i2-sweep 560ms var(--ease) both; }
-.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 220ms var(--ease) 260ms both; }
-.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: i2-row 400ms var(--ease) calc(220ms + min(var(--i, 0), 10) * 32ms) both; }
-.gfx[data-state="in"] :is(.c-place:not(:empty), .clk-time) { animation: i2-land 300ms var(--ease) calc(320ms + min(var(--i, 0), 10) * 32ms) both; }
-.gfx[data-state="in"] .title-main { animation: i2-row 480ms var(--ease) 220ms both; }
-.gfx[data-state="in"] .title-main::after { transform-origin: left; animation: i2-lines 520ms var(--ease) 480ms both; }
-.gfx[data-state="in"] .title-sub { animation: i2-row 480ms var(--ease) 340ms both; }
-.gfx[data-state="in"] .chart .ln { animation: fade-in 300ms var(--ease) calc(320ms + var(--i, 0) * 40ms) both; }
+.gfx:not(.gfx--position-history)[data-state="in"] .panel { animation: i2-in 640ms var(--ease) both; }
+.gfx--position-history[data-state="in"] .panel { animation: fade-in 340ms var(--ease) both; }
+.gfx--position-history[data-state="leave"] .panel { animation: fade-out 240ms var(--ease-out) both; }
+.gfx[data-state="in"] .panel::after { animation: i2-light 900ms var(--ease) 120ms both; }
+.gfx[data-state="in"] :is(.hdr > span, .ftr > span) { animation: fade-in 300ms var(--ease) 200ms both; }
+.gfx[data-state="in"] .row, .gfx[data-state="in"] .pod { animation: i2-row 520ms var(--ease) calc(180ms + min(var(--i, 0), 10) * 36ms) both; }
+.gfx[data-state="in"] :is(.c-place:not(:empty), .clk-time, .hdr-clock) { animation: i2-land 360ms var(--ease) calc(280ms + min(var(--i, 0), 10) * 36ms) both; }
+.gfx[data-state="in"] .title-main { animation: i2-row 560ms var(--ease) 220ms both; }
+.gfx[data-state="in"] .title-sub { animation: i2-row 560ms var(--ease) 340ms both; }
+.gfx[data-state="in"] .chart .ln { animation: fade-in 320ms var(--ease) calc(320ms + var(--i, 0) * 40ms) both; }
 
-.gfx[data-state="leave"] .panel { animation: i2-wipe-out 320ms var(--ease-out) both; }
-.gfx[data-state="step-out"] .rows { animation: fade-out 160ms var(--ease-out) both; }
-.gfx[data-state="step"] .row { animation: i2-row 340ms var(--ease) calc(min(var(--i, 0), 10) * 26ms) both; }
+.gfx:not(.gfx--position-history)[data-state="leave"] .panel { animation: i2-out 320ms var(--ease-out) both; }
+.gfx[data-state="step-out"] .rows { animation: fade-out 180ms var(--ease-out) both; }
+.gfx[data-state="step"] .row { animation: i2-row 400ms var(--ease) calc(min(var(--i, 0), 10) * 28ms) both; }
+.gfx[data-state="step"] .panel::after { animation: i2-light 800ms var(--ease) both; }
+
+/* the light stands still while the graphic is hidden */
+.gfx[data-state="out"] .panel::before { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
-  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .clk-time, .title-main, .title-sub),
+  .panel::before, .panel::after { animation: none !important; }
+  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .clk-time, .hdr-clock, .title-main, .title-sub),
   .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
-  .gfx[data-state="in"] :is(.panel::after, .title-main::after) { animation: none !important; }
   .gfx[data-state="leave"] .panel,
   .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
   .row.is-virtual .c-place:empty::after { animation: none; }
