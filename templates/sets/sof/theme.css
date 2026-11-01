@@ -8,7 +8,7 @@
  * - no rounded corners: plates are square where the triangles sit and cut at 45° in the other
  *   two corners, as the control flag (manual 5.2); name plates are plain rectangles
  * - the federation logo (logo.svg, the primary logo on its plate, unaltered) as the sender on
- *   the race title card and the clock
+ *   the race title card
  * - Plus Jakarta Sans: bold italic for competition headings ("fart och riktning framåt"),
  *   bold uppercase with wide tracking for detail headings, semibold numbers in circles
  * - only palette colours: Sjöblå, Skogsgrön, Kontroll-orange and Violett for charts and details
@@ -269,16 +269,8 @@
 .panel--podium .ftr { display: none; }
 
 /* --- clock -------------------------------------------------------------------------------- */
-/* the clock carries the federation logo at its right end, like a channel bug */
-.gfx--clock .panel--clock {
-  align-items: center; padding: 8px 8px calc(8px + var(--line)); gap: 4px; --tri: 14px; --cut: 12px;
-  padding-right: 64px;
-  background:
-    linear-gradient(135deg, var(--sky) 50%, transparent 50%) left top / var(--tri) var(--tri) no-repeat,
-    var(--logo) right 14px top 8px / auto calc(100% - 16px - var(--line)) no-repeat,
-    var(--grad);
-}
-.gfx--clock .panel--clock::before { display: none; }
+/* no federation logo here: the clock stays a plain timer */
+.gfx--clock .panel--clock { align-items: center; padding: 8px 8px calc(8px + var(--line)); gap: 4px; --tri: 14px; --cut: 12px; }
 .panel--clock::before { bottom: var(--line); }
 .clk-label {
   padding: 0 14px 0 20px; color: var(--yellow);
