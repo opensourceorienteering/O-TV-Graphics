@@ -12,6 +12,13 @@ mkdir -p "$out"
 out="$(cd "$out" && pwd)"
 
 cp -R "$root/site/." "$out/"
+
+# GitHub Pages lets browsers keep files for 10 minutes: give the preview's scripts and styles
+# this build's version, so a new version loads at once
+version="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || date +%s)"
+sed -i.bak -e "s#src=\"app.js\"#src=\"app.js?v=$version\"#" -e "s#href=\"preview.css\"#href=\"preview.css?v=$version\"#" "$out/preview/index.html"
+sed -i.bak -e "s#from './sim.js'#from './sim.js?v=$version'#" -e "s#from './vendor/fflate.js'#from './vendor/fflate.js?v=$version'#" "$out/preview/app.js"
+rm -f "$out/preview/"*.bak
 "$root/scripts/zip-looks.sh" "$out/looks" > /dev/null
 
 # The preview loads graphics straight from the look folders, as the app serves them
