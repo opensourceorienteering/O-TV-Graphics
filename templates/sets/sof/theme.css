@@ -5,6 +5,10 @@
  * - Sverigegul for numbers, highlights, the yellow line and one triangle
  * - triangle elements from the control flag: one top left, two bottom right, always the same
  *   size; the yellow line along the bottom edge
+ * - no rounded corners: plates are square where the triangles sit and cut at 45° in the other
+ *   two corners, as the control flag (manual 5.2); name plates are plain rectangles
+ * - the federation logo (logo.svg, the primary logo on its plate, unaltered) as the sender on
+ *   the race title card and the clock
  * - Plus Jakarta Sans: bold italic for competition headings ("fart och riktning framåt"),
  *   bold uppercase with wide tracking for detail headings, semibold numbers in circles
  * - only palette colours: Sjöblå, Skogsgrön, Kontroll-orange and Violett for charts and details
@@ -50,10 +54,10 @@
   --side-w: 480px;
   --podium-x: 250px;
   --title-x: 300px;
-  --radius: 16px;
+  --cut: 18px;         /* 45° corner cut */
+  --logo: url(./logo.svg);
   --tri: 24px;         /* triangle elements: one size per graphic */
   --line: 6px;         /* the yellow line */
-  --shadow: 0 22px 44px -14px rgb(0 10 40 / .6);
   --line-0: var(--yellow); --line-1: var(--sky); --line-2: var(--green); --line-3: var(--orange);
   --line-4: var(--violet); --line-5: #fff; --line-6: var(--light); --line-7: var(--faint);
 
@@ -67,13 +71,12 @@
  */
 .panel {
   overflow: hidden;
-  /* square where the triangles sit (top left, bottom right), rounded elsewhere */
-  border-radius: 0 var(--radius) 0 var(--radius);
+  /* square where the triangles sit (top left, bottom right), cut at 45° elsewhere */
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
   color: var(--text);
   background:
     linear-gradient(135deg, var(--sky) 50%, transparent 50%) left top / var(--tri) var(--tri) no-repeat,
     var(--grad);
-  box-shadow: var(--shadow);
   padding-bottom: calc(var(--tri) * 2 + var(--line));
 }
 .panel::before {
@@ -101,7 +104,7 @@
   margin-left: auto; color: var(--yellow);
   font-size: 20px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
-.hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 10px; border-radius: 8px; background: #fff; }
+.hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 10px; background: #fff; }
 .hdr-sub + .hdr-logo { margin-left: 0; }
 .ftr { min-height: 50px; color: var(--muted); font-size: 20px; font-weight: 600; border-top: 1px solid var(--rule); }
 .ftr-sep { color: var(--faint); }
@@ -178,7 +181,7 @@
  */
 .gfx .panel--strap {
   width: auto; min-width: 560px; max-width: calc(var(--lower-w) * 1.1);
-  border-radius: 4px; background: var(--blue); padding-bottom: 0;
+  clip-path: none; background: var(--blue); padding-bottom: 0;
   --tri: 30px;
 }
 .panel--strap::before {
@@ -251,7 +254,7 @@
 
 /* --- podium ------------------------------------------------------------------------------- */
 .panel--podium .podium { gap: 14px; padding: 14px 14px 0; }
-.panel--podium .pod { border-radius: 10px; background: color-mix(in srgb, var(--blue) 85%, transparent); }
+.panel--podium .pod { background: color-mix(in srgb, var(--blue) 85%, transparent); }
 .panel--podium .pod > .c-place {
   width: auto; height: auto; margin: 0; border: 0; border-radius: 0; align-self: stretch !important;
   background: color-mix(in oklab, var(--deep) 70%, var(--blue)); color: var(--yellow); font: 600 34px/1 var(--font);
@@ -266,23 +269,38 @@
 .panel--podium .ftr { display: none; }
 
 /* --- clock -------------------------------------------------------------------------------- */
-.gfx--clock .panel--clock { align-items: center; padding: 8px 8px calc(8px + var(--line)); gap: 4px; border-radius: 12px; --tri: 14px; }
+/* the clock carries the federation logo at its right end, like a channel bug */
+.gfx--clock .panel--clock {
+  align-items: center; padding: 8px 8px calc(8px + var(--line)); gap: 4px; --tri: 14px; --cut: 12px;
+  padding-right: 64px;
+  background:
+    linear-gradient(135deg, var(--sky) 50%, transparent 50%) left top / var(--tri) var(--tri) no-repeat,
+    var(--logo) right 14px top 8px / auto calc(100% - 16px - var(--line)) no-repeat,
+    var(--grad);
+}
+.gfx--clock .panel--clock::before { display: none; }
 .panel--clock::before { bottom: var(--line); }
 .clk-label {
   padding: 0 14px 0 20px; color: var(--yellow);
   font-size: 18px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
 }
 .clk-time { padding: 4px 30px 4px 12px; min-width: 170px; text-align: center; font-size: 42px; font-weight: 800; line-height: 1.1; }
-.clk-logo { width: 84px; height: 52px; padding: 6px 10px; margin-left: 4px; border-radius: 8px; background: #fff; }
+.clk-logo { width: 84px; height: 52px; padding: 6px 10px; margin-left: 4px; background: #fff; }
 
 /* --- title card --------------------------------------------------------------------------
  * The manual's title plate: title in white, place in yellow, both bold italic.
  */
-.panel--title { --tri: 34px; --line: 10px; padding-bottom: calc(var(--line) + 18px); }
+.panel--title { --tri: 34px; --line: 10px; --cut: 28px; padding-bottom: calc(var(--line) + 18px); }
+/* the federation logo top right, as on the manual's video title plate */
+.panel--title .title-body { position: relative; padding-right: 150px; }
+.panel--title .title-body::after {
+  content: ""; position: absolute; right: 44px; top: -40px; width: 86px; height: 129px;
+  background: var(--logo) center / contain no-repeat;
+}
 .panel--title .hdr { min-height: 58px; padding-top: 10px; padding-left: 52px; border-bottom: 0; }
 .panel--title .hdr-title { font: 700 22px/1 var(--font); font-style: normal; color: var(--yellow); letter-spacing: .05em; text-transform: uppercase; }
 .title-body { min-height: 150px; }
-.title-logo { width: 220px; margin: 0 0 12px 30px; padding: 18px; border-radius: 12px; background: #fff; }
+.title-logo { width: 220px; margin: 0 0 12px 30px; padding: 18px; background: #fff; }
 .title-text { padding: 4px 52px 12px; }
 .title-main { font: italic 800 68px/1.04 var(--font); letter-spacing: -.015em; }
 .title-sub { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; font: italic 800 34px/1.15 var(--font); color: var(--yellow); }

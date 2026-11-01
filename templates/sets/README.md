@@ -11,7 +11,7 @@ another set).
 | `cz` | Czech orienteering streams (ČO): orange/beige, italic headers with the control-circle mark; after [co-stream-gfx](https://github.com/thejoeejoee/co-stream-gfx), used with permission |
 | `classic` | The original OL-Grafik look (brick red + teal), including the original four graphics |
 | `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |
-| `sof` | Svensk Orientering, after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans |
+| `sof` | Svensk Orientering, after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans, the federation logo (`sof/logo.svg`, from the manual, unaltered) on the title card and clock |
 
 ## Shipping and sharing looks
 
