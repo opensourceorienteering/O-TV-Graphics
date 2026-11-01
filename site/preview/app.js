@@ -30,7 +30,8 @@ const state = {
   simNow: 0,
   running: false,
 };
-state.simNow = state.race.firstStart - 45_000;
+// Open in the middle of the race, so passings and running clocks show at once
+state.simNow = state.race.firstStart + 16 * 60_000;
 
 // --- looks ---------------------------------------------------------------------------------
 
@@ -220,15 +221,28 @@ function extraData() {
   try { return JSON.parse($('extra').value || '{}'); } catch { return {}; }
 }
 
+/** Graphics about one runner: they need one even when the operator picked none */
+const RUNNER_KINDS = ['runner-identity', 'runner-start', 'runner-lower-third', 'runner-splits'];
+
+/** With no runner picked, runner graphics follow the runner who started most recently */
+function autoRunner() {
+  const started = state.race.runners.filter((r) => r.startTimeMs <= state.simNow);
+  return started[started.length - 1] || state.race.runners[0];
+}
+
 function graphicData() {
   const race = state.race.data(state.simNow, $('control').value || 'F');
-  const runner = state.race.runners.find((r) => r.name === $('runner').value) || state.race.runners[0];
+  const picked = state.race.runners.find((r) => r.name === $('runner').value);
+  const runner = picked || autoRunner();
+  // Live split and tables without a runner show the leader and the latest passings, as on
+  // race day; with one, they follow that runner (and a running clock on the way)
+  const focus = picked || (RUNNER_KINDS.includes(state.graphic?.kind) ? runner : null);
   const offset = state.simNow - Date.now();
   const extra = extraData();
   return {
     ...race,
     date: new Date(state.race.firstStart).toISOString().slice(0, 10),
-    runnerName: runner.name, runnerClub: runner.club, runnerBib: runner.bib,
+    ...(focus ? { runnerName: focus.name, runnerClub: focus.club, runnerBib: focus.bib } : {}),
     club: runner.club, country: runner.country, bib: runner.bib,
     runners: race.results.slice(0, 6).map((r) => r.name),
     ...extra,
@@ -314,9 +328,10 @@ async function init() {
   $('extra').value = JSON.stringify(DEFAULT_EXTRA, null, 2);
   $('control').innerHTML = [['S', 'Start'], ...state.race.controls.map((c) => [c.code, `${c.short} · ${c.name}`]), ['F', 'Finish']]
     .map(([v, t]) => `<option value="${v}">${esc(t)}</option>`).join('');
-  $('control').value = '45';
-  $('runner').innerHTML = state.race.runners.map((r) => `<option>${esc(r.name)}</option>`).join('');
-  $('runner').value = 'Hanna Lundberg';
+  $('control').value = '31';
+  $('runner').innerHTML = '<option value="">None: latest passings</option>' +
+    state.race.runners.map((r) => `<option>${esc(r.name)}</option>`).join('');
+  $('runner').value = '';
   $('language').value = (navigator.language || '').startsWith('sv') ? 'sv' : (navigator.language || '').startsWith('nb') ? 'nb' : 'en';
 
   state.swReady = await serviceWorkerReady();
@@ -362,6 +377,8 @@ async function init() {
   new ResizeObserver(fitStage).observe(document.querySelector('.pv-stage-wrap'));
   fitStage();
   setInterval(tick, 100);
+  logEvents(state.race.firstStart - 1, state.simNow);
+  setRunning(true);
 }
 
 void init();
