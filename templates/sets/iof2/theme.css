@@ -77,32 +77,39 @@
   color: var(--text);
   padding-bottom: 8px;
 }
-/* the brand pattern as moving light: green and blue glows and a white haze, drifting */
+/* the brand pattern as moving light: green and blue glows and a white haze, drifting. The
+   light moves inside the plate's own box (background position), so a card can rise past the
+   plate's edges without the light spilling out. */
 .panel::before {
-  content: ""; position: absolute; inset: -45%; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
-    radial-gradient(28% 34% at 26% 32%, rgb(from var(--green) r g b / .5), transparent 72%),
-    radial-gradient(32% 38% at 74% 66%, rgb(from var(--blue) r g b / .55), transparent 72%),
-    radial-gradient(18% 22% at 58% 26%, rgb(255 255 255 / .1), transparent 70%);
+    radial-gradient(26% 40% at 30% 35%, rgb(from var(--green) r g b / .5), transparent 72%),
+    radial-gradient(30% 46% at 70% 65%, rgb(from var(--blue) r g b / .55), transparent 72%),
+    radial-gradient(16% 26% at 56% 25%, rgb(255 255 255 / .1), transparent 70%);
+  background-size: 170% 170%;
   animation: i2-aurora 26s ease-in-out infinite alternate;
 }
-/* a band of light that passes on entry and on live changes of a whole table */
+/* a band of light that passes on entry and on page changes */
 .panel::after {
-  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 45%; z-index: 2; pointer-events: none;
-  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .22) 45%, rgb(255 255 255 / .05) 60%, transparent);
-  transform: translateX(-120%); opacity: 0;
+  content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
+  background: linear-gradient(100deg, transparent 38%, rgb(255 255 255 / .22) 48%, rgb(255 255 255 / .05) 54%, transparent 62%) 100% 0 / 300% 100% no-repeat;
+  opacity: 0;
 }
 @keyframes i2-aurora {
-  0% { transform: translate(-4%, -3%) rotate(0deg) scale(1); }
-  50% { transform: translate(5%, 3%) rotate(8deg) scale(1.08); }
-  100% { transform: translate(-2%, 5%) rotate(-6deg) scale(1.02); }
+  0% { background-position: 0% 10%; }
+  50% { background-position: 90% 60%; }
+  100% { background-position: 35% 100%; }
 }
 
 /* --- header: class, timing point, the white IOF logo ------------------------------------- */
 .hdr, .ftr { padding: 0 22px; gap: 14px; }
 .hdr { min-height: 70px; border-bottom: 1px solid var(--rule); }
+/* a short red accent under the header, from the left */
+.hdr::before { content: ""; position: absolute; left: 0; bottom: -1px; width: 120px; height: 3px; background: var(--red); }
 .hdr-mark, .ftr-mark { display: none; }
 .hdr-title { font: 900 34px/1.1 var(--heavy); letter-spacing: .005em; }
+/* the class on a white tab */
+.panel:is(.panel--table, .panel--chart, .panel--startgroup) .hdr-title { padding: 6px 14px 5px; background: #fff; color: var(--deep); }
 .hdr-sub { margin-left: auto; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 8px; background: #fff; }
 .hdr-sub + .hdr-logo { margin-left: 0; }
@@ -150,17 +157,45 @@
 .panel--table .c-id { font-size: 23px; }
 .panel--startlist .c-start { padding: 0 18px 0 4px; font-size: 29px; }
 
-/* --- live split and runner lower third: the runner in focus on the bright band ----------- */
+/* --- live split and runner lower third: elevation (after Material Design) ------------------
+ * Rows rest on the plate (elevation 0). The runner in focus who has not reached the timing
+ * point yet rises above it as a white card (elevation 12): lifted, a deeper shadow, wider than
+ * the plate so it reaches past both edges, a red edge, the running clock. When the time is
+ * confirmed the same row settles back down onto the plate (elevation 1) and keeps a red edge.
+ * Rows are patched in place on air, so the change of class animates as a transition; the lift
+ * uses the separate translate/scale properties so it never fights the rows' slide (transform).
+ */
+.gfx {
+  --elev-0: 0 0 0 0 transparent;
+  --elev-1: inset 4px 0 0 var(--red);
+  --elev-12: 0 26px 40px -12px rgb(0 0 0 / .6), 0 10px 18px -6px rgb(0 0 0 / .35), inset 6px 0 0 var(--red);
+  --settle: 680ms cubic-bezier(.2, 0, 0, 1);
+}
+.panel--lower:not(.panel--strap) { overflow: visible; }
 .panel--lower .hdr { display: none; }
+.panel--lower .row {
+  position: relative;
+  transition: translate var(--settle), scale var(--settle), margin var(--settle), padding var(--settle),
+    background-color var(--settle), color var(--settle), box-shadow var(--settle), min-height var(--settle);
+}
+/* the runner in focus, time confirmed: on the plate, a light wash and a red edge */
 .panel--lower .row--hl {
-  min-height: 62px; margin: 3px -12px; padding: 0 12px;
-  background: var(--band); color: var(--on-band); box-shadow: none;
+  z-index: 1; min-height: 62px; margin: 3px -12px; padding: 0 12px 0 16px;
+  background-color: rgb(255 255 255 / .12); color: var(--text); box-shadow: var(--elev-1);
 }
 .panel--lower .row--hl + .row { box-shadow: none; }
 .panel--lower .row--hl .c-place { color: #fff; background: var(--red); box-shadow: none; }
 .panel--lower .row--hl .c-name { font-size: 32px; }
-.panel--lower .row--hl .c-id { color: #4a5a64; }
 .panel--lower .row--hl .c-time { font-size: 32px; }
+/* on the way: the white card, raised past the plate's edges */
+.panel--lower .row--hl.is-virtual {
+  z-index: 3; min-height: 72px; margin: 10px -30px; padding: 0 30px 0 34px;
+  translate: 0 -6px; scale: 1.01;
+  background-color: #fff; color: var(--on-band); box-shadow: var(--elev-12);
+}
+.panel--lower .row--hl.is-virtual .c-id { color: #4a5a64; }
+.panel--lower .row--hl.is-virtual .c-name { font-size: 34px; }
+.panel--lower .row--hl.is-virtual .c-time { font-size: 34px; }
 .panel--runner .row--ref { min-height: 42px; color: var(--muted); }
 .panel--runner .row--ref .c-name { font-size: 24px; }
 .panel--runner .row--ref .c-place { height: 30px; font-size: 19px; }
@@ -233,7 +268,6 @@
 /* --- the scorebug: race clock top left ----------------------------------------------------- */
 .gfx--clock .panel { left: var(--margin-x); right: auto; }
 .gfx--clock .panel--clock { align-items: center; padding: 8px 10px 14px; gap: 2px; }
-.gfx--clock .panel--clock::before { inset: -120%; }
 .panel--clock > .clk-label::before {
   content: ""; display: inline-block; flex: none; width: 70px; height: 30px; margin-right: 16px;
   background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
@@ -251,6 +285,7 @@
     radial-gradient(20% 26% at 56% 24%, rgb(255 255 255 / .16), transparent 70%);
 }
 .panel--title .hdr { min-height: 0; padding-top: 24px; border-bottom: 0; }
+.panel--title .hdr::before { display: none; }
 .panel--title .hdr-title { color: var(--sky); font-size: 20px; letter-spacing: .16em; text-transform: uppercase; }
 .title-body { position: relative; min-height: 140px; padding-right: 210px; }
 .panel--title .title-body::after {
@@ -284,7 +319,7 @@
 }
 @keyframes i2-in { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 @keyframes i2-out { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-28px); } }
-@keyframes i2-light { 0% { opacity: 1; transform: translateX(-120%); } 100% { opacity: 1; transform: translateX(260%); } }
+@keyframes i2-light { 0% { opacity: 1; background-position: 100% 0; } 100% { opacity: 1; background-position: 0% 0; } }
 @keyframes i2-row { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
 @keyframes i2-land { from { opacity: 0; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes i2-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
