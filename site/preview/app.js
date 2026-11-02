@@ -256,6 +256,9 @@ function graphicData() {
       identity: $('identity').value,
       international: $('identity').value !== 'club',
       themeColors: state.colors,
+      // template: the look's own logo; custom: an uploaded logo (here the site's logo); none
+      logoMode: $('logo').value,
+      ...($('logo').value === 'custom' ? { logoUrl: new URL('../logo.svg', location.href).href } : {}),
     },
     event: { name: extra.title, date: new Date(state.race.firstStart).toISOString().slice(0, 10), location: extra.place },
   };
@@ -346,7 +349,7 @@ async function init() {
   $('hide').addEventListener('click', () => void hide());
   $('next').addEventListener('click', () => void page(1));
   $('prev').addEventListener('click', () => void page(-1));
-  for (const id of ['control', 'runner', 'language', 'identity']) $(id).addEventListener('change', () => void update());
+  for (const id of ['control', 'runner', 'language', 'identity', 'logo']) $(id).addEventListener('change', () => void update());
   $('bg').addEventListener('change', (e) => { $('stage').className = `pv-stage bg-${e.target.value}`; });
   $('colors').addEventListener('input', (e) => { if (e.target.dataset.i) { state.colors[e.target.dataset.i] = e.target.value; void update(); } });
   $('colors').addEventListener('click', (e) => { if (e.target.id === 'reset-colors') { state.colors = [...(state.look.colors || [])]; renderColors(); void update(); } });

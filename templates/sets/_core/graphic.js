@@ -179,6 +179,9 @@ export function createGraphic(kind, set) {
         if (typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value)) this.root.style.setProperty(name, value);
         else this.root.style.removeProperty(name);
       });
+      // template: the look's own logo; custom: the event's logo in the logo boxes; none: no logos
+      const logo = this.data?.presentation?.logoMode;
+      this.root.dataset.logo = logo === 'custom' || logo === 'none' ? logo : 'template';
       const view = renderView(kind, this.data, this.context());
       this.steps = Math.max(1, view.steps || 1);
       this.viewKey = view.key ?? '';

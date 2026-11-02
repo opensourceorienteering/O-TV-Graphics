@@ -307,11 +307,15 @@ export function ProjectGraphicsSettings({
                 value={p.logoUrl || ""}
                 placeholder="/assets/event-logo.png"
                 onChange={(e) =>
-                  setP({ ...p, logoUrl: e.target.value || undefined })
+                  setP({
+                    ...p,
+                    logoUrl: e.target.value || undefined,
+                    logoMode: e.target.value ? "custom" : "template",
+                  })
                 }
               />
               <p style={help}>
-                 {tr("A file in the ASSETS folder (served at /assets/) or a full URL. Shown in the logo boxes of the set.")} </p>
+                 {tr("A file in the ASSETS folder (served at /assets/) or a full URL. Replaces the look's own logo; empty uses the look's logo.")} </p>
             </div>
 
             <label

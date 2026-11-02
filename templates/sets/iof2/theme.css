@@ -155,8 +155,8 @@
 .panel--table .c-name { font-size: 32px; }
 .panel--table .c-time { font-size: 32px; min-width: 130px; }
 .panel--table .c-place { min-width: 50px; height: 42px; font-size: 26px; }
-/* the negative IOF logo at the right end of the header */
-.panel--table .hdr::after {
+/* the negative IOF logo at the right end of the header (only with the look's own logo) */
+.gfx[data-logo="template"] .panel--table .hdr::after {
   content: ""; order: 10; flex: none; width: 76px; height: 32px;
   background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
 }
@@ -276,7 +276,7 @@
 /* --- the scorebug: race clock top left ----------------------------------------------------- */
 .gfx--clock .panel { left: var(--margin-x); right: auto; }
 .gfx--clock .panel--clock { align-items: center; padding: 8px 10px 14px; gap: 2px; }
-.panel--clock > .clk-label::before {
+.gfx[data-logo="template"] .panel--clock > .clk-label::before {
   content: ""; display: inline-block; flex: none; width: 70px; height: 30px; margin-right: 16px;
   background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
 }
@@ -298,10 +298,11 @@
 .gfx--event-title .panel {
   left: 0; right: 0; margin-inline: auto;
   width: fit-content; min-width: 760px; max-width: calc(1920px - 2 * var(--title-x));
-  padding-right: 230px;
 }
 .title-body { min-height: 120px; }
-.panel--title .title-body::after {
+/* the IOF logo at the right, behind a divider (a custom logo shows in the logo box instead) */
+.gfx--event-title[data-logo="template"] .panel { padding-right: 230px; }
+.gfx[data-logo="template"] .panel--title .title-body::after {
   content: ""; position: absolute; top: 22px; bottom: 26px; right: 0; width: 230px;
   background:
     url(./iof-logo.svg) center / 140px auto no-repeat,

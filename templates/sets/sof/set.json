@@ -9,5 +9,6 @@
     "#FFDD00",
     "#001A4F"
   ],
-  "fonts": "Plus Jakarta Sans (OFL)"
+  "fonts": "Plus Jakarta Sans (OFL)",
+  "logo": "logo.svg"
 }

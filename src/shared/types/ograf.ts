@@ -226,6 +226,8 @@ export interface TemplateSetInfo {
   fonts?: string;
   /** Federation looks (IOF, ČO, Svensk Orientering): only for events approved to use them */
   approvedEventsOnly?: boolean;
+  /** The look's own logo (set.json "logo") as a data URL, for previews in Plan */
+  logoPreview?: string;
   templateCount: number;
   /** built-in: ships with the app; imported: installed from a zip into the templates folder */
   source?: 'built-in' | 'imported';

@@ -34,7 +34,7 @@ import { EventHeader } from "./WorkspaceHeader";
 import { EventInfoForm } from "./EventInfoForm";
 import { SettingsTransferCard } from "./SettingsTransferCard";
 import { EventControls } from "./EventControls";
-import { RETIRED_LOGO_URLS, TYR_LOGO_URL } from "../../../shared/branding";
+import { logoModeOf } from "../../../shared/branding";
 import { DEFAULT_TEMPLATE_SET } from "../../../shared/types/spx";
 
 const sections = [
@@ -391,6 +391,7 @@ export function EventPlan() {
               setEvent={setEvent}
               folders={folders}
               busy={busy}
+              look={sets.find((s) => s.id === (event.templateSet || DEFAULT_TEMPLATE_SET))}
               onDirtyChange={setEventInfoDirty}
               onSave={() =>
                 void run(async () => {
@@ -756,12 +757,12 @@ export function EventPlan() {
                       <dt>{tr("Event logo")}</dt>
                       <dd>
                         {(() => {
-                          const logo = event.settings?.presentation?.logoUrl;
-                          return !logo || RETIRED_LOGO_URLS.includes(logo)
-                            ? tr("No logo")
-                            : logo === TYR_LOGO_URL
-                              ? tr("OK Tyr logo")
-                              : tr("Custom logo");
+                          const mode = logoModeOf(event.settings?.presentation);
+                          return mode === "none"
+                            ? tr("No logotype")
+                            : mode === "custom"
+                              ? tr("Custom logo")
+                              : tr("Template logo");
                         })()}
                       </dd>
                     </div>

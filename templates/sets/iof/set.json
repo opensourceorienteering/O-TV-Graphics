@@ -9,5 +9,6 @@
     "#307ea1",
     "#00794c"
   ],
-  "fonts": "Libre Franklin (OFL), bundled; it stands in for ITC Franklin Gothic"
+  "fonts": "Libre Franklin (OFL), bundled; it stands in for ITC Franklin Gothic",
+  "logo": "iof-logo.svg"
 }

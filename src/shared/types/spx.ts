@@ -287,7 +287,12 @@ export interface ProjectPresentation {
   identity?: 'auto' | 'club' | 'flag' | 'both';
   /** Show downloaded Eventor club logos next to clubs (default true) */
   clubLogos?: boolean;
-  /** Logo shown in graphics' logo boxes, e.g. "/built-in-assets/tyr-logo.png" or an uploaded file */
+  /**
+   * Which logo graphics show: the look's own logo (template, the default), the uploaded
+   * logoUrl (custom), or none. Events from before this setting: a custom logoUrl means custom.
+   */
+  logoMode?: LogoMode;
+  /** The uploaded logo, shown in graphics' logo boxes when logoMode is custom */
   logoUrl?: string;
   /** Put the logo on a white plate in logo boxes (for dark logos on dark looks). Default off: logos show with their own transparency. */
   logoPlate?: boolean;
@@ -298,6 +303,9 @@ export interface ProjectPresentation {
   /** Event-only overrides for the selected template set's three advertised palette colours. */
   themeColors?: string[];
 }
+
+/** template: the look's own logo; custom: an uploaded logo; none: no logo */
+export type LogoMode = 'template' | 'custom' | 'none';
 
 /** The look new events start with, and events from before looks existed: the one look that
  * ships with the app */

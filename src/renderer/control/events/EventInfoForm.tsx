@@ -1,9 +1,10 @@
 import { t as tr } from "../i18n";
 import { useState, type Dispatch, type SetStateAction } from "react";
-import type { SPXProject } from "../../../shared/types/spx";
+import type { LogoMode, SPXProject } from "../../../shared/types/spx";
+import type { TemplateSetInfo } from "../../../shared/types/ograf";
 import type { EventFolder } from "../../../shared/types/event";
 import { call } from "./api";
-import { RETIRED_LOGO_URLS, TYR_LOGO_URL } from "../../../shared/branding";
+import { customLogoUrl, logoModeOf } from "../../../shared/branding";
 
 export function EventInfoForm({
   event,
@@ -14,8 +15,11 @@ export function EventInfoForm({
   onLink,
   onDefaults,
   onDirtyChange,
+  look,
 }: {
   event: SPXProject;
+  /** The event's look, for its own logo */
+  look?: TemplateSetInfo;
   setEvent: Dispatch<SetStateAction<SPXProject | undefined>>;
   folders: EventFolder[];
   busy: boolean;
@@ -30,15 +34,11 @@ export function EventInfoForm({
   const [weatherBusy, setWeatherBusy] = useState(false);
   const [weatherError, setWeatherError] = useState("");
   const [logoError, setLogoError] = useState("");
-  const storedLogo = event.settings?.presentation?.logoUrl || "";
-  // the retired IOF logo reads as "no logo" (graphics no longer show it)
-  const logoUrl = RETIRED_LOGO_URLS.includes(storedLogo) ? "" : storedLogo;
-  const logoChoice = !logoUrl
-    ? "none"
-    : logoUrl === TYR_LOGO_URL
-      ? "tyr"
-      : "custom";
-  const setLogo = (nextLogoUrl?: string) => {
+  const presentation = event.settings?.presentation;
+  // an uploaded logo is kept when another choice is made, so switching back is one click
+  const logoUrl = customLogoUrl(presentation) || "";
+  const logoChoice = logoModeOf(presentation);
+  const setLogo = (logoMode: LogoMode, nextLogoUrl = logoUrl || undefined) => {
     onDirtyChange?.(true);
     setEvent({
       ...event,
@@ -46,6 +46,7 @@ export function EventInfoForm({
         ...event.settings,
         presentation: {
           ...event.settings?.presentation,
+          logoMode,
           logoUrl: nextLogoUrl,
         },
       },
@@ -101,33 +102,36 @@ export function EventInfoForm({
         <div>
           <h4 id="event-logo-heading">{tr("Organizer / event logo")}</h4>
           <p className="muted">
-             {tr("Used in the logo areas of start lists, start groups, title cards, and other supported graphics.")} </p>
+             {tr("Looks can have their own logo. Keep it, replace it with yours, or show no logo. Logos appear on start lists, results, title cards and other supported graphics.")} </p>
         </div>
         <div className="logo-choice-grid" role="radiogroup" aria-label={tr("Event logo")}>
-          <label className={logoChoice === "tyr" ? "selected" : ""}>
-            <input type="radio" name="event-logo" checked={logoChoice === "tyr"} onChange={() => setLogo(TYR_LOGO_URL)} />
-            <img src="/assets/tyr-logo.png" alt="" />
-            <span><strong>{tr("OK Tyr logo")}</strong><small>{tr("Included with Split Control")}</small></span>
+          <label className={logoChoice === "template" ? "selected" : ""}>
+            <input type="radio" name="event-logo" checked={logoChoice === "template"} onChange={() => setLogo("template")} />
+            {look?.logoPreview ? <img src={look.logoPreview} alt="" /> : <span className="logo-placeholder" aria-hidden="true">—</span>}
+            <span>
+              <strong>{tr("Use template logo")}</strong>
+              <small>{look?.logoPreview ? tr("The logo built into the look") : tr("This look has no logo of its own")}</small>
+            </span>
           </label>
           <label className={logoChoice === "custom" ? "selected" : ""}>
             <input
               type="radio"
               name="event-logo"
               checked={logoChoice === "custom"}
-              onChange={() => document.getElementById("event-logo-file")?.click()}
+              onChange={() => (logoUrl ? setLogo("custom") : document.getElementById("event-logo-file")?.click())}
             />
-            {logoChoice === "custom" && logoUrl ? <img src={logoUrl} alt="Selected custom logo" /> : <span className="logo-placeholder" aria-hidden="true">+</span>}
-            <span><strong>{tr("Custom logo")}</strong><small>PNG, JPEG, WebP, or SVG</small></span>
+            {logoUrl ? <img src={logoUrl} alt={tr("Uploaded logo")} /> : <span className="logo-placeholder" aria-hidden="true">+</span>}
+            <span><strong>{tr("Upload custom logo")}</strong><small>{tr("Replaces the look's logo. PNG, JPEG, WebP or SVG")}</small></span>
           </label>
           <label className={logoChoice === "none" ? "selected" : ""}>
             <input
               type="radio"
               name="event-logo"
               checked={logoChoice === "none"}
-              onChange={() => setLogo(undefined)}
+              onChange={() => setLogo("none")}
             />
-            <span className="logo-placeholder" aria-hidden="true">—</span>
-            <span><strong>{tr("No logo")}</strong><small>{tr("Hide event branding")}</small></span>
+            <span className="logo-placeholder" aria-hidden="true">∅</span>
+            <span><strong>{tr("No logotype")}</strong><small>{tr("No logo in any graphic")}</small></span>
           </label>
         </div>
         <input
@@ -145,7 +149,7 @@ export function EventInfoForm({
               return;
             }
             const reader = new FileReader();
-            reader.onload = () => setLogo(String(reader.result));
+            reader.onload = () => setLogo("custom", String(reader.result));
             reader.onerror = () => setLogoError("The logo file could not be read.");
             reader.readAsDataURL(file);
             changeEvent.target.value = "";

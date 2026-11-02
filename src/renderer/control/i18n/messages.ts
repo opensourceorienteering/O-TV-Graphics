@@ -384,25 +384,9 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Evenemangslogotyp",
     "nb": "Arrangementslogo"
   },
-  "OK Tyr logo": {
-    "sv": "OK Tyr-logotyp",
-    "nb": "OK Tyr-logo"
-  },
   "Custom logo": {
     "sv": "Egen logotyp",
     "nb": "Egen logo"
-  },
-  "No logo": {
-    "sv": "Ingen logotyp",
-    "nb": "Ingen logo"
-  },
-  "Hide event branding": {
-    "sv": "Dölj evenemangsprofilering",
-    "nb": "Skjul arrangementsprofilering"
-  },
-  "Included with Split Control": {
-    "sv": "Ingår i Split Control",
-    "nb": "Inkludert i Split Control"
   },
   "White box behind the logo": {
     "sv": "Vit ruta bakom logotypen",
@@ -1048,6 +1032,50 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Använd endast vid godkända evenemang",
     "nb": "Brukes kun ved godkjente arrangementer"
   },
+  "Use template logo": {
+    "sv": "Använd temats logotyp",
+    "nb": "Bruk temaets logo"
+  },
+  "Upload custom logo": {
+    "sv": "Ladda upp egen logotyp",
+    "nb": "Last opp egen logo"
+  },
+  "No logotype": {
+    "sv": "Ingen logotyp",
+    "nb": "Ingen logo"
+  },
+  "Template logo": {
+    "sv": "Temats logotyp",
+    "nb": "Temaets logo"
+  },
+  "Uploaded logo": {
+    "sv": "Uppladdad logotyp",
+    "nb": "Opplastet logo"
+  },
+  "The logo built into the look": {
+    "sv": "Logotypen som ingår i temat",
+    "nb": "Logoen som følger med temaet"
+  },
+  "This look has no logo of its own": {
+    "sv": "Det här temat har ingen egen logotyp",
+    "nb": "Dette temaet har ingen egen logo"
+  },
+  "Replaces the look's logo. PNG, JPEG, WebP or SVG": {
+    "sv": "Ersätter temats logotyp. PNG, JPEG, WebP eller SVG",
+    "nb": "Erstatter temaets logo. PNG, JPEG, WebP eller SVG"
+  },
+  "No logo in any graphic": {
+    "sv": "Ingen logotyp i någon grafik",
+    "nb": "Ingen logo i noen grafikk"
+  },
+  "Looks can have their own logo. Keep it, replace it with yours, or show no logo. Logos appear on start lists, results, title cards and other supported graphics.": {
+    "sv": "Teman kan ha en egen logotyp. Behåll den, byt till er egen eller visa ingen logotyp. Logotyper visas på startlistor, resultat, titelskyltar och annan grafik som stöder det.",
+    "nb": "Temaer kan ha sin egen logo. Behold den, bytt den ut med deres egen eller vis ingen logo. Logoer vises på startlister, resultater, tittelskilt og annen grafikk som støtter det."
+  },
+  "A file in the ASSETS folder (served at /assets/) or a full URL. Replaces the look's own logo; empty uses the look's logo.": {
+    "sv": "En fil i mappen ASSETS (nås på /assets/) eller en fullständig URL. Ersätter temats egen logotyp; tomt använder temats logotyp.",
+    "nb": "En fil i mappen ASSETS (servert på /assets/) eller en full URL. Erstatter temaets egen logo; tomt bruker temaets logo."
+  },
   "Built in": {
     "sv": "Inbyggt",
     "nb": "Innebygd"
@@ -1396,10 +1424,6 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Granska den valda tävlingens uppgifter och spara dem för sändningen.",
     "nb": "Se over detaljene fra valgt konkurranse og lagre dem for sendingen."
   },
-  "Used in the logo areas of start lists, start groups, title cards, and other supported graphics.": {
-    "sv": "Används i logotypytorna på startlistor, startgrupper, titelgrafik och annan grafik som stöder det.",
-    "nb": "Brukes i logofeltene på startlister, startgrupper, tittelgrafikk og annen støttet grafikk."
-  },
   "The Weather graphic fetches current conditions at the venue by itself and refreshes them while on air. Coordinates make the lookup exact; otherwise the location above is used.": {
     "sv": "Vädergrafiken hämtar aktuellt väder på platsen och uppdateras under sändning. Ange koordinater för exakt plats, annars används platsen ovan.",
     "nb": "Værgrafikken henter gjeldende vær på stedet og oppdateres under sending. Angi koordinater for nøyaktig sted, ellers brukes stedet ovenfor."
@@ -1643,10 +1667,6 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "In MeOS, start Services &gt; Information server. Use the MeOS computer's address if it is on another machine.": {
     "sv": "Starta Tjänster > Informationsserver i MeOS. Använd MeOS-datorns adress om det är en annan dator.",
     "nb": "Start Tjenester > Informasjonsserver i MeOS. Bruk MeOS-maskinens adresse hvis det er en annen maskin."
-  },
-  "A file in the ASSETS folder (served at /assets/) or a full URL. Shown in the logo boxes of the set.": {
-    "sv": "En fil i ASSETS-mappen (via /assets/) eller fullständig URL. Visas i grafikens logotypytor.",
-    "nb": "En fil i ASSETS-mappen (via /assets/) eller fullstendig URL. Vises i grafikkens logofelt."
   },
   "Web output remains available. Install the NDI Runtime and restart Split Control if your production needs NDI.": {
     "sv": "Webbutgången är fortfarande tillgänglig. Installera NDI Runtime och starta om Split Control om produktionen behöver NDI.",

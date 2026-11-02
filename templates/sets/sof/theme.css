@@ -290,9 +290,10 @@
  * The manual's title plate: title in white, place in yellow, both bold italic.
  */
 .panel--title { --tri: 34px; --line: 10px; --cut: 28px; padding-bottom: calc(var(--line) + 18px); }
-/* the federation logo top right, as on the manual's video title plate */
-.panel--title .title-body { position: relative; padding-right: 150px; }
-.panel--title .title-body::after {
+/* the federation logo top right, as on the manual's video title plate (only with the look's
+   own logo; a custom logo shows in the logo box instead) */
+.gfx[data-logo="template"] .panel--title .title-body { position: relative; padding-right: 150px; }
+.gfx[data-logo="template"] .panel--title .title-body::after {
   content: ""; position: absolute; right: 44px; top: -40px; width: 86px; height: 129px;
   background: var(--logo) center / contain no-repeat;
 }

@@ -65,6 +65,20 @@ for markup, and a set's `theme.css` for its look. Hand-made graphics in a set fo
 alone by the generator; any folder with a `<name>.ograf.json`
 is picked up.
 
+## The look's own logo
+
+A look may carry a logo (e.g. a federation's). The event chooses **Use template logo**,
+**Upload custom logo** or **No logotype**; `_core/graphic.js` sets `data-logo="template|custom|none"`
+on `.gfx` (from `presentation.logoMode`).
+
+- Name the file in `set.json` (`"logo": "logo.svg"`, inside the look's folder); Plan shows it.
+- Draw it only under `.gfx[data-logo="template"]`, so a custom logo replaces it and "No
+  logotype" hides it. `iof`, `iof2` and `sof` are examples.
+- The uploaded logo fills the logo boxes (`.hdr-logo`, `.title-logo`…) only with `custom`:
+  `presentationForGraphics` (`src/shared/branding.ts`) passes `logoUrl` only then.
+- Events from before the choice: an uploaded logo means custom; anything else (including the
+  retired OK Tyr logo) means the look's own logo.
+
 ## Fonts
 
 Production computers are often borrowed or freshly installed, so a look never relies on

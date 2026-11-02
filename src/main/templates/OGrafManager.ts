@@ -42,6 +42,22 @@ interface TemplateCacheEntry {
 /**
  * OGRAF Template Manager
  */
+const LOGO_TYPES: Record<string, string> = { '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp' };
+
+/** A look's own logo (set.json "logo", a file in the look's folder) as a data URL, or undefined */
+async function readLookLogo(setDir: string, file: unknown): Promise<string | undefined> {
+  if (typeof file !== 'string' || !file) return undefined;
+  const target = path.resolve(setDir, file);
+  const type = LOGO_TYPES[path.extname(target).toLowerCase()];
+  if (!type || !target.startsWith(path.resolve(setDir) + path.sep)) return undefined;
+  try {
+    const bytes = await fs.readFile(target);
+    return bytes.length <= 512 * 1024 ? `data:${type};base64,${bytes.toString('base64')}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class OGrafManager {
   private templatesDir: string;
   /** Writable folder for imported looks and graphics (same layout as templatesDir) */
@@ -150,6 +166,7 @@ export class OGrafManager {
             colors: meta.colors,
             fonts: meta.fonts,
             approvedEventsOnly: meta.approvedEventsOnly === true,
+            logoPreview: await readLookLogo(setDir, (meta as { logo?: unknown }).logo),
             templateCount: 0,
             source: root.imported ? 'imported' : 'built-in'
           });

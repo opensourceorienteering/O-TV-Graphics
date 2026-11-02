@@ -1,7 +1,7 @@
 import type { EventFolder } from "../../shared/types/event";
 import type { SPXProject, ProjectPresentation } from "../../shared/types/spx";
 import { DEFAULT_TEMPLATE_SET } from "../../shared/types/spx";
-const branding = ["logoUrl", "sponsorLogos"] as const;
+const branding = ["logoMode", "logoUrl", "logoPlate", "sponsorLogos"] as const;
 const look = [
   "language",
   "international",

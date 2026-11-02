@@ -184,19 +184,17 @@
 
 /* --- the IOF logo (iof-logo.svg, the official logo, unaltered) ------------------------
  * The sender on the race title card (right end of the white body) and at the right end of
- * the blue header of results and start lists, on a white plate like the event logo box. */
-.panel--title .title-body { position: relative; padding-right: 210px; }
-.panel--title .title-body::after {
+ * the blue header of results and start lists, on a white plate like the event logo box.
+ * Only with the look's own logo (Plan → Use template logo); a custom logo replaces it. */
+.gfx[data-logo="template"] .panel--title .title-body { position: relative; padding-right: 210px; }
+.gfx[data-logo="template"] .panel--title .title-body::after {
   content: ""; position: absolute; right: 30px; top: 50%; width: 160px; height: 66px; transform: translateY(-50%);
   background: url(./iof-logo.svg) center / contain no-repeat;
 }
-.panel--table .hdr { padding-right: 0; }
-.panel--table .hdr::after {
+.gfx[data-logo="template"] .panel--table .hdr { padding-right: 0; }
+.gfx[data-logo="template"] .panel--table .hdr::after {
   content: ""; order: 10; flex: none; align-self: stretch; width: 104px; padding: 10px 12px;
   background: #fff url(./iof-logo.svg) center / contain no-repeat; background-origin: content-box;
 }
 /* at the right end also when the header has no timing point to push it there */
-.panel--table .hdr:not(.hdr--timing)::after { margin-left: auto; }
-.panel--table .hdr:not(.hdr--timing):has(> .hdr-logo:not(.hdr-logo--empty, .logo--too-small))::after { margin-left: 0; }
-/* with an event logo too, the two white boxes sit side by side */
-.panel--table .hdr:has(> .hdr-logo:not(.hdr-logo--empty, .logo--too-small))::after { width: 96px; margin-left: -16px; }
+.gfx[data-logo="template"] .panel--table .hdr:not(.hdr--timing)::after { margin-left: auto; }
