@@ -108,8 +108,8 @@
 .hdr::before { content: ""; position: absolute; left: 0; bottom: -1px; width: 120px; height: 3px; background: var(--red); }
 .hdr-mark, .ftr-mark { display: none; }
 .hdr-title { font: 900 34px/1.1 var(--heavy); letter-spacing: .005em; }
-/* the class on a white tab */
-.panel:is(.panel--table, .panel--chart, .panel--startgroup) .hdr-title { padding: 6px 14px 5px; background: #fff; color: var(--deep); }
+/* the title of every card on a white tab (the race title card has its own) */
+.panel:not(.panel--title) .hdr-title { padding: 6px 14px 5px; background: #fff; color: var(--deep); }
 .hdr-sub { margin-left: auto; color: var(--muted); font-size: 18px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .hdr-logo, .ftr-logo { align-self: center; height: 48px; width: 96px; padding: 6px 8px; background: #fff; }
 .hdr-sub + .hdr-logo { margin-left: 0; }
