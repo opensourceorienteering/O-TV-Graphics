@@ -26,14 +26,13 @@ describe('template set discovery', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it('finds the ten sets in the repository', () => {
+  it('finds the nine sets in the repository', () => {
     const sets = manager.getTemplateSets();
-    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'classic', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
+    expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
     for (const id of ['signal', 'brutal', 'bold', 'sof', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
     expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 17 });
     expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
     expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);
-    expect(sets.find(s => s.id === 'classic')?.templateCount).toBe(17); // 4 originals + 13 generated
   });
 
   it('keeps the output test pattern outside every set', () => {
@@ -45,12 +44,10 @@ describe('template set discovery', () => {
     expect(() => assertTemplateInProjectSet({ name: 'Any', templateSet: 'iof' }, pattern)).not.toThrow();
   });
 
-  it('records set, zone and URL path per graphic; originals keep their ids', () => {
+  it('records set, zone and URL path per graphic', () => {
     const iofResults = manager.getTemplateById('iof-results')!;
     expect(iofResults).toMatchObject({ setId: 'iof', zone: 'main', directoryName: 'sets/iof/iof-results' });
     expect(manager.getTemplateById('iof-results')!.dataSourceConfig.mode).toBe('api');
-    const original = manager.getTemplateById('results-list-paginated')!;
-    expect(original).toMatchObject({ zone: 'main', setId: 'classic', directoryName: 'sets/classic/results-list-paginated' });
     expect(manager.getTemplateById('cz-name-strap')).toMatchObject({ setId: 'cz', zone: 'lower', dataSourceConfig: null });
   });
 
@@ -61,32 +58,30 @@ describe('template set discovery', () => {
         .filter(template => template.setId === setId)
         .map(templateGraphicKind)
         .sort();
-    const classic = roles('classic');
-    expect(classic).toHaveLength(17);
-    expect(classic.every(Boolean)).toBe(true);
-    expect(new Set(classic).size).toBe(17);
-    expect(classic).not.toContain('test-pattern');
-    expect(roles('iof')).toEqual(classic);
-    expect(roles('cz')).toEqual(classic);
-    expect(roles('standard')).toEqual(classic);
+    const standard = roles('standard');
+    expect(standard).toHaveLength(17);
+    expect(standard.every(Boolean)).toBe(true);
+    expect(new Set(standard).size).toBe(17);
+    expect(standard).not.toContain('test-pattern');
+    for (const id of ['iof', 'iof2', 'cz', 'sof', 'contours', 'bold', 'brutal', 'signal']) expect(roles(id), id).toEqual(standard);
   });
 
-  it('assigns clash zones to every bundled graphic, including original Classic packages', () => {
+  it('assigns clash zones to every bundled graphic', () => {
     for (const template of manager.getAllTemplates()) {
       expect(template.zone, template.manifest.id).toBeTruthy();
     }
-    expect(zonesClash(manager.getTemplateById('results-list-paginated')!.zone,
-      manager.getTemplateById('classic-runner-identity')!.zone)).toBe(true);
-    expect(zonesClash(manager.getTemplateById('results-list-paginated')!.zone,
-      manager.getTemplateById('countdown-timer')!.zone)).toBe(false);
+    expect(zonesClash(manager.getTemplateById('standard-results')!.zone,
+      manager.getTemplateById('standard-runner-identity')!.zone)).toBe(true);
+    expect(zonesClash(manager.getTemplateById('standard-results')!.zone,
+      manager.getTemplateById('standard-clock')!.zone)).toBe(false);
   });
 
   it('refuses graphics from another set', () => {
     const cz = manager.getTemplateById('cz-podium')!;
     expect(() => assertTemplateInProjectSet({ name: 'WOC', templateSet: 'iof' }, cz)).toThrow(/belongs to the "cz" template set/);
     expect(() => assertTemplateInProjectSet({ name: 'WOC', templateSet: 'cz' }, cz)).not.toThrow();
-    // projects from before sets existed use the classic set
-    expect(() => assertTemplateInProjectSet({ name: 'Old' }, manager.getTemplateById('countdown-timer')!)).not.toThrow();
+    // projects from before sets existed use the default look
+    expect(() => assertTemplateInProjectSet({ name: 'Old' }, manager.getTemplateById('standard-clock')!)).not.toThrow();
   });
 });
 

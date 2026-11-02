@@ -10,8 +10,8 @@ export function eventLabels(language, defaults = {}) {
 }
 
 /**
- * The timing point a graphic shows, for the class / timing point header of the IOF, ČO and
- * Classic sets: "Mellantid 2 Önnestad" (short "M2"; English "Split 2 Önnestad" / "Split 2").
+ * The timing point a graphic shows, for the class / timing point header of the IOF, ČO and other
+ * sets: "Mellantid 2 Önnestad" (short "M2"; English "Split 2 Önnestad" / "Split 2").
  * Start and finish carry only their name. `words` are the graphic's labels (split, splitShort,
  * control, finish). Control names come from the data, renamed in Plan → Radio controls.
  */

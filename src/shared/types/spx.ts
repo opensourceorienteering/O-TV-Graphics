@@ -228,9 +228,9 @@ export interface SPXProject {
   customControls?: SPXCustomControl[];
 
   /**
-   * Template set (graphics package) this project uses, e.g. "iof", "cz", "classic".
+   * Template set (graphics package) this project uses, e.g. "standard", "iof", "cz".
    * Only graphics from this set can be added to or played from the project's rundowns.
-   * Projects created before sets existed default to "classic".
+   * Projects created before sets existed use the default set.
    */
   templateSet?: string;
 
@@ -299,10 +299,9 @@ export interface ProjectPresentation {
   themeColors?: string[];
 }
 
-/** The look new events start with: the one look that ships with the app */
+/** The look new events start with, and events from before looks existed: the one look that
+ * ships with the app */
 export const DEFAULT_TEMPLATE_SET = 'standard';
-/** Projects from before template sets used the original graphics */
-export const LEGACY_TEMPLATE_SET = 'classic';
 
 /**
  * Project list item (for project browser)

@@ -10,7 +10,6 @@ import { ask } from "./ask";
 /** Names of the looks, for the event cards (an imported look shows its id) */
 const LOOK_NAMES: Record<string, string> = {
   standard: "Standard",
-  classic: "Classic",
   iof: "IOF",
   iof2: "IOF 2.0",
   contours: "Contours",

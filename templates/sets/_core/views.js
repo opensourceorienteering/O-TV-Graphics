@@ -213,7 +213,7 @@ const views = {
     const title = esc(data.title || data.className || '');
     const sub = esc(`${L(ctx, 'standingsAt', 'Standings at')} ${where}`);
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
-    // IOF, ČO, Classic: [class] left, the timing point right ("Mellantid 2 Önnestad" / "Mål")
+    // IOF, ČO and others: [class] left, the timing point right ("Mellantid 2 Önnestad" / "Mål")
     const head = ctx.timingHeader
       ? header(esc(data.className || data.title || ''), tpHtml(data, ctx), data, '', 'hdr--timing')
       : header(title, sub, data);
@@ -276,7 +276,7 @@ const views = {
       virtual: r === focus ? virtualCell(r, data, leader) : '' })).join('')
       || emptyRow(L(ctx, 'noResults', 'No results yet'));
     const label = esc(splitLabel(data, ctx, virtualPos >= 0));
-    // IOF, ČO, Classic: footer [class] left, the timing point right; on the way "Mot mellantid 2"
+    // IOF, ČO and others: footer [class] left, the timing point right; on the way "Mot mellantid 2"
     const foot = ctx.timingHeader
       ? footer(esc(data.className || ''), data, `<span class="ftr-tp">${virtualPos >= 0 ? `<span class="tp"><span class="tp-full">${label}</span><span class="tp-short">${label}</span></span>` : tpHtml(data, ctx)}</span>`)
       : footer(ctlLabel(data, label), data);

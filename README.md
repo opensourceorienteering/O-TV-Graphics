@@ -87,7 +87,7 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Ten looks**, each with the same 17 graphics:
+- **Nine looks**, each with the same 17 graphics:
   - live split at a radio control, and a runner lower third
   - runner identity, runner focus with a running clock, and a name strap
   - start list and start group (next starters)
@@ -108,7 +108,6 @@ Virtual bibs are found by their number alone: `105` finds V105.
   | **IOF 2.0** | The IOF brand as light: see-through plates tinted from IOF Blue with the brand pattern drifting inside, a band of light on entry, red-over-green hairlines, Franklin Gothic Heavy, large centred results and a scorebug clock with the IOF logo |
   | **Contours** | Tinted glass in deep blue with map contour lines drifting behind, red rank chips and accents, uppercase family names |
   | **ČO** | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
-  | **Classic** | The original OL-Grafik look, modernised |
   | **Standard** | Modern and playful: floating cards with a gradient accent |
   | **Bold** | Huge condensed uppercase names on ink bands |
   | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |

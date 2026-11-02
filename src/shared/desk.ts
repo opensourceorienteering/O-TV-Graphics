@@ -15,7 +15,7 @@ export interface DeskTemplate {
   key: string;
   /** Graphic kind in the template set (v_olgrafik_kind) */
   kind: string;
-  /** Kinds to fall back to in sets that lack `kind` (classic has hand-made graphics) */
+  /** Kinds to fall back to in sets that lack `kind` (e.g. imported looks with hand-made graphics) */
   fallbackIds?: string[];
   label: string;
   /** Short name in the palette interpretation ("Live feed") */

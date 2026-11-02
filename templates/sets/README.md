@@ -11,7 +11,6 @@ another set).
 | `iof2` | IOF 2.0: the IOF brand as light: translucent IOF Blue plates with the brand pattern drifting inside as glows, light sweeps, red-over-green hairlines, Franklin Gothic Heavy, the negative IOF logo; large centred results and a scorebug clock top left |
 | `contours` | Contours: tinted glass plates in deep blue, drifting map contour lines (`contours.svg`), red chips and accents, uppercase family names |
 | `cz` | ČO: orange and beige, after the Czech orienteering streams, italic headers with the control-circle mark |
-| `classic` | The original OL-Grafik look (brick red + teal), including the original four graphics |
 | `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |
 | `sof` | Svensk Orientering, after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans, the federation logo (`sof/logo.svg`, from the manual, unaltered) on the title card |
 
@@ -57,8 +56,8 @@ npm run generate:sets
 ```
 
 Edit `scripts/generate-template-sets.js` to add a graphic kind or a field, `_core/views.js`
-for markup, and a set's `theme.css` for its look. Hand-made graphics in a set folder (like
-classic's originals) are left alone by the generator; any folder with a `<name>.ograf.json`
+for markup, and a set's `theme.css` for its look. Hand-made graphics in a set folder are left
+alone by the generator; any folder with a `<name>.ograf.json`
 is picked up.
 
 ## Adding a set

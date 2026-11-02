@@ -743,7 +743,7 @@ export function EventPlan() {
                         {sets.find((set) => set.id === event.templateSet)
                           ?.name ||
                           event.templateSet ||
-                          "Classic"}
+                          "Standard"}
                       </dd>
                     </div>
                     <div>

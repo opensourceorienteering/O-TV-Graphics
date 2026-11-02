@@ -10,7 +10,6 @@ import { getLogger } from '../utils/logger';
 import { getConfig } from '../utils/config';
 import {
   DEFAULT_TEMPLATE_SET,
-  LEGACY_TEMPLATE_SET,
   SPXProject,
   SPXProjectListItem,
   SPXProjectVariable
@@ -25,7 +24,7 @@ export interface CreateProjectOptions {
   name: string;
   description?: string;
   variables?: SPXProjectVariable[];
-  /** Template set for the project (default "classic") */
+  /** Template set for the project (default "standard") */
   templateSet?: string;
   settings?: SPXProject['settings'];
 }
@@ -125,8 +124,8 @@ export class ProjectManager {
 
       const content = fs.readFileSync(projectPath, 'utf-8');
       const project: SPXProject = JSON.parse(content);
-      // Projects from before template sets used the original (classic) graphics
-      if (!project.templateSet) project.templateSet = LEGACY_TEMPLATE_SET;
+      // Projects from before template sets existed get the default look
+      if (!project.templateSet) project.templateSet = DEFAULT_TEMPLATE_SET;
 
       logger.debug('Project loaded', { projectId, name: project.name });
       return project;

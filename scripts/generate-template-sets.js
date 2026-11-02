@@ -8,7 +8,7 @@
  *   templates/sets/<set>/<set>-<kind>/<set>-<kind>.ograf.json
  *   templates/sets/<set>/<set>-<kind>/graphic.js
  *   templates/sets/<set>/<set>-<kind>/<set>-<kind>.datasource.json   (live-data kinds)
- * Hand-made graphics in a set (e.g. classic's original four) are left alone.
+ * Hand-made graphics in a set are left alone.
  * Re-run after changing the catalogue; the generated files are committed.
  */
 
@@ -27,9 +27,7 @@ const SETS = {
   signal: { label: 'Signal', skip: [] },
   brutal: { label: 'Brutal', skip: [] },
   bold: { label: 'Bold', skip: [] },
-  sof: { label: 'Svensk Orientering', skip: [] },
-  // classic already has hand-made results, lower thirds and countdown templates
-  classic: { label: 'Classic', skip: ['results', 'standings-lower-third', 'runner-lower-third', 'clock'] }
+  sof: { label: 'Svensk Orientering', skip: [] }
 };
 
 // --- data source building blocks -------------------------------------------------------

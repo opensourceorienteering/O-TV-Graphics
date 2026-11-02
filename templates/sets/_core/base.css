@@ -161,7 +161,7 @@
   overflow-clip-margin: .3em;
 }
 
-/* Timing point (IOF, ČO, Classic): long form, or the short "M2" when it does not fit
+/* Timing point (IOF, ČO and others): long form, or the short "M2" when it does not fit
    (fitTimingPoints in labels.js). Class left, timing point right. */
 .tp-short { display: none; }
 .tp.is-short .tp-full { display: none; }

@@ -4,9 +4,10 @@
  */
 
 import { SYSTEM_TEMPLATE_SET, type OGrafTemplateInfo } from '../../shared/types/ograf';
-import { LEGACY_TEMPLATE_SET, type SPXProject } from '../../shared/types/spx';
+import { DEFAULT_TEMPLATE_SET, type SPXProject } from '../../shared/types/spx';
 
-/** Semantic roles for Classic graphics created before v_olgrafik_kind existed. */
+/** Semantic roles for the original Classic graphics (from before v_olgrafik_kind), still
+ * understood when such a look is imported. */
 const LEGACY_GRAPHIC_KINDS: Record<string, string> = {
   'countdown-timer': 'clock',
   'results-list-paginated': 'results',
@@ -14,9 +15,9 @@ const LEGACY_GRAPHIC_KINDS: Record<string, string> = {
   'split-time-lower-third-runner': 'runner-lower-third'
 };
 
-/** A project's look; projects from before looks existed used the original (classic) graphics */
+/** A project's look; projects from before looks existed get the default look */
 export function projectTemplateSet(project: Pick<SPXProject, 'templateSet'> | null | undefined): string {
-  return project?.templateSet || LEGACY_TEMPLATE_SET;
+  return project?.templateSet || DEFAULT_TEMPLATE_SET;
 }
 
 /** The style-independent role represented by a concrete graphic template. */

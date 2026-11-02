@@ -31,7 +31,7 @@ describe('OGrafValidator', () => {
     .map(f => path.join(TEMPLATES_DIR, f));
 
   it('finds the bundled templates', () => {
-    expect(manifests.length).toBeGreaterThanOrEqual(39); // 4 classic originals + 35 generated set graphics
+    expect(manifests.length).toBeGreaterThanOrEqual(39); // the generated set graphics
   });
 
   it.each(manifests.map(m => [path.basename(m), m]))('accepts bundled manifest %s', (_name, file) => {

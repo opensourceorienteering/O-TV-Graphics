@@ -2,6 +2,7 @@
  * IPC for events (folders, Plan sections, start lists) and Live mode.
  */
 
+import { DEFAULT_TEMPLATE_SET } from "../../shared/types/spx";
 import { app, BrowserWindow, dialog, ipcMain, screen, shell } from "electron";
 import fs from "fs";
 import path from "path";
@@ -417,7 +418,7 @@ export function registerEventHandlers(): void {
     ) => {
       const request = live.beginPreview();
       const project = await events.loadEvent(projectId);
-      const previewSet = draft?.templateSet || project.templateSet || "classic";
+      const previewSet = draft?.templateSet || project.templateSet || DEFAULT_TEMPLATE_SET;
       const template = getTemplateManager()
         .getAllTemplates()
         .find(
