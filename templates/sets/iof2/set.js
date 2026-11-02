@@ -1,4 +1,4 @@
-/** IOF 2.0 set configuration, shared by every graphic in this set */
+/** IOF inspired set configuration, shared by every graphic in this set */
 export default {
   id: 'iof2',
   // class left, timing point right ("Mellantid 2 Önnestad") in results and live split

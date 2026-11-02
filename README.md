@@ -104,15 +104,19 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
   | Look | Style |
   |---|---|
-  | **IOF** | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
-  | **IOF 2.0** | The IOF brand as light: see-through plates tinted from IOF Blue with the brand pattern drifting inside, a band of light on entry, red-over-green hairlines, Franklin Gothic Heavy, large centred results and a scorebug clock with the IOF logo |
+  | **IOF** ⚠️ | IOF TV graphics style (IOF TV Manual for Broadcasters): red rank and time boxes, blue bars, uppercase Franklin Gothic |
+  | **IOF inspired** | Inspired by the IOF brand, not an approved IOF graphic: frosted plates tinted from IOF Blue with the brand pattern drifting inside, a band of light on entry, red-over-green hairlines, Franklin Gothic Heavy, large centred results and a scorebug clock with the IOF logo |
   | **Contours** | Tinted glass in deep blue with map contour lines drifting behind, red rank chips and accents, uppercase family names |
-  | **ČO** | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
+  | **ČO** ⚠️ | Orange and beige, after the Czech orienteering streams: italic headers with the control-circle mark |
   | **Standard** | Modern and playful: floating cards with a gradient accent |
   | **Bold** | Huge condensed uppercase names on ink bands |
   | **Brutal** | Neubrutalism: flat bright fills, thick outlines, hard shadows |
   | **Signal** | Dark glass cards with an RGB-split edge |
-  | **Svensk Orientering** | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line, triangle elements and 45° corners, the federation logo, Plus Jakarta Sans |
+  | **Svensk Orientering** ⚠️ | After Svensk Orientering's graphic manual (2026): Sverigeblå and Sverigegul, the yellow line, triangle elements and 45° corners, the federation logo, Plus Jakarta Sans |
+
+  ⚠️ **Only use at approved events.** IOF, ČO and Svensk Orientering follow their federations'
+  graphics; use them only at events the federation has approved. The app and the Looks page
+  mark them.
 
   The sources of every look are in [`templates/sets/`](templates/sets/). To build your own,
   see the [developer guide](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html);

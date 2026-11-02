@@ -1272,6 +1272,10 @@ progress {
   font-weight: 600;
   vertical-align: middle;
 }
+.template-group-heading .look-source--approved {
+  border-color: var(--color-warning, #f0b429);
+  color: var(--color-warning, #f0b429);
+}
 .template-group-heading > span {
   padding-top: 4px;
   color: var(--color-text-secondary);

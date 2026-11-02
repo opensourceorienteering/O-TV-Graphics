@@ -287,6 +287,11 @@ export function TemplatesView() {
                             : tr("Built in")}
                         </span>
                       )}
+                      {set.approvedEventsOnly && (
+                        <span className="look-source look-source--approved">
+                          {tr("Only use at approved events")}
+                        </span>
+                      )}
                     </h2>
                     {set.description && <p>{set.description}</p>}
                   </div>

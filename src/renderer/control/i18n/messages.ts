@@ -1044,6 +1044,10 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "(inte installerat)",
     "nb": "(ikke installert)"
   },
+  "Only use at approved events": {
+    "sv": "Använd endast vid godkända evenemang",
+    "nb": "Brukes kun ved godkjente arrangementer"
+  },
   "Built in": {
     "sv": "Inbyggt",
     "nb": "Innebygd"

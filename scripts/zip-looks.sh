@@ -32,6 +32,7 @@ const looks = fs.readdirSync('.', { withFileTypes: true })
       author: meta.author || '',
       colors: meta.colors || [],
       fonts: meta.fonts || '',
+      approvedEventsOnly: meta.approvedEventsOnly === true,
       graphics,
       builtIn: d.name === 'standard',
       file: `${d.name}.zip`,

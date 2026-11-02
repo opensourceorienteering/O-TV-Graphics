@@ -11,7 +11,7 @@ import { ask } from "./ask";
 const LOOK_NAMES: Record<string, string> = {
   standard: "Standard",
   iof: "IOF",
-  iof2: "IOF 2.0",
+  iof2: "IOF inspired",
   contours: "Contours",
   cz: "ČO",
   bold: "Bold",

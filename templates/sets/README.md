@@ -7,12 +7,12 @@ another set).
 | Set | Look |
 |---|---|
 | `standard` | Standard (ships with the app): floating ink cards, a gradient accent, number chips and springy motion |
-| `iof` | IOF TV graphics: red rank/time boxes, blue bars, uppercase Franklin Gothic, three-layer slide |
-| `iof2` | IOF 2.0: the IOF brand as light: translucent IOF Blue plates with the brand pattern drifting inside as glows, light sweeps, red-over-green hairlines, Franklin Gothic Heavy, the negative IOF logo; large centred results and a scorebug clock top left |
+| `iof` | IOF TV graphics (approved events only): red rank/time boxes, blue bars, uppercase Franklin Gothic, three-layer slide |
+| `iof2` | IOF inspired (not an approved IOF graphic): frosted IOF Blue plates with the brand pattern drifting inside as glows, light sweeps, red-over-green hairlines, Franklin Gothic Heavy, the negative IOF logo; large centred results and a scorebug clock top left |
 | `contours` | Contours: tinted glass plates in deep blue, drifting map contour lines (`contours.svg`), red chips and accents, uppercase family names |
-| `cz` | ČO: orange and beige, after the Czech orienteering streams, italic headers with the control-circle mark |
+| `cz` | ČO (approved events only): orange and beige, after the Czech orienteering streams, italic headers with the control-circle mark |
 | `bold`, `brutal`, `signal` | Huge condensed type; neubrutalism; dark glass with an RGB-split edge |
-| `sof` | Svensk Orientering, after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans, the federation logo (`sof/logo.svg`, from the manual, unaltered) on the title card |
+| `sof` | Svensk Orientering (approved events only), after the federation's graphic manual (version 1.0, 2026): Sverigeblå plates on the Skymningsblå gradient, Sverigegul numbers and the yellow line, triangle elements, Plus Jakarta Sans, the federation logo (`sof/logo.svg`, from the manual, unaltered) on the title card |
 
 ## Shipping and sharing looks
 
@@ -29,6 +29,9 @@ website's Looks page and each release offer every set as a zip, made by
 - A look must carry its own fonts (see [Fonts](#fonts)): everything it loads is inside its
   folder or `_core/`.
   Keep `_core/` compatible with older looks, or ask people to download the looks again.
+- `"approvedEventsOnly": true` in `set.json` marks a federation look (`iof`, `cz`, `sof`):
+  the app, the Looks page and the preview show "Only use at approved events". Set it on any
+  look that copies an organisation's official graphics.
 - An imported set with the id of a built-in set is used instead of it until it is removed.
 - Graphic ids must be unique across every installed look; an import that clashes is refused.
 
@@ -44,7 +47,7 @@ sets/
 │   ├── base.css           placement and structure shared by all themes
 │   └── flags/             flag-icons SVGs (MIT)
 └── <set>/
-    ├── set.json           name, description, colours (read by the app)
+    ├── set.json           name, description, colours, approvedEventsOnly (read by the app)
     ├── set.js             durations, labels, name styles (read by the graphics)
     ├── theme.css          the look and the motion
     ├── fonts/             fonts.css + woff2 files + licence (see Fonts)

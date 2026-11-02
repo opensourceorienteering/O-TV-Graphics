@@ -71,7 +71,7 @@ function chooseLook(id) {
   if (!look) return;
   state.look = look;
   $('look').value = look.id;
-  $('look-desc').textContent = look.description || '';
+  $('look-desc').textContent = (look.approvedEventsOnly ? 'Only use at approved events. ' : '') + (look.description || '');
   state.colors = [...(look.colors || [])];
   renderColors();
   const graphics = [...look.graphics].sort((a, b) => kindOrder(a.kind) - kindOrder(b.kind));
@@ -124,7 +124,7 @@ async function loadZip(file) {
         await cache.put(new URL(`${base}sets/${id}/${n}`, location.href).href,
           new Response(data, { headers: { 'Content-Type': TYPES[ext] || 'application/octet-stream' } }));
       }
-      const look = { id, name: meta.name || id, description: meta.description || '', colors: meta.colors || [], uploaded: true, base, graphics };
+      const look = { id, name: meta.name || id, description: meta.description || '', colors: meta.colors || [], approvedEventsOnly: meta.approvedEventsOnly === true, uploaded: true, base, graphics };
       const i = list.findIndex((l) => l.id === id);
       if (i >= 0) list[i] = look; else list.unshift(look);
       added.push(look);

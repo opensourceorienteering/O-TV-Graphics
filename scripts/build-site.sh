@@ -38,7 +38,7 @@ const looks = fs.readdirSync(dir, { withFileTypes: true })
         const m = JSON.parse(fs.readFileSync(path.join(dir, d.name, g, `${g}.ograf.json`), 'utf-8'));
         return { folder: g, kind: m.v_olgrafik_kind || '', name: m.name || g, main: m.main || 'graphic.js' };
       });
-    return { id: d.name, name: meta.name || d.name, description: meta.description || '', colors: meta.colors || [], graphics };
+    return { id: d.name, name: meta.name || d.name, description: meta.description || '', colors: meta.colors || [], approvedEventsOnly: meta.approvedEventsOnly === true, graphics };
   })
   .sort((a, b) => (b.id === 'standard') - (a.id === 'standard') || a.name.localeCompare(b.name));
 fs.writeFileSync(target, JSON.stringify({ looks }, null, 2) + '\n');

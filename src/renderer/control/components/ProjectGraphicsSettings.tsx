@@ -57,7 +57,7 @@ export function TemplateSetPicker({
       >
         {sets.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.name} ({s.templateCount}  {tr("graphics)")} </option>
+            {s.name} ({s.templateCount}  {tr("graphics)")}{s.approvedEventsOnly ? ` · ${tr("Only use at approved events")}` : ""} </option>
         ))}
         {!current && <option value={value}>{value}  {tr("(not installed)")}</option>}
       </select>
@@ -84,7 +84,14 @@ export function TemplateSetPicker({
               />
             ))}
           </div>
-          <p style={{ ...help, margin: 0 }}>{current.description}</p>
+          <div>
+            {current.approvedEventsOnly && (
+              <p style={{ ...help, margin: "0 0 0.25rem", color: "var(--color-warning, #f0b429)", fontWeight: 600 }}>
+                {tr("Only use at approved events")}
+              </p>
+            )}
+            <p style={{ ...help, margin: 0 }}>{current.description}</p>
+          </div>
         </div>
       )}
     </div>

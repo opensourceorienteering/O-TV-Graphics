@@ -145,5 +145,6 @@ details > div p:first-child { margin-top: 0; }
 .looks-grid .look h3 { margin: 6px 0 0; }
 .swatches { display: flex; gap: 6px; }
 .swatches span { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); }
+.card .approved-only { align-self: flex-start; margin: 0; padding: 2px 10px; border: 1px solid #f0b429; border-radius: 999px; font-size: 0.78rem; font-weight: 700; color: #f0b429; }
 .badge { font-size: 0.7rem; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 .meta { color: var(--faint); font-size: 0.9rem; }

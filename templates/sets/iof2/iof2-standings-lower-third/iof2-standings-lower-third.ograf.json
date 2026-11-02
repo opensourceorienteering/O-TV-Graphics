@@ -2,7 +2,7 @@
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
   "id": "iof2-standings-lower-third",
   "version": "1.0.0",
-  "name": "IOF 2.0 – Standings lower third",
+  "name": "IOF inspired – Standings lower third",
   "description": "Top runners at the finish or a radio control. With a runner selected: that runner and the runners around them, highlighted.",
   "author": {
     "name": "Split Control"

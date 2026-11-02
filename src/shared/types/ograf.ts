@@ -224,6 +224,8 @@ export interface TemplateSetInfo {
   author?: string;
   colors?: string[];
   fonts?: string;
+  /** Federation looks (IOF, ČO, Svensk Orientering): only for events approved to use them */
+  approvedEventsOnly?: boolean;
   templateCount: number;
   /** built-in: ships with the app; imported: installed from a zip into the templates folder */
   source?: 'built-in' | 'imported';

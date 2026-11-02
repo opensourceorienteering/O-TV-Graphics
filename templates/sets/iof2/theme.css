@@ -1,5 +1,5 @@
 /*
- * IOF 2.0: the IOF brand as light.
+ * IOF inspired: the IOF brand as light. Not an approved IOF graphic.
  *
  * Research behind it (2024–2026 sports broadcast packages)
  *  - Minimal and clear: no heavy gradients or decoration, the live picture breathes; type and
@@ -31,7 +31,11 @@
   /* the glass: deep tints of IOF Blue */
   --deep: color-mix(in oklab, var(--blue) 34%, #02090f);
   --deeper: color-mix(in oklab, var(--blue) 16%, #010407);
-  --glass: linear-gradient(170deg, rgb(from var(--deep) r g b / .8), rgb(from var(--deeper) r g b / .88));
+  --glass: linear-gradient(170deg, rgb(from var(--deep) r g b / .74), rgb(from var(--deeper) r g b / .84));
+  /* frosted: a fine grain and a soft light from above */
+  --frost:
+    linear-gradient(180deg, rgb(255 255 255 / .09), rgb(255 255 255 / .02) 46%, transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --text: #fff;
   --muted: rgb(220 234 242 / .68);
   --faint: rgb(220 234 242 / .4);
@@ -69,10 +73,13 @@
 .panel {
   overflow: hidden; isolation: isolate;
   background:
-    /* LINES: red over green, as hairlines along the bottom */
-    linear-gradient(var(--red), var(--red)) left 0 bottom 5px / 38% 2px no-repeat,
-    linear-gradient(var(--green), var(--green)) left 0 bottom 1px / 62% 2px no-repeat,
+    /* LINES: red over green, as hairlines along the bottom that fade out to the right */
+    linear-gradient(90deg, var(--red) 0 24%, transparent 70%) left 0 bottom 5px / 100% 2px no-repeat,
+    linear-gradient(90deg, var(--green) 0 40%, transparent 92%) left 0 bottom 1px / 100% 2px no-repeat,
+    var(--frost),
     var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  backdrop-filter: blur(22px) saturate(1.4);
   box-shadow: inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--rule), 0 24px 56px -24px rgb(0 0 0 / .65);
   color: var(--text);
   padding-bottom: 8px;
@@ -82,10 +89,11 @@
    plate's edges without the light spilling out. */
 .panel::before {
   content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  /* soft round glows in fixed sizes, so they stay round and soft on small and wide plates */
   background:
-    radial-gradient(26% 40% at 30% 35%, rgb(from var(--green) r g b / .5), transparent 72%),
-    radial-gradient(30% 46% at 70% 65%, rgb(from var(--blue) r g b / .55), transparent 72%),
-    radial-gradient(16% 26% at 56% 25%, rgb(255 255 255 / .1), transparent 70%);
+    radial-gradient(circle 520px at 28% 30%, rgb(from var(--green) r g b / 0.26) 0%, rgb(from var(--green) r g b / 0.219) 16%, rgb(from var(--green) r g b / 0.156) 34%, rgb(from var(--green) r g b / 0.089) 54%, rgb(from var(--green) r g b / 0.037) 74%, rgb(from var(--green) r g b / 0.011) 88%, transparent 100%),
+    radial-gradient(circle 600px at 72% 66%, rgb(from var(--blue) r g b / 0.31) 0%, rgb(from var(--blue) r g b / 0.26) 16%, rgb(from var(--blue) r g b / 0.186) 34%, rgb(from var(--blue) r g b / 0.105) 54%, rgb(from var(--blue) r g b / 0.043) 74%, rgb(from var(--blue) r g b / 0.012) 88%, transparent 100%),
+    radial-gradient(circle 360px at 56% 22%, rgb(from #fff r g b / 0.043) 0%, rgb(from #fff r g b / 0.037) 16%, rgb(from #fff r g b / 0.026) 34%, rgb(from #fff r g b / 0.015) 54%, rgb(from #fff r g b / 0.006) 74%, rgb(from #fff r g b / 0.002) 88%, transparent 100%);
   background-size: 170% 170%;
   animation: i2-aurora 26s ease-in-out infinite alternate;
 }
@@ -280,17 +288,25 @@
 .panel--title { padding-bottom: 12px; }
 .panel--title::before {
   background:
-    radial-gradient(30% 40% at 30% 30%, rgb(from var(--green) r g b / .7), transparent 72%),
-    radial-gradient(34% 44% at 72% 64%, rgb(from var(--blue) r g b / .75), transparent 72%),
-    radial-gradient(20% 26% at 56% 24%, rgb(255 255 255 / .16), transparent 70%);
+    radial-gradient(circle 560px at 26% 28%, rgb(from var(--green) r g b / 0.413) 0%, rgb(from var(--green) r g b / 0.347) 16%, rgb(from var(--green) r g b / 0.247) 34%, rgb(from var(--green) r g b / 0.14) 54%, rgb(from var(--green) r g b / 0.058) 74%, rgb(from var(--green) r g b / 0.017) 88%, transparent 100%),
+    radial-gradient(circle 640px at 74% 66%, rgb(from var(--blue) r g b / 0.465) 0%, rgb(from var(--blue) r g b / 0.391) 16%, rgb(from var(--blue) r g b / 0.279) 34%, rgb(from var(--blue) r g b / 0.158) 54%, rgb(from var(--blue) r g b / 0.065) 74%, rgb(from var(--blue) r g b / 0.019) 88%, transparent 100%),
+    radial-gradient(circle 380px at 56% 22%, rgb(from #fff r g b / 0.075) 0%, rgb(from #fff r g b / 0.063) 16%, rgb(from #fff r g b / 0.045) 34%, rgb(from #fff r g b / 0.026) 54%, rgb(from #fff r g b / 0.011) 74%, rgb(from #fff r g b / 0.003) 88%, transparent 100%);
 }
 .panel--title .hdr { min-height: 0; padding-top: 24px; border-bottom: 0; }
 .panel--title .hdr::before { display: none; }
 .panel--title .hdr-title { color: var(--sky); font-size: 20px; letter-spacing: .16em; text-transform: uppercase; }
-.title-body { position: relative; min-height: 140px; padding-right: 210px; }
+.gfx--event-title .panel {
+  left: 0; right: 0; margin-inline: auto;
+  width: fit-content; min-width: 760px; max-width: calc(1920px - 2 * var(--title-x));
+  padding-right: 230px;
+}
+.title-body { min-height: 120px; }
 .panel--title .title-body::after {
-  content: ""; position: absolute; right: 34px; top: -40px; width: 156px; height: 64px;
-  background: url(./iof-logo.svg) center / contain no-repeat; filter: brightness(0) invert(1);
+  content: ""; position: absolute; top: 22px; bottom: 26px; right: 0; width: 230px;
+  background:
+    url(./iof-logo.svg) center / 140px auto no-repeat,
+    linear-gradient(rgb(255 255 255 / .2), rgb(255 255 255 / .2)) left center / 1px 100% no-repeat;
+  filter: brightness(0) invert(1);
 }
 .title-logo { width: 200px; margin: 0 0 16px 22px; padding: 16px; background: #fff; }
 .title-text { padding: 4px 22px 18px; }

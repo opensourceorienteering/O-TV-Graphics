@@ -2,6 +2,7 @@
   "id": "cz",
   "name": "ČO (Czech orienteering)",
   "description": "Orange and beige look after the Czech orienteering streams (Český orienťák): italic headers with the control-circle mark, slide-and-unclip motion.",
+  "approvedEventsOnly": true,
   "author": "Split Control",
   "colors": [
     "#fe5900",

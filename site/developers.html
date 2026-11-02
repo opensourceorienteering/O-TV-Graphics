@@ -83,7 +83,7 @@
 │   ├── views.js           data → markup for every graphic
 │   └── base.css           placement and structure shared by all looks
 └── my-look/               one look
-    ├── set.json           name, description, the three theme colours
+    ├── set.json           name, description, the three theme colours, approvedEventsOnly
     ├── set.js             durations, name styles, labels (read by the graphics)
     ├── theme.css          the style and the motion
     ├── fonts/             fonts.css, font files and licence (see Fonts)
@@ -119,7 +119,9 @@ export default createGraphic('results', set);</code></pre>
         <li>Copy a look that is close to what you want, e.g. <code>templates/sets/standard</code> to
           <code>templates/sets/my-look</code>, and delete its graphic folders
           (<code>standard-*</code>).</li>
-        <li>Edit <code>set.json</code> (id, name, description, colours) and <code>set.js</code>
+        <li>Edit <code>set.json</code> (id, name, description, colours; add
+          <code>"approvedEventsOnly": true</code> if the look copies an organisation's official
+          graphics, so it is marked "Only use at approved events") and <code>set.js</code>
           (<code>id</code>, and <code>colorVars</code>: the CSS variables the three theme colours set).</li>
         <li>Add the look to <code>SETS</code> in <code>scripts/generate-template-sets.js</code> and run
           <code>npm run generate:sets</code>.</li>

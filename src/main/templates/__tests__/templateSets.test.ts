@@ -428,7 +428,7 @@ describe('look zips are self-contained', () => {
       const text = fs.readFileSync(file, 'utf-8');
       for (const m of text.matchAll(/url\(\s*['"]?([^)'"]+)/g)) {
         const url = m[1];
-        if (/^(data:|https?:|#)/.test(url)) continue;
+        if (/^(data:|https?:|#|%23)/.test(url)) continue; // %23: a fragment inside an inline SVG
         const target = path.resolve(path.dirname(file), url);
         const inLook = target.startsWith(root + path.sep);
         const inCore = target.startsWith(path.join(setsDir, '_core') + path.sep);

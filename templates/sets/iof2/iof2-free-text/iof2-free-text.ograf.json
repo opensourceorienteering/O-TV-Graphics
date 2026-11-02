@@ -2,7 +2,7 @@
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
   "id": "iof2-free-text",
   "version": "1.0.0",
-  "name": "IOF 2.0 – Free text",
+  "name": "IOF inspired – Free text",
   "description": "A general text lower third.",
   "author": {
     "name": "Split Control"

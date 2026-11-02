@@ -2,6 +2,7 @@
   "id": "iof",
   "name": "IOF",
   "description": "IOF TV graphics style (IOF TV Manual for Broadcasters, GFX layout overview): red rank and time boxes, blue headers and footers, uppercase Franklin Gothic, 100 px safe margins, three-layer slide animation. The IOF logo on the race title card and the results and start list headers.",
+  "approvedEventsOnly": true,
   "author": "Split Control, after the IOF broadcast graphics guidelines",
   "colors": [
     "#e30420",

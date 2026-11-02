@@ -149,6 +149,7 @@ export class OGrafManager {
             author: meta.author,
             colors: meta.colors,
             fonts: meta.fonts,
+            approvedEventsOnly: meta.approvedEventsOnly === true,
             templateCount: 0,
             source: root.imported ? 'imported' : 'built-in'
           });

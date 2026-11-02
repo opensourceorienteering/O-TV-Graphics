@@ -2,6 +2,7 @@
   "id": "sof",
   "name": "Svensk Orientering",
   "description": "After Svensk Orientering's graphic manual (2026): Sverigeblå plates on a deep blue gradient with corners cut at 45° like the control flag, Sverigegul numbers and the yellow line, triangle elements, the federation logo on the title card, Plus Jakarta Sans with bold italic for competition headings.",
+  "approvedEventsOnly": true,
   "author": "Split Control",
   "colors": [
     "#0F347C",

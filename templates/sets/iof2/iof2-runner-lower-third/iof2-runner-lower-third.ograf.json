@@ -2,7 +2,7 @@
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
   "id": "iof2-runner-lower-third",
   "version": "1.0.0",
-  "name": "IOF 2.0 – Runner lower third",
+  "name": "IOF inspired – Runner lower third",
   "description": "One runner: place and time at the timing point, or a running clock until they get there; the leader for comparison.",
   "author": {
     "name": "Split Control"
