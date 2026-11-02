@@ -8,5 +8,6 @@
     "#19e3ff",
     "#0b0e14"
   ],
-  "fonts": "Chakra Petch, JetBrains Mono (OFL)"
+  "fonts": "Chakra Petch, JetBrains Mono (OFL)",
+  "logo": "tyr-logo.png"
 }

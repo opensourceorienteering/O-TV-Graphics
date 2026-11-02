@@ -8,5 +8,6 @@
     "#ff6fa3",
     "#4dc3ff"
   ],
-  "fonts": "Space Grotesk, Space Mono (OFL)"
+  "fonts": "Space Grotesk, Space Mono (OFL)",
+  "logo": "tyr-logo.png"
 }

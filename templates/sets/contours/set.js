@@ -5,6 +5,8 @@ export default {
   timingHeader: true,
   theme: new URL('./theme.css', import.meta.url).href,
   fonts: new URL('./fonts/fonts.css', import.meta.url).href,
+  // the look's own logo, in the logo boxes with "Use template logo" (OK Tyr)
+  logo: new URL('./tyr-logo.png', import.meta.url).href,
   durations: { in: 950, out: 380, stepOut: 220, step: 600 },
   rowsPerPage: 10,
   colorVars: ['--red', '--blue', '--green'],

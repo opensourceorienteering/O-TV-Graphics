@@ -437,6 +437,9 @@ describe('look zips are self-contained', () => {
       }
       for (const m of text.matchAll(/@font-face\s*{[^}]*font-family:\s*['"]?([^;'"]+)/g)) faces.add(m[1].trim());
     }
+    // the look's own logo (set.json "logo") is in its folder
+    const meta = JSON.parse(fs.readFileSync(path.join(root, 'set.json'), 'utf-8'));
+    if (meta.logo) expect(fs.existsSync(path.join(root, meta.logo)), `${look}: logo ${meta.logo} is missing`).toBe(true);
     // the first family of every font stack in the theme is bundled, so all computers look the same
     const theme = fs.readFileSync(path.join(root, 'theme.css'), 'utf-8');
     for (const m of theme.matchAll(/(?:--[a-z-]+|font-family)\s*:\s*['"]?([A-Z][^,;'"]*)['"]?\s*,[^;]*;/g)) {

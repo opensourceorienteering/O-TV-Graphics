@@ -8,5 +8,6 @@
     "#0d0d0f",
     "#f4f1ea"
   ],
-  "fonts": "Anton, Oswald (OFL)"
+  "fonts": "Anton, Oswald (OFL)",
+  "logo": "tyr-logo.png"
 }

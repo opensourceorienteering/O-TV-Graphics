@@ -72,8 +72,11 @@ A look may carry a logo (e.g. a federation's). The event chooses **Use template 
 on `.gfx` (from `presentation.logoMode`).
 
 - Name the file in `set.json` (`"logo": "logo.svg"`, inside the look's folder); Plan shows it.
-- Draw it only under `.gfx[data-logo="template"]`, so a custom logo replaces it and "No
-  logotype" hides it. `iof`, `iof2` and `sof` are examples.
+- Either put it in the logo boxes: `logo: new URL('./logo.png', import.meta.url).href` in
+  `set.js`, and the graphics show it there like an uploaded logo (`standard`, `bold`, `brutal`,
+  `signal` and `contours` carry the OK Tyr logo this way),
+- or draw it yourself, only under `.gfx[data-logo="template"]`, so a custom logo replaces it and
+  "No logotype" hides it (`iof`, `iof2` and `sof`; leave `logo` out of `set.js` then).
 - The uploaded logo fills the logo boxes (`.hdr-logo`, `.title-logo`…) only with `custom`:
   `presentationForGraphics` (`src/shared/branding.ts`) passes `logoUrl` only then.
 - Events from before the choice: an uploaded logo means custom; anything else (including the

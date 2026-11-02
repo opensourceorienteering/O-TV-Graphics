@@ -3,6 +3,8 @@ export default {
   id: 'standard',
   theme: new URL('./theme.css', import.meta.url).href,
   fonts: new URL('./fonts/fonts.css', import.meta.url).href,
+  // the look's own logo, in the logo boxes with "Use template logo" (OK Tyr)
+  logo: new URL('./tyr-logo.png', import.meta.url).href,
   durations: { in: 1120, out: 280, stepOut: 180, step: 700 },
   rowsPerPage: 10,
   colorVars: ['--accent', '--surface', '--success'],

@@ -182,7 +182,12 @@ export function createGraphic(kind, set) {
       // template: the look's own logo; custom: the event's logo in the logo boxes; none: no logos
       const logo = this.data?.presentation?.logoMode;
       this.root.dataset.logo = logo === 'custom' || logo === 'none' ? logo : 'template';
-      const view = renderView(kind, this.data, this.context());
+      // A look's own logo (set.logo) fills the logo boxes like an uploaded one; looks that draw
+      // their logo in CSS (IOF, Svensk Orientering) leave set.logo out
+      const data = this.root.dataset.logo === 'template' && set.logo
+        ? { ...this.data, presentation: { ...this.data?.presentation, logoUrl: set.logo, logoPlate: false } }
+        : this.data;
+      const view = renderView(kind, data, this.context());
       this.steps = Math.max(1, view.steps || 1);
       this.viewKey = view.key ?? '';
       this.rekey = !!view.rekey;

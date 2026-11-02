@@ -182,8 +182,12 @@ export default createGraphic('results', set);</code></pre>
         <li>Put the logo file in the look's folder and name it in <code>set.json</code>, so Plan can
           show it: <code>"logo": "logo.svg"</code>. Use an official file unaltered, and only one you
           may share.</li>
-        <li>Draw it in <code>theme.css</code> only for <code>template</code>, so a custom logo
-          replaces it and "No logotype" hides it:
+        <li>The simple way: add <code>logo: new URL('./logo.png', import.meta.url).href</code> to
+          <code>set.js</code>. The graphics then show it in the logo boxes, where an uploaded logo
+          would go. Standard, Bold, Brutal, Signal and Contours carry the OK Tyr logo this way.</li>
+        <li>Or place it yourself (IOF and Svensk Orientering do): leave <code>logo</code> out of
+          <code>set.js</code> and draw it in <code>theme.css</code> only for
+          <code>template</code>, so a custom logo replaces it and "No logotype" hides it:
           <pre><code>.gfx[data-logo="template"] .panel--title .title-body::after {
   content: ""; position: absolute; right: 30px; top: 24px; width: 160px; height: 66px;
   background: url(./logo.svg) center / contain no-repeat;
