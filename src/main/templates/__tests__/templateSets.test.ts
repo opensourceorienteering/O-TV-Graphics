@@ -410,3 +410,37 @@ describe('shared views (templates/sets/_core)', () => {
   });
 
 });
+
+// Looks are downloaded as zips of their own folder, so a look must carry every font it uses
+// and load nothing from other looks; on a new computer only _core and Standard are there.
+describe('look zips are self-contained', () => {
+  const fs = require('fs') as typeof import('fs');
+  const setsDir = path.resolve(__dirname, '../../../../templates/sets');
+  const looks = fs.readdirSync(setsDir).filter((d: string) => !d.startsWith('_') && fs.existsSync(path.join(setsDir, d, 'set.json')));
+  const cssFiles = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
+    .flatMap((e) => e.isDirectory() ? cssFiles(path.join(dir, e.name)) : e.name.endsWith('.css') ? [path.join(dir, e.name)] : []);
+
+  it.each(looks)('%s bundles its fonts and loads nothing from other looks', (look) => {
+    const root = path.join(setsDir, look);
+    const css = cssFiles(root);
+    const faces = new Set<string>();
+    for (const file of css) {
+      const text = fs.readFileSync(file, 'utf-8');
+      for (const m of text.matchAll(/url\(\s*['"]?([^)'"]+)/g)) {
+        const url = m[1];
+        if (/^(data:|https?:|#)/.test(url)) continue;
+        const target = path.resolve(path.dirname(file), url);
+        const inLook = target.startsWith(root + path.sep);
+        const inCore = target.startsWith(path.join(setsDir, '_core') + path.sep);
+        expect(inLook || inCore, `${path.relative(setsDir, file)} loads ${url}`).toBe(true);
+        expect(fs.existsSync(target), `${path.relative(setsDir, file)}: ${url} is missing`).toBe(true);
+      }
+      for (const m of text.matchAll(/@font-face\s*{[^}]*font-family:\s*['"]?([^;'"]+)/g)) faces.add(m[1].trim());
+    }
+    // the first family of every font stack in the theme is bundled, so all computers look the same
+    const theme = fs.readFileSync(path.join(root, 'theme.css'), 'utf-8');
+    for (const m of theme.matchAll(/(?:--[a-z-]+|font-family)\s*:\s*['"]?([A-Z][^,;'"]*)['"]?\s*,[^;]*;/g)) {
+      expect(faces, `${look}: "${m[1]}" is not bundled`).toContain(m[1].trim());
+    }
+  });
+});

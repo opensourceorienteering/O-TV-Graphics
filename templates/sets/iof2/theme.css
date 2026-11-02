@@ -46,8 +46,8 @@
   --chart-grid: var(--rule);
   --chart-axis: var(--muted);
 
-  --font: "Franklin Gothic Book", "ITC Franklin Gothic Std", "Libre Franklin", "Franklin Gothic Medium", Arial, sans-serif;
-  --heavy: "Franklin Gothic Heavy", "ITC Franklin Gothic Std", "Libre Franklin", Arial, sans-serif;
+  --font: "Libre Franklin", Arial, sans-serif;
+  --heavy: "Libre Franklin", Arial, sans-serif;
   --fs: 30px;
   --margin-x: 100px;
   --margin-y: 100px;

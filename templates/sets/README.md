@@ -26,6 +26,9 @@ website's Looks page and each release offer every set as a zip, made by
   looks, and OGraf graphics outside any set.
 - Imported looks go to `DATAROOT/templates/sets/<set>/` and are served at the same
   `/templates/sets/<set>/` URL as built-in ones, so their graphics load the app's `_core/`.
+- A look must carry its own fonts: everything it loads is inside its folder or `_core/`, and
+  the first font in each stack is one it bundles (installed fonts differ between computers).
+  The "look zips are self-contained" test checks this.
   Keep `_core/` compatible with older looks, or ask people to download the looks again.
 - An imported set with the id of a built-in set is used instead of it until it is removed.
 - Graphic ids must be unique across every installed look; an import that clashes is refused.
