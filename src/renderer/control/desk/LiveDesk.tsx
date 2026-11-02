@@ -15,7 +15,7 @@ import { call } from '../events/api';
 import { CommandPalette, rememberRecent, typedFields } from './CommandPalette';
 import { MonitorHead, PreviewVideo, ProgramVideo } from './DeskMonitor';
 import { commandForDraft, type PaletteControl, type PaletteData, type PaletteRunner } from './command';
-import { DESK_SHORTCUTS, DESK_TEMPLATES, canFreeze, isFrozenDraft, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskState } from '../../../shared/desk';
+import { DESK_SHORTCUTS, DESK_TEMPLATES, canFreeze, hasBehaviour, hasFeed, isFrozenDraft, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskState } from '../../../shared/desk';
 import type { EventStartList, StartListEntry } from '../../../shared/types/event';
 import './desk.css';
 import { SchemaField } from './SchemaField';
@@ -136,6 +136,9 @@ function deskFields(def: DeskTemplateInfo): string[] {
   // Nothing matched: offer the graphic's own fields
   return Object.keys(schema).filter(f => !DATA_FIELDS.has(f));
 }
+/** The graphic whose runner follows the next starter (Runner focus) */
+const FOLLOW_KEY = DESK_TEMPLATES.find(t => hasBehaviour(t, 'followNextStarter'))?.key ?? '';
+
 const DATA_FIELDS = new Set(['className', 'results', 'runnerName', 'runnerClub', 'runnerBib', 'controlCode', 'splitControls', 'startList']);
 
 export function LiveDesk() {
@@ -234,7 +237,7 @@ export function LiveDesk() {
         // A Stream Deck button prepared a favourite or runner: show it here as the draft
         if (p.origin === 'remote' && p.draft && remoteSeen.current !== null && p.version > remoteSeen.current) {
           const remote = p.draft;
-          if (remote.key === 'runner-start' && remote.values?.runnerName) setFollowNext(false);
+          if (hasBehaviour(remote.key, 'followNextStarter') && remote.values?.runnerName) setFollowNext(false);
           setSelected(remote.key);
           setDrafts(all => ({ ...all, [remote.key]: remote }));
           say('Draft prepared from a control surface');
@@ -251,16 +254,17 @@ export function LiveDesk() {
   const def = templates.find(t => t.key === selected);
 
   // --- weather: the graphic fills itself; show the operator what it will say ---
-  const weatherDraft = drafts.weather;
+  const weatherKey = hasFeed(selected, 'weather') ? selected : '';
+  const weatherDraft = weatherKey ? drafts[weatherKey] : undefined;
   const loadWeather = useCallback(async (force = false) => {
     try {
       setWeather(await call('desk:weather', eventId, force));
       // A fresh reading: prepare Preview again so it shows the new values
-      if (force) await call('preview:draft', eventId, weatherDraft ?? emptyDraft('weather')).catch(() => undefined);
+      if (force && weatherKey) await call('preview:draft', eventId, weatherDraft ?? emptyDraft(weatherKey)).catch(() => undefined);
     } catch (e) { setWeather({ reading: null, source: 'none', error: (e as Error).message }); }
-  }, [eventId, weatherDraft]);
+  }, [eventId, weatherKey, weatherDraft]);
   useEffect(() => {
-    if (selected !== 'weather') return;
+    if (!hasFeed(selected, 'weather')) return;
     void loadWeather();
     const t = setInterval(() => void loadWeather(), 60_000);
     return () => clearInterval(t);
@@ -276,17 +280,17 @@ export function LiveDesk() {
   const inheritedFor = (key: string, f: string, d: DeskDraft): { value: string; from: string } | undefined => {
     const info = event?.info ?? {};
     const fromEvent = (value?: string) => (value ? { value, from: 'event setup' } : undefined);
-    if (key === 'event-title') {
+    if (hasFeed(key, 'event')) {
       if (f === 'title') return fromEvent(event?.name);
       if (f === 'series') return fromEvent(info.series);
       if (f === 'place') return fromEvent(info.location);
       if (f === 'date') return fromEvent(info.date);
     }
-    if (key === 'weather') {
-      if (f === 'title') return fromEvent(info.location);
+    if (f === 'title' && hasBehaviour(key, 'titleFromLocation')) return fromEvent(info.location);
+    if (hasFeed(key, 'weather')) {
       return weatherAuto[f] ? { value: weatherAuto[f], from: 'automatic weather' } : undefined;
     }
-    if (f === 'title' && ['results', 'podium', 'course-info'].includes(key) && d.values.className)
+    if (f === 'title' && hasBehaviour(key, 'titleFromClass') && d.values.className)
       return { value: d.values.className, from: 'selected class' };
     return undefined;
   };
@@ -412,7 +416,7 @@ export function LiveDesk() {
     try { setFavorites(await call('desk:deleteFavorite', eventId, selected, id)); } catch (e) { say((e as Error).message, 'err'); }
   };
   const recall = (f: DeskFavorite) => {
-    if (selected === 'runner-start' && f.draft.values?.runnerName) setFollowNext(false);
+    if (hasBehaviour(selected, 'followNextStarter') && f.draft.values?.runnerName) setFollowNext(false);
     setDraft({ ...f.draft, key: selected });
     say(`Prepared: ${f.label} · Space to Show`);
   };
@@ -498,7 +502,7 @@ export function LiveDesk() {
       const fields = typedFields(o.draft.fields);
       const favN = / F(\d+)$/.exec(input)?.[1];
       const fav = favN ? (favorites[o.key] ?? []).find(f => f.n === Number(favN)) : undefined;
-      const control = v.controlCode === undefined ? (o.key === 'runner-start' ? 'Start' : undefined)
+      const control = v.controlCode === undefined ? (hasBehaviour(o.key, 'startControl') ? 'Start' : undefined)
         : v.controlCode === '' || v.controlCode === 'F' ? 'Finish' : `Control ${v.controlCode}`;
       const detail = fav ? `F${fav.n} ${fav.label}`
         : [v.className, v.runnerName, control, o.draft.page && o.draft.page > 1 ? `Page ${o.draft.page}` : undefined,
@@ -513,7 +517,7 @@ export function LiveDesk() {
   // Re-tested in the background while Live; polled with the rest of the state
   const lastCheck = dataCheck ?? event?.dataSource?.lastCheck;
   // While Runner start follows the start list, search uses the follow filter, not the auto-picked class
-  const searchClass = selected === 'runner-start' && followNext ? nextClass : draft.values.className;
+  const searchClass = hasBehaviour(selected, 'followNextStarter') && followNext ? nextClass : draft.values.className;
   const classRunners = searchClass ? runners.filter(r => r.className === searchClass) : runners;
 
   // --- runner start: keep the draft on the next starter (manual pick overrides) ---
@@ -524,16 +528,17 @@ export function LiveDesk() {
     [runners, now, nextClass]
   );
   const nextUp = upcoming[0];
-  const following = selected === 'runner-start' && followNext;
+  const following = hasBehaviour(selected, 'followNextStarter') && followNext;
   useEffect(() => {
     if (!followNext) return;
     setDrafts(all => {
-      const cur = all['runner-start'] ?? emptyDraft('runner-start');
+      if (!FOLLOW_KEY) return all;
+      const cur = all[FOLLOW_KEY] ?? emptyDraft(FOLLOW_KEY);
       const bib = nextUp ? nextUp.bib || nextUp.virtualBib : undefined;
       if (cur.values.runnerName === nextUp?.name && cur.values.runnerBib === bib && cur.values.className === nextUp?.className) return all;
       return {
         ...all,
-        'runner-start': {
+        [FOLLOW_KEY]: {
           ...cur,
           values: nextUp
             ? { className: nextUp.className, runnerName: nextUp.name, runnerClub: nextUp.club, runnerBib: bib }
@@ -675,8 +680,8 @@ export function LiveDesk() {
                   <span className="lbl">{tr("Timing point")}</span>
                   <div className="d-row2">
                     <div className="d-segment" role="group" aria-label={tr("Timing point")}>
-                      {selected === 'runner-start' && <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Start")}</button>}
-                      {selected === 'runner-start'
+                      {hasBehaviour(selected, 'startControl') && <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Start")}</button>}
+                      {hasBehaviour(selected, 'startControl')
                         ? <button type="button" aria-pressed={draft.values.controlCode === 'F'} onClick={() => set({ controlCode: 'F' })}>{tr("Finish")}</button>
                         : <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Finish")}</button>}
                       <button type="button" aria-pressed={!!draft.values.controlCode && draft.values.controlCode !== 'F'} onClick={() => set({ controlCode: String(controls[draft.values.className ?? '']?.[0]?.code ?? '') || undefined })} disabled={!controls[draft.values.className ?? '']?.length}>{tr("Control")}</button>
@@ -695,11 +700,11 @@ export function LiveDesk() {
                     id="d-runner"
                     runners={classRunners}
                     value={draft.values}
-                    onPick={r => { if (selected === 'runner-start') setFollowNext(false); set({ runnerName: r.name, runnerClub: r.club, runnerBib: r.bib || r.virtualBib, className: searchClass || r.className }); }}
-                    onClear={() => { if (selected === 'runner-start') setFollowNext(false); set({ runnerName: undefined, runnerClub: undefined, runnerBib: undefined }); }}
+                    onPick={r => { if (hasBehaviour(selected, 'followNextStarter')) setFollowNext(false); set({ runnerName: r.name, runnerClub: r.club, runnerBib: r.bib || r.virtualBib, className: searchClass || r.className }); }}
+                    onClear={() => { if (hasBehaviour(selected, 'followNextStarter')) setFollowNext(false); set({ runnerName: undefined, runnerClub: undefined, runnerBib: undefined }); }}
                   />
                   {draft.values.runnerName && <span className="d-note">{[draft.values.runnerClub, draft.values.className].filter(Boolean).join(' / ')}</span>}
-                  {selected === 'runner-start' && (
+                  {hasBehaviour(selected, 'followNextStarter') && (
                     <div className={`d-next ${followNext ? 'on' : ''}`} role="status">
                       {followNext ? (
                         nextUp ? (
@@ -759,7 +764,7 @@ export function LiveDesk() {
                   <span className="d-note">{tr("Seconds per page · 0 = manual. Reset follows the event default. The final page uses the same hold, then animates off air.")}</span>
                 </div>
               )}
-              {selected === 'weather' && (
+              {hasFeed(selected, 'weather') && (
                 <div className="d-auto" role="status">
                   {weather?.reading ? (
                     <span>
@@ -897,7 +902,7 @@ export function LiveDesk() {
           onClose={() => setPalette(false)}
           onLoad={d => {
             setPalette(false);
-            if (d.key === 'runner-start' && d.values.runnerName) setFollowNext(false);
+            if (hasBehaviour(d.key, 'followNextStarter') && d.values.runnerName) setFollowNext(false);
             setSelected(d.key);
             setDraft(d);
             say('Draft loaded into Preview · Space to Show');

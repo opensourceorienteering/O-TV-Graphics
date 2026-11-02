@@ -21,6 +21,7 @@ import { zonedWallTimeToEpochMs } from "../data/liveTime";
 import { getTemplateManager } from "../templates/OGrafManager";
 import { activateLiveOutputs, deactivateLiveOutputs } from "./outputHandlers";
 import type { StartListEntry } from "../../shared/types/event";
+import { previewDataForKind } from "../../shared/capabilities";
 
 const logger = getLogger();
 
@@ -83,17 +84,6 @@ async function eventClient(projectId: string) {
 const monitors = new Map<string, BrowserWindow>();
 let liveEntryVersion = 0;
 
-const DATA_PREVIEW_KINDS = new Set([
-  "results",
-  "podium",
-  "position-history",
-  "standings-lower-third",
-  "runner-lower-third",
-  "runner-splits",
-  "start-list",
-  "start-group",
-]);
-
 const PREVIEW_SPLIT_CONTROLS = [
   { code: 31, name: "Radio 1", short: "R1" },
   { code: 45, name: "Radio 2", short: "R2" },
@@ -150,7 +140,8 @@ function previewResults(entries: StartListEntry[]) {
 function hasUsablePreviewData(kind: string, mapped: Record<string, any>) {
   const results = Array.isArray(mapped.results) ? mapped.results : [];
   if (!results.length) return false;
-  if (kind === "runner-splits" || kind === "position-history")
+  const needs = previewDataForKind(kind);
+  if (needs === "splits")
     return (
       Array.isArray(mapped.splitControls) &&
       mapped.splitControls.length > 0 &&
@@ -159,7 +150,7 @@ function hasUsablePreviewData(kind: string, mapped: Record<string, any>) {
           Array.isArray(result?.splitTimes) && result.splitTimes.length > 0,
       )
     );
-  if (kind === "start-list" || kind === "start-group")
+  if (needs === "starts")
     return results.some(
       (result: any) =>
         Number.isFinite(result?.startTimeMs) || !!result?.startTime,
@@ -523,7 +514,7 @@ export function registerEventHandlers(): void {
           });
         }
       }
-      if (previewSource !== "real" && DATA_PREVIEW_KINDS.has(kind)) {
+      if (previewSource !== "real" && !!previewDataForKind(kind)) {
         data.results = previewResults(previewEntries);
         data.className = selectedClass;
         data.splitControls = PREVIEW_SPLIT_CONTROLS;

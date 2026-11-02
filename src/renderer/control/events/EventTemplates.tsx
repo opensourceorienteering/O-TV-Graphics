@@ -2,6 +2,8 @@ import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  deskTemplate,
+  hasBehaviour,
   DESK_TEMPLATES,
   liveUpdatesDefault,
   type DeskCommandMap,
@@ -131,7 +133,7 @@ export function EventTemplates({
           const s = settings[t.key] ?? {};
           const live = t.live ? liveUpdatesDefault(t.key, settings) : undefined;
           const fields = [...(t.fields ?? []), ...(t.settingsFields ?? [])].filter((f) => t.schema?.[f]);
-          const rowsPartner = t.key === "start-list" ? "Results table" : t.key === "results" ? "Start list" : "";
+          const rowsPartner = deskTemplate(t.rowsPartner)?.label ?? "";
           const isOpen = open.has(t.key);
           const bodyId = `template-body-${t.key}`;
           const dupe = isDupe(t.key);
@@ -179,7 +181,7 @@ export function EventTemplates({
                         <input
                           type="checkbox"
                           checked={live}
-                          onChange={(e) => change(t.key, { liveUpdates: e.target.checked === (t.liveUpdates ?? true) ? undefined : e.target.checked })}
+                          onChange={(e) => change(t.key, { liveUpdates: e.target.checked === !hasBehaviour(t, "holdOnAir") ? undefined : e.target.checked })}
                         />
                         {tr("Live updates on air")}
                       </label>

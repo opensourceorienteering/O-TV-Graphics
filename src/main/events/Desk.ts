@@ -22,7 +22,7 @@ import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
 import {
-  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, isFrozenDraft, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
+  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, hasBehaviour, hasFeed, isFrozenDraft, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
   type DeskOnAir, type DeskState
 } from '../../shared/desk';
 import { applyStartList, loadEvent, loadStartList, syncPages } from './EventService';
@@ -109,8 +109,11 @@ function validate(def: (typeof DESK_TEMPLATES)[number], draft: DeskDraft, t: OGr
  * anything the operator typed wins.
  */
 async function automaticFields(project: SPXProject, key: string, typed: Record<string, any> = {}, className?: string): Promise<Record<string, any>> {
-  if (key === 'course-info') return { ...(className ? { title: className } : {}), ...(await courseFields(project, className)), ...typed };
-  if (key !== 'weather') return { ...typed };
+  if (hasFeed(key, 'course')) {
+    const title = className && hasBehaviour(key, 'titleFromClass') ? { title: className } : {};
+    return { ...title, ...(await courseFields(project, className)), ...typed };
+  }
+  if (!hasFeed(key, 'weather')) return { ...typed };
   const { reading, error } = await eventWeather(project.info);
   const fields = weatherFields(reading, typed);
   if (!fields.condition && !fields.temperature)
@@ -158,9 +161,9 @@ function followWeather(projectId: string) {
 export async function refreshWeatherOnAir(): Promise<void> {
   for (const projectId of [...weatherProjects]) {
     try {
-      const on = (await deskState(projectId)).onAir.find(o => o.key === 'weather');
-      if (!on) { weatherProjects.delete(projectId); continue; }
-      await deskUpdate(projectId, on.draft);
+      const on = (await deskState(projectId)).onAir.filter(o => hasFeed(o.key, 'weather'));
+      if (!on.length) { weatherProjects.delete(projectId); continue; }
+      for (const o of on) await deskUpdate(projectId, o.draft);
     } catch { /* keep the last reading on air */ }
   }
   if (!weatherProjects.size && weatherTimer) { clearInterval(weatherTimer); weatherTimer = null; }
@@ -241,7 +244,7 @@ export async function deskShow(projectId: string, draft: DeskDraft): Promise<Des
     for (let p = 1; p < (draft.page || 1); p++) await engine.nextItem(projectId, pageId, itemId);
   }
   onAirInfo.set(id, { since: onAirInfo.get(id)?.since ?? Date.now(), draft });
-  if (draft.key === 'weather') followWeather(projectId);
+  if (hasFeed(draft.key, 'weather')) followWeather(projectId);
   return deskState(projectId);
 }
 

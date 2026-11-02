@@ -11,7 +11,7 @@
  */
 
 import { bibMatch, bibStartsWith, findByBib } from '../../../shared/bibs';
-import { DESK_TEMPLATES, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
+import { DESK_TEMPLATES, hasBehaviour, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
 
 export interface PaletteRunner { name: string; club: string; className: string; bib?: string; virtualBib?: string; startTimeMs?: number }
 export interface PaletteControl { code: number | string; name: string }
@@ -107,10 +107,10 @@ export function commandSyntax(input: string, parsed: ParsedCommand, data: Palett
   const hints: Record<DeskParam, string> = {
     class: 'number or name',
     runner: 'bib or name',
-    control: template.key === 'runner-start' ? 'S start · radio code · F finish' : 'radio code · F finish',
+    control: hasBehaviour(template, 'startControl') ? 'S start · radio code · F finish' : 'radio code · F finish',
     page: 'page number'
   };
-  const focusStart = template.key === 'runner-start' && parsed.interpretation.includes('Start');
+  const focusStart = hasBehaviour(template, 'startControl') && parsed.interpretation.includes('Start');
   /** [typed token, what it matched] for a part that is filled in */
   const filled = (param: DeskParam): [string | undefined, string] | undefined => {
     if (param === 'class') {
@@ -292,7 +292,7 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
     if (param === 'control') {
       const cls = draft.values.className;
       const controls = cls ? data.controls(cls) : undefined;
-      const focus = template.key === 'runner-start';
+      const focus = hasBehaviour(template, 'startControl');
       if (focus && /^(s|start)$/i.test(token)) {
         // Runner focus: no control = the start
         out.interpretation.push('Start');
@@ -398,7 +398,7 @@ export function suggest(param: DeskParam, text: string, draft: DeskDraft, data: 
   if (param === 'control') {
     const controls = draft.values.className ? data.controls(draft.values.className) ?? [] : [];
     const finish: Suggestion = { token: 'F', label: 'Finish', detail: `${draft.values.className ?? ''} · finish` };
-    const start: Suggestion[] = draft.key === 'runner-start' ? [{ token: 'S', label: 'Start', detail: 'countdown, then running time' }] : [];
+    const start: Suggestion[] = hasBehaviour(draft.key, 'startControl') ? [{ token: 'S', label: 'Start', detail: 'countdown, then running time' }] : [];
     return [...start, finish, ...controls.map(c => ({ token: String(c.code), label: c.name || `Control ${c.code}`, detail: `${draft.values.className} · control ${c.code}` }))]
       .filter(s => !q || fold(s.token).startsWith(q) || fold(s.label).includes(q))
       .slice(0, 8);
@@ -451,7 +451,7 @@ export function commandForDraft(draft: DeskDraft, data: PaletteData): string | n
     }
     if (param === 'runner') return v.runnerBib || v.runnerName || undefined;
     if (param === 'control') {
-      if (v.controlCode === undefined) return template.key === 'runner-start' ? 'S' : undefined;
+      if (v.controlCode === undefined) return hasBehaviour(template, 'startControl') ? 'S' : undefined;
       return v.controlCode === '' || v.controlCode === 'F' ? 'F' : v.controlCode;
     }
     return draft.page && draft.page > 1 ? String(draft.page) : undefined;
@@ -462,7 +462,7 @@ export function commandForDraft(draft: DeskDraft, data: PaletteData): string | n
   const ci = template.params.indexOf('control');
   if (ci >= 0 && ci < tokens.length && tokens[ci] === undefined) tokens[ci] = 'F';
   // Runner focus: "S" (the start) is the default, so it needs no token at the end
-  if (template.key === 'runner-start' && tokens[tokens.length - 1] === 'S') tokens.pop();
+  if (hasBehaviour(template, 'startControl') && tokens[tokens.length - 1] === 'S') tokens.pop();
   if (tokens.some(t => t === undefined)) return null;
   const input = [number, ...tokens].join(' ');
   // Only offer what the palette reads back as the same graphic and parameters
