@@ -32,6 +32,7 @@
         <li><a href="#quick">Change an existing look</a></li>
         <li><a href="#new">Make a new look</a></li>
         <li><a href="#css">Styling the graphics</a></li>
+        <li><a href="#fonts">Fonts</a></li>
         <li><a href="#motion">Motion</a></li>
         <li><a href="#data">The data graphics get</a></li>
         <li><a href="#test">Test before race day</a></li>
@@ -85,7 +86,7 @@
     ├── set.json           name, description, the three theme colours
     ├── set.js             durations, name styles, labels (read by the graphics)
     ├── theme.css          the style and the motion
-    ├── fonts/             fonts.css + font files (use fonts you may share, e.g. OFL)
+    ├── fonts/             fonts.css, font files and licence (see Fonts)
     └── my-look-results/   one folder per graphic: manifest + a 4-line graphic.js
         ├── my-look-results.ograf.json
         └── graphic.js</code></pre>
@@ -97,7 +98,8 @@ export default createGraphic('results', set);</code></pre>
         the app it's in. That keeps every look up to date with new features and fixes.</p>
 
       <h2 id="quick">Change an existing look</h2>
-      <p>For new colours, fonts or details on a look you already use, no tools are needed:</p>
+      <p>For new colours, fonts or details on a look you already use, no tools are needed (for
+        a new font, see <a href="#fonts">Fonts</a>):</p>
       <ol>
         <li>In Split Control, <strong>Graphics library → Export…</strong> next to the look, or
           download it from the <a href="looks.html">Looks page</a>.</li>
@@ -164,9 +166,68 @@ export default createGraphic('results', set);</code></pre>
           (Å, Ä, Ö, Ø).</li>
         <li>The event logo appears only on the start list, results and race title card, at least
           42 px tall.</li>
-        <li>Bundle every font the look uses in <code>fonts/</code> and list it first in each font
-          stack, so the look is the same on every computer. Don't rely on installed fonts or load
-          files from other looks. Fonts must be licensed for sharing; include the licence.</li>
+        <li>Bundle every font the look uses (see <a href="#fonts">Fonts</a>).</li>
+      </ul>
+
+      <h2 id="fonts">Fonts</h2>
+      <p>A look carries its own fonts. Production computers are often borrowed or freshly
+        installed, so the look must not depend on fonts installed on the computer. If it does, it
+        looks different on every machine, or falls back to Arial on air.</p>
+      <h3>What goes in the look</h3>
+      <pre><code>my-look/
+├── set.js                 fonts: points at fonts/fonts.css
+├── theme.css              --font: "Libre Franklin", Arial, sans-serif;
+└── fonts/
+    ├── fonts.css          one @font-face per weight and style
+    ├── libre-franklin-latin-600-normal.woff2
+    ├── libre-franklin-latin-ext-600-normal.woff2
+    └── LICENSE-libre-franklin.txt</code></pre>
+      <ul>
+        <li><strong><code>fonts/fonts.css</code></strong> declares the fonts with
+          <code>@font-face</code>, pointing at files next to it (<code>url(./…woff2)</code>).
+          <code>set.js</code> names it as <code>fonts</code>. The graphics load it into the page
+          for you: <code>@font-face</code> does not work inside a graphic's shadow DOM, so don't
+          declare fonts in <code>theme.css</code>.</li>
+        <li><strong>Font files:</strong> use <code>.woff2</code>. Include the <em>latin</em> and
+          <em>latin-ext</em> subsets so names like Ørjan, Hägström, Čech and Łukasz render in the
+          same font.</li>
+        <li><strong>Every weight you use:</strong> if <code>theme.css</code> asks for 800 and you
+          only bundle 400, the browser fakes a bold that looks smeared on air. Bundle each weight
+          the look uses (italics only if it uses them).</li>
+        <li><strong>The licence</strong> file goes in <code>fonts/</code>. Bundle only fonts you are
+          allowed to share: SIL Open Font License (OFL) and Apache fonts are fine. Commercial fonts
+          usually are not.</li>
+      </ul>
+      <h3>Font stacks</h3>
+      <p>Put the bundled font <strong>first</strong>, then a common system font and a generic
+        family:</p>
+      <pre><code>.gfx {
+  --font: "Libre Franklin", Arial, sans-serif;
+}</code></pre>
+      <p>Don't put an installed font in front of the bundled one, even a brand font. Computers
+        that have it (Franklin Gothic comes with Microsoft Office, for example) would show a
+        different look from those that don't.</p>
+      <h3>Brand fonts you can't share</h3>
+      <p>Many federation and broadcaster fonts are commercial (ITC Franklin Gothic for the IOF,
+        GT Planar for ČO). Bundle a free stand-in that is close in shape and width, and say so in
+        <code>set.json</code>; the Looks page shows it:</p>
+      <pre><code>"fonts": "Libre Franklin (OFL), bundled; it stands in for ITC Franklin Gothic"</code></pre>
+      <p>A broadcaster who owns the brand font can make their own copy of the look with the font
+        files in <code>fonts/</code>, keeping the copy to themselves.</p>
+      <h3>Where to get the files</h3>
+      <p><a href="https://fontsource.org">Fontsource</a> has most open fonts already split by
+        weight and subset, with ready-made <code>@font-face</code> rules: download the font, copy
+        the <code>.woff2</code> files you need into <code>fonts/</code>, and change the
+        <code>url()</code>s to <code>./file.woff2</code>. The looks in the repository were made this
+        way.</p>
+      <h3>Check it</h3>
+      <ul>
+        <li>Load the zip in the <a href="preview/">preview</a>. In the browser's developer tools,
+          the Network tab should show your <code>.woff2</code> files loading, with no 404s.</li>
+        <li>Check that numbers have tabular figures (running times shouldn't wobble) and that
+          accented names use the same font.</li>
+        <li>In the repository, <code>npm test</code> fails if a look uses a font it doesn't bundle,
+          points to a missing file, or loads files from another look.</li>
       </ul>
 
       <h2 id="motion">Motion</h2>
@@ -217,7 +278,8 @@ export default createGraphic('results', set);</code></pre>
       <h2 id="share">Share a look</h2>
       <ul>
         <li><strong>As a zip:</strong> zip the look's folder (<code>my-look/</code> at the top of the
-          zip). Anyone can import it in <strong>Graphics library → Import look…</strong>.</li>
+          zip), including <code>fonts/</code>. Anyone can import it in
+          <strong>Graphics library → Import look…</strong>.</li>
         <li><strong>On this site:</strong> open a pull request adding your look to
           <code>templates/sets/</code>. Every look there appears on the
           <a href="looks.html">Looks page</a> and in the preview.</li>
