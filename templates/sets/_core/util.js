@@ -217,7 +217,7 @@ export const int = (v, d) => {
  */
 export const logoIsClear = (data) => !data?.presentation?.logoPlate;
 
-/** Shared by the original Classic graphics and the generated set graphics. */
+/** Shared by the set graphics and hand-made graphics in imported looks. */
 export function eventLogoHtml(data) {
   const url = data?.presentation?.logoUrl;
   return url ? `<img src="${esc(serverUrl(url))}" alt=""${logoIsClear(data) ? ' data-clear' : ''}>` : '';

@@ -1,6 +1,6 @@
 /**
  * Live changes on air, shared by every Split Control graphic (generated sets and the
- * hand-made Classic graphics).
+ * hand-made graphics in imported looks).
  *
  * What broadcast graphics do when data changes while a graphic is on air:
  *  - never re-run the entry animation and never rebuild the graphic (images would reload)
@@ -128,7 +128,7 @@ export const FLASH_CSS = `@keyframes value-flash { 0%, 50% { filter: brightness(
 
 /**
  * Event theme colours for graphics that do not use the shared graphic class (the hand-made
- * Classic graphics). Sets the theme's colour variables on the host; they inherit into the
+ * graphics in imported looks). Sets the theme's colour variables on the host; they inherit into the
  * shadow root. Nothing is written until the event has custom colours.
  */
 export function applyThemeColors(host, data, names) {
