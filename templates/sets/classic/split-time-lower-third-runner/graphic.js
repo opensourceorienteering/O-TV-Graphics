@@ -1305,11 +1305,6 @@ export default class SplitTimeLowerThirdRunner extends HTMLElement {
           transform: translateX(0);
         }
 
-        @media (prefers-reduced-motion: reduce) {
-          .container, .header, .runner { transition: opacity 150ms linear; }
-          .header, .runner { transform: none; }
-        }
-
         .runner .place {
           font-variant-numeric: tabular-nums;
           font-weight: bold;

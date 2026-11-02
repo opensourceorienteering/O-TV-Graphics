@@ -343,15 +343,6 @@
 /* the light stands still while the graphic is hidden */
 .gfx[data-state="out"] .panel::before { animation-play-state: paused; }
 
-@media (prefers-reduced-motion: reduce) {
-  .panel::before, .panel::after { animation: none !important; }
-  .gfx[data-state="in"] :is(.panel, .row, .pod, .chart .ln, .c-place, .clk-time, .hdr-clock, .title-main, .title-sub),
-  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
-  .gfx[data-state="leave"] .panel,
-  .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
-  .row.is-virtual .c-place:empty::after { animation: none; }
-}
-
 /* Start lists and results carry the event logo next to the IOF logo: a box tall enough to
    draw it at least 42 px (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 54px; }

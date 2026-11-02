@@ -216,13 +216,6 @@
 .gfx[data-state="leave"] .panel::after { animation: fade-out 160ms linear both; }
 .gfx[data-state="step-out"] .row > * { animation: bt-down 200ms var(--bt-out) both; }
 .gfx[data-state="step"] .row > * { animation: bt-up 560ms var(--bt-ease) calc(min(var(--i, 0), 10) * 35ms) both; }
-
-@media (prefers-reduced-motion: reduce) {
-  .gfx[data-state="in"] .panel::before, .gfx[data-state="in"] .panel::after { animation: none !important; }
-  .gfx[data-state="in"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod, .pod > .c-place, .pod-names, .chart),
-  .gfx[data-state="step"] .row > * { animation: fade-in 150ms linear both !important; }
-  .gfx[data-state="leave"] *, .gfx[data-state="step-out"] .row > * { animation: fade-out 150ms linear both !important; }
-}
 .panel--podium .pod--1 .nm-given { color: var(--on-hot); opacity: .75; }
 
 /* Anton's capitals fill the whole line, so accents (Å, Ä, Ö, Ø, Æ) sit above the line box.

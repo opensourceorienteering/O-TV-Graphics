@@ -182,11 +182,6 @@
 .gfx[data-state="step-out"] .rows { animation: fade-out 200ms var(--ease-out) both; }
 .gfx[data-state="step"] .row { animation: fade-in 300ms var(--ease-in) calc(min(var(--i, 0), 10) * 20ms) both; }
 
-@media (prefers-reduced-motion: reduce) {
-  .gfx[data-state="in"] .panel::before, .gfx[data-state="in"] .panel::after,
-  .gfx[data-state="leave"] .panel::before { animation: none !important; visibility: hidden !important; }
-}
-
 /* --- the IOF logo (iof-logo.svg, the official logo, unaltered) ------------------------
  * The sender on the race title card (right end of the white body) and at the right end of
  * the blue header of results and start lists, on a white plate like the event logo box. */

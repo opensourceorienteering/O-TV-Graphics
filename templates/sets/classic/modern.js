@@ -109,9 +109,6 @@ export const CLASSIC_MODERN_CSS = `${TOKENS}
   .runner:not(.visible), .runner:not(.visible) .time, .header:not(.visible) {
     transition-duration: 220ms; transition-delay: 0ms; transition-timing-function: var(--cl-ease-out);
   }
-  @media (prefers-reduced-motion: reduce) {
-    .header, .runner, .runner .time { transform: none !important; transition: opacity 150ms linear !important; }
-  }
 `;
 
 /** Countdown timer */

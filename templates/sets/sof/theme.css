@@ -348,14 +348,6 @@
 .gfx[data-state="step-out"] .rows { animation: fade-out 180ms var(--ease-out) both; }
 .gfx[data-state="step"] .row { animation: sof-row 420ms var(--ease) calc(min(var(--i, 0), 10) * 30ms) both; }
 
-@media (prefers-reduced-motion: reduce) {
-  .gfx[data-state="in"] :is(.panel, .panel::before, .panel::after, .row, .pod, .chart .ln, .c-place, .hdr-clock, .title-main, .title-sub),
-  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
-  .gfx[data-state="leave"] .panel,
-  .gfx[data-state="step-out"] .rows { animation: fade-out 150ms linear both !important; }
-  .row.is-virtual .c-place:empty::after { animation: none; }
-}
-
 /* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
    (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; }

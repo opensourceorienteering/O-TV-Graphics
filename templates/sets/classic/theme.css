@@ -178,12 +178,4 @@
 .gfx[data-state="step-out"] .row { animation: fade-out 180ms var(--cl-ease-out) both; }
 .gfx[data-state="step"] .row { animation: cl-row 420ms var(--cl-ease) calc(min(var(--i, 0), 10) * 25ms) both; }
 
-@media (prefers-reduced-motion: reduce) {
-  .gfx[data-state="in"] :is(.panel, .hdr, .row, .pod, .row > *, .title-body, .chart-body, .chart .ln, .clk-label, .clk-time),
-  .gfx[data-state="step"] .row { animation: fade-in 150ms linear both !important; }
-  .gfx[data-state="leave"] .panel,
-  .gfx[data-state="step-out"] .row { animation: fade-out 150ms linear both !important; }
-  .gfx::before { transition-duration: 150ms !important; }
-}
-
 .ftr-sep { margin: 0 .3em; }

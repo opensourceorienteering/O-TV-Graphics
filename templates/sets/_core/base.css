@@ -186,9 +186,6 @@
 @keyframes value-flash { 0%, 50% { filter: brightness(1.35); } 25%, 100% { filter: none; } }
 .gfx[data-state="on"] .is-changed { animation: value-flash var(--flash-ms, 1000ms) ease-in-out both; }
 .row { will-change: transform; }
-@media (prefers-reduced-motion: reduce) {
-  .gfx *, .gfx *::before, .gfx *::after { animation-duration: 1ms !important; animation-delay: 0s !important; transition: none !important; }
-}
 
 /* podium columns */
 .pod > .c-place { display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }

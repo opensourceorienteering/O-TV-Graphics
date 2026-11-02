@@ -289,13 +289,6 @@ export default class CountdownTimer extends HTMLElement {
         /* exits are shorter and accelerate away */
         .container:not(.visible) { transition-duration: 240ms; transition-timing-function: cubic-bezier(.4, 0, 1, 1); }
 
-        @media (prefers-reduced-motion: reduce) {
-          .container {
-            transform: none;
-            transition: opacity 150ms linear;
-          }
-        }
-
         .timer-container {
           background-color: rgba(255, 255, 255, 0.95);
           border-radius: 8px;
