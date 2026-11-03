@@ -72,7 +72,7 @@ export function createFinishWatchView() {
     const key = JSON.stringify(shown.map(([id, s]) => [id, !!s.measured, s.measured?.ms, s.measured?.place,
       s.finishedAt === null && s.runner.startTimeMs ? Math.floor((at - s.runner.startTimeMs) / 1000) : 0]));
     return { steps: 1, rekey: true, key,
-      html: `<div class="panel panel--table panel--finish-watch"><header class="hdr"><span class="hdr-mark"></span>` +
+      html: `<div class="panel panel--lower panel--finish-watch"><header class="hdr"><span class="hdr-mark"></span>` +
         `<span class="hdr-title">${esc(data.title || (sv ? 'På väg mot ' : 'Approaching ') + label)}</span><span class="hdr-sub">${esc(data.className || (sv ? 'Alla klasser' : 'All classes'))}</span></header>` +
         `<div class="rows">${rows || `<div class="row row--empty"><span class="c-name">${empty}</span></div>`}</div>` +
         `<footer class="ftr"><span class="watch-note">${sv ? '* preliminär placering' : '* provisional place'}</span><span>${visible.length > max ? `${max}/${visible.length} · ` : ''}${esc(label)}</span></footer></div>` };

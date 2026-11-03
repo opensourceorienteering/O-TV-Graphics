@@ -7,14 +7,14 @@
       "kind": "finish-watch",
       "ok": true,
       "geometry": {
-        "x": 400,
-        "y": 200,
-        "width": 1120,
-        "height": 286
+        "x": 96,
+        "y": 818,
+        "width": 820,
+        "height": 172
       },
       "steps": 1
     }
   ],
-  "testedAt": "2026-11-03T14:12:21.491Z",
+  "testedAt": "2026-11-03T14:18:07.997Z",
   "assetFailures": []
 }

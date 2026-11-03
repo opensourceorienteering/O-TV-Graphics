@@ -50,7 +50,7 @@
   },
   "v_olgrafik_set": "sof",
   "v_olgrafik_kind": "finish-watch",
-  "v_olgrafik_zone": "main",
+  "v_olgrafik_zone": "lower",
   "v_olgrafik_desk": {
     "label": "Finish watch",
     "short": "Finish watch",

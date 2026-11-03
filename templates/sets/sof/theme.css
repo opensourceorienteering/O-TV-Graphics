@@ -398,7 +398,7 @@
 }
 
 /* Finish watch: the prewarning only reveals a runner; times/places refer to the measuring point. */
-.gfx--finish-watch .panel { top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px); }
+.gfx--finish-watch .panel { left: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--lower-w, 820px); }
 .panel--finish-watch > .rows { grid-template-columns: auto minmax(0, 1fr) auto auto; }
 .panel--finish-watch .c-id { min-width: 100px; color: var(--light); }
 .panel--finish-watch .is-approaching .c-time { color: var(--yellow); }

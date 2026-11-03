@@ -1,6 +1,6 @@
 # SOFT — Finish watch
 
-Shows runners approaching a measuring point. The first radio is a **prewarning trigger**;
+Shows runners approaching a measuring point in SOFT’s bottom-left lower-third position. The first radio is a **prewarning trigger**;
 it does not start a new stopwatch. Each row shows the runner's name, class, total race time
 and provisional place in that class. The measuring point can be another radio or **Finish**.
 
