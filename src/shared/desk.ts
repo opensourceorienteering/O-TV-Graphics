@@ -7,7 +7,7 @@
  * send it to air with an explicit Show.
  */
 
-import type { DeskBehaviour, DeskFeed, DeskParam } from './capabilities';
+import type { DeskBehaviour, DeskFeed, DeskParam, PreviewData } from './capabilities';
 export type { DeskBehaviour, DeskFeed, DeskParam } from './capabilities';
 
 export interface DeskTemplate {
@@ -36,6 +36,8 @@ export interface DeskTemplate {
   behaviours?: DeskBehaviour[];
   /** Shares its rows-per-page setting with this graphic (Settings → Templates) */
   rowsPartner?: string;
+  /** Real timing data needed for the theme preview */
+  previewData?: PreviewData;
 }
 
 /** In the default command-number order: the first is 0 (Settings → Controls can reorder) */
@@ -110,16 +112,18 @@ export interface DeskTemplateSettings {
 export type DeskTemplateSettingsMap = Record<string, DeskTemplateSettings>;
 
 /** The live-updates default of a graphic for an event */
-export function liveUpdatesDefault(key: string, settings?: DeskTemplateSettingsMap): boolean {
+export function liveUpdatesDefault(ref: string | DeskTemplate, settings?: DeskTemplateSettingsMap): boolean {
+  const key = typeof ref === 'string' ? ref : ref.key;
   const own = settings?.[key]?.liveUpdates;
   if (typeof own === 'boolean') return own;
-  return !hasBehaviour(key, 'holdOnAir');
+  return !hasBehaviour(ref, 'holdOnAir');
 }
 
 /** Field defaults of a graphic for an event (rows per page may follow the other list) */
-export function fieldDefaults(key: string, settings?: DeskTemplateSettingsMap): Record<string, any> {
+export function fieldDefaults(ref: string | DeskTemplate, settings?: DeskTemplateSettingsMap): Record<string, any> {
+  const key = typeof ref === 'string' ? ref : ref.key;
   const own = { ...(settings?.[key]?.fields ?? {}) };
-  const partner = deskTemplate(key)?.rowsPartner ?? '';
+  const partner = (typeof ref === 'string' ? deskTemplate(ref) : ref)?.rowsPartner ?? '';
   if (partner && settings?.[key]?.linkRows) {
     const rows = settings?.[partner]?.fields?.rowsPerPage;
     if (rows !== undefined && rows !== '') own.rowsPerPage = rows;
@@ -132,10 +136,10 @@ export function fieldDefaults(key: string, settings?: DeskTemplateSettingsMap): 
  * (draft.fields.frozenAt, epoch ms). It stays stopped until the timing data has the runner
  * through, then the official time takes over. Only graphics with a runner on the way have one.
  */
-export function canFreeze(draft?: DeskDraft | null): boolean {
-  if (!draft?.values?.runnerName || !hasBehaviour(draft.key, 'freeze')) return false;
+export function canFreeze(draft?: DeskDraft | null, template?: DeskTemplate): boolean {
+  if (!draft?.values?.runnerName || !hasBehaviour(template ?? draft.key, 'freeze')) return false;
   // at the start (a graphic that takes the start, with no control) there is no time to stop
-  return !(hasBehaviour(draft.key, 'startControl') && draft.values.controlCode === undefined);
+  return !(hasBehaviour(template ?? draft.key, 'startControl') && draft.values.controlCode === undefined);
 }
 export const isFrozenDraft = (draft?: DeskDraft | null) => Number(draft?.fields?.frozenAt) > 0;
 
@@ -215,3 +219,17 @@ export const DESK_SHORTCUTS: [string, string][] = [
   ['↑ / ↓', 'Choose a graphic in the list'],
   ['Tab', 'Move between fields']
 ];
+
+/** Reserve saved numbers, including keys absent from the current look. */
+export function allocateDeskCommands(saved: DeskCommandMap, templates: Pick<DeskTemplate, 'key'>[]): DeskCommandMap {
+  const map = { ...saved };
+  const assigned = new Set(Object.values(map));
+  for (const { key } of templates) {
+    if (assigned.has(key)) continue;
+    const free = Array.from({ length: 100 }, (_, i) => String(i)).find(n => !(n in map));
+    if (free === undefined) break;
+    map[free] = key;
+    assigned.add(key);
+  }
+  return map;
+}

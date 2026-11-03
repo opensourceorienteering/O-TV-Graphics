@@ -1,0 +1,92 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "id": "sof-runner-presentations",
+  "version": "1.0.0",
+  "name": "Svensk Orientering – Runner presentations",
+  "description": "Start list with operator-selected runners presented one at a time using Next and Previous.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": -1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "rowsPerPage": {
+        "type": "number",
+        "title": "Rows per page",
+        "description": "Runners per page",
+        "default": 12
+      },
+      "highlightRunners": {
+        "type": "array",
+        "title": "Runners to present",
+        "description": "Favourites are selected automatically. Tick or untick runners to override; Next follows start-list order.",
+        "items": {
+          "type": "string"
+        },
+        "v_olgrafik_control": "runner-multi-select",
+        "v_olgrafik_default": "favourites"
+      }
+    }
+  },
+  "customActions": [
+    {
+      "id": "next-page",
+      "name": "Next page",
+      "description": "Focus the next selected runner or advance to the next start-list page",
+      "schema": null
+    },
+    {
+      "id": "previous-page",
+      "name": "Previous page",
+      "description": "Return to the previous focus or start-list page",
+      "schema": null
+    },
+    {
+      "id": "first-page",
+      "name": "First page",
+      "description": "Reset to the normal first start-list page",
+      "schema": null
+    }
+  ],
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_set": "sof",
+  "v_olgrafik_kind": "runner-presentations",
+  "v_olgrafik_zone": "main",
+  "v_olgrafik_desk": {
+    "label": "Runner presentations",
+    "short": "Presentations",
+    "inputs": [
+      "class"
+    ],
+    "required": [
+      "class"
+    ],
+    "fields": [
+      "rowsPerPage",
+      "highlightRunners"
+    ],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": [
+      "holdOnAir",
+      "manualSteps"
+    ],
+    "previewData": "starts"
+  }
+}

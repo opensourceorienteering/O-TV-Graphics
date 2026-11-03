@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { PaletteRunner } from './command';
 import { t as tr } from '../i18n';
 
 /**
@@ -7,7 +9,7 @@ import { t as tr } from '../i18n';
  * graphic fills in by itself when there is no fallback (event setup, automatic weather, the class).
  * An empty text field says under it what goes on air, so the operator never guesses.
  */
-export function SchemaField({ name, schema, value, onChange, inherited, fallback, idPrefix = 'field' }: {
+export function SchemaField({ name, schema, value, onChange, inherited, fallback, idPrefix = 'field', runnerChoices = [], onRefreshRunners }: {
   name: string;
   schema: any;
   value: any;
@@ -15,10 +17,15 @@ export function SchemaField({ name, schema, value, onChange, inherited, fallback
   inherited?: { value: string; from: string };
   fallback?: any;
   idPrefix?: string;
+  runnerChoices?: PaletteRunner[];
+  onRefreshRunners?: () => void;
 }) {
   const id = `${idPrefix}-${name}`;
   if (!schema) return null;
   const base = fallback ?? schema.default;
+  if (schema.v_olgrafik_control === 'runner-multi-select') {
+    return <RunnerMultiSelect defaultFavorites={schema.v_olgrafik_default === 'favourites'} id={id} title={schema.title || name} description={schema.description} runners={runnerChoices} onRefresh={onRefreshRunners} value={value ?? base} onChange={onChange} />;
+  }
   if (schema.type === 'boolean') {
     const on = value ?? base ?? false;
     return (
@@ -66,5 +73,55 @@ export function SchemaField({ name, schema, value, onChange, inherited, fallback
         <span className="d-uses">{tr("On air:")} <b>{uses.value}</b> · {tr("from")} {tr(uses.from)}</span>
       )}
     </div>
+  );
+}
+
+/** Schema-driven picker: stores stable name/club pairs, including runners without real bibs. */
+function RunnerMultiSelect({ id, title, description, runners, value, onChange, onRefresh, defaultFavorites }: {
+  id: string; title: string; description?: string; runners: PaletteRunner[];
+  defaultFavorites?: boolean;
+  onRefresh?: () => void;
+  value: unknown; onChange: (value: string[]) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const keyOf = (runner: PaletteRunner) => JSON.stringify([runner.name || '', runner.club || '']);
+  const selected = new Set<string>(Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string')
+    : defaultFavorites ? runners.filter(r => r.favourite).map(keyOf) : []);
+  const choices = [...new Map(runners.map(r => [keyOf(r), r])).values()];
+  const q = query.trim().toLocaleLowerCase();
+  const matches = choices.filter(r => `${r.name} ${r.club} ${r.bib || ''} ${r.virtualBib || ''}`.toLocaleLowerCase().includes(q));
+  const selectedLabel = (key: string) => {
+    try { const pair = JSON.parse(key); return Array.isArray(pair) ? pair.filter(Boolean).join(' · ') : key; } catch { return key; }
+  };
+  return (
+    <fieldset className="d-field d-runner-picks">
+      <legend>{tr(title)}</legend>
+      {description && <span className="d-note">{tr(description)}</span>}
+      <label htmlFor={`${id}-search`}>{tr('Find runners')}</label>
+      <input id={`${id}-search`} type="search" className="d-input" value={query} placeholder={tr('Name, club or bib')}
+        onChange={e => setQuery(e.target.value)} />
+      <div className="d-runner-picks-list">
+        {matches.map(r => {
+          const key = keyOf(r);
+          return <label key={key} className="d-toggle">
+            <input type="checkbox" checked={selected.has(key)} onChange={e => {
+              const next = new Set(selected);
+              if (e.target.checked) next.add(key); else next.delete(key);
+              onChange([...next]);
+            }} />
+            <span>{r.bib || r.virtualBib ? `${r.bib || r.virtualBib} · ` : ''}{r.name}<small className="d-note"> · {r.club}</small></span>
+          </label>;
+        })}
+        {!matches.length && <span className="d-note">{tr(runners.length ? 'No runner matches' : 'Load the start list to pick runners')}</span>}
+      </div>
+      {!runners.length && onRefresh && <button type="button" className="d-btn sm" onClick={onRefresh}>{tr("Load runners from timing")}</button>}
+      <span className="d-note" role="status">{selected.size} {tr('selected · presented in start-list order')}</span>
+      {[...selected].filter(key => !choices.some(r => keyOf(r) === key)).map(key => (
+        <button key={key} type="button" className="d-btn sm" onClick={() => onChange([...selected].filter(k => k !== key))}>
+          {selectedLabel(key)} · {tr('unavailable · remove')}
+        </button>
+      ))}
+      {selected.size > 0 && <button type="button" className="d-btn sm" onClick={() => onChange([])}>{tr('Clear selection')}</button>}
+    </fieldset>
   );
 }

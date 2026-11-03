@@ -70,7 +70,7 @@ export async function prepare(
       payload: {
         template,
         data,
-        name: labelOf(draft.key) || template.manifest.name,
+        name: template.desk?.label ?? labelOf(draft.key) ?? template.manifest.name,
         page: draft.page || 1,
       },
     };
@@ -120,16 +120,17 @@ export async function controlState(): Promise<ControlState> {
   return {
     eventId,
     eventName: event.name,
+    graphics: desk.deskDefinitions(event).map(t => ({ key: t.key, label: t.label, params: t.params })),
     onAir: state.onAir.map((o) => ({
       key: o.key,
-      label: labelOf(o.key),
+      label: desk.deskDefinitions(event).find(t => t.key === o.key)?.label ?? labelOf(o.key),
       name: draftName(o.draft),
       step: o.step ?? 1,
       since: o.since,
     })),
     otherOnAir: state.otherOnAir,
-    prepared: p ? { key: p.key, label: labelOf(p.key), name: draftName(p) } : null,
-    favorites: favorites().map(({ id, label, key, graphic }) => ({ id, label, key, graphic })),
+    prepared: p ? { key: p.key, label: desk.deskDefinitions(event).find(t => t.key === p.key)?.label ?? labelOf(p.key), name: draftName(p) } : null,
+    favorites: (await favorites()).map(({ id, label, key, graphic }) => ({ id, label, key, graphic })),
     data: event.dataSource?.lastCheck || null,
     polling: getPlaybackEngine().getLivePollingStatus(),
     output,
@@ -168,11 +169,11 @@ export async function page(delta: 1 | -1): Promise<ControlState> {
 }
 
 /** All favourites of the live event, flat, in desk template order */
-export function favorites(): (DeskFavorite & { key: string; graphic: string })[] {
+export async function favorites(): Promise<(DeskFavorite & { key: string; graphic: string })[]> {
   const eventId = getLiveEventId();
   if (!eventId) return [];
   const all = desk.loadDeskFavorites(eventId);
-  return DESK_TEMPLATES.flatMap((t) =>
+  return desk.deskDefinitions(await loadEvent(eventId)).flatMap((t) =>
     (all[t.key] ?? []).map((f) => ({ ...f, key: t.key, graphic: t.label })),
   );
 }
@@ -180,7 +181,7 @@ export function favorites(): (DeskFavorite & { key: string; graphic: string })[]
 /** Load a favourite into Preview; with `andShow`, also put it on air */
 export async function prepareFavorite(id: string, andShow = false): Promise<ControlState> {
   const eventId = requireEvent();
-  const fav = favorites().find((f) => f.id === id);
+  const fav = (await favorites()).find((f) => f.id === id);
   if (!fav) throw fail("Favourite not found", 404);
   await prepare(eventId, fav.draft, "remote");
   return andShow ? show() : controlState();
@@ -189,7 +190,7 @@ export async function prepareFavorite(id: string, andShow = false): Promise<Cont
 /** Load a runner graphic (runner-identity, runner-splits, …) for a bib into Preview */
 export async function prepareRunner(bib: string, key = "runner-identity"): Promise<ControlState> {
   const eventId = requireEvent();
-  const def = DESK_TEMPLATES.find((t) => t.key === key);
+  const def = desk.deskDefinitions(await loadEvent(eventId)).find((t) => t.key === key);
   if (!def?.params.includes("runner")) throw fail(`"${key}" is not a runner graphic`, 404);
   // Real bibs first; a virtual bib matches with or without its V ("101" finds V101)
   const runner = findByBib(loadStartList(eventId).entries, String(bib))[0];

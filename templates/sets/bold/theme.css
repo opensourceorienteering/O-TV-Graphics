@@ -224,7 +224,7 @@
 
 /* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
    (graphic.js hides smaller logos) */
-.panel--table .hdr-logo { height: 58px; }
+.panel--table .hdr-logo { height: 58px; width: 112px; }
 
 /* --- one baseline ----------------------------------------------------------------------------
    Anton (names, titles) and Oswald (labels, clubs, times) have very different font boxes, so

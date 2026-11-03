@@ -1,3 +1,4 @@
+import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
  * IPC for events (folders, Plan sections, start lists) and Live mode.
  */
@@ -21,7 +22,7 @@ import { zonedWallTimeToEpochMs } from "../data/liveTime";
 import { getTemplateManager } from "../templates/OGrafManager";
 import { activateLiveOutputs, deactivateLiveOutputs } from "./outputHandlers";
 import type { StartListEntry } from "../../shared/types/event";
-import { previewDataForKind } from "../../shared/capabilities";
+import { previewDataForKind, type PreviewData } from "../../shared/capabilities";
 
 const logger = getLogger();
 
@@ -137,10 +138,9 @@ function previewResults(entries: StartListEntry[]) {
   });
 }
 
-function hasUsablePreviewData(kind: string, mapped: Record<string, any>) {
+function hasUsablePreviewData(needs: PreviewData | undefined, mapped: Record<string, any>) {
   const results = Array.isArray(mapped.results) ? mapped.results : [];
   if (!results.length) return false;
-  const needs = previewDataForKind(kind);
   if (needs === "splits")
     return (
       Array.isArray(mapped.splitControls) &&
@@ -356,6 +356,7 @@ export function registerEventHandlers(): void {
   handle("desk:favorites", (id: string) => desk.loadDeskFavorites(id));
   handle("desk:saveFavorite", (id: string, label: string, draft: DeskDraft) => desk.saveDeskFavorite(id, label, draft));
   handle("desk:deleteFavorite", (id: string, key: string, favId: string) => desk.deleteDeskFavorite(id, key, favId));
+  handle("desk:catalog", () => desk.commandDefinitions());
   handle("desk:commands", () => desk.loadDeskCommands());
   handle("desk:saveCommands", (map: Record<string, string>) => desk.saveDeskCommands(map));
 
@@ -419,6 +420,8 @@ export function registerEventHandlers(): void {
         );
       if (!template) throw new Error("Choose a graphic from this event’s theme");
       const kind = String((template.manifest as any).v_olgrafik_kind || "");
+      const entry = template.desk ?? resolveDeskDeclaration(template.manifest).desk;
+      const needs = entry ? entry.previewData : previewDataForKind(kind);
       const defaults = Object.fromEntries(
         Object.entries((template.manifest.schema as any)?.properties || {})
           .filter(([, v]: any) => v.default !== undefined)
@@ -501,7 +504,7 @@ export function registerEventHandlers(): void {
             },
             project.dataSource.sourceId,
           );
-          const hasRealResults = hasUsablePreviewData(kind, mapped);
+          const hasRealResults = hasUsablePreviewData(needs, mapped);
           data = { ...data, ...mapped };
           if (hasRealResults) previewSource = "real";
         } catch (error) {
@@ -514,7 +517,7 @@ export function registerEventHandlers(): void {
           });
         }
       }
-      if (previewSource !== "real" && !!previewDataForKind(kind)) {
+      if (previewSource !== "real" && !!needs) {
         data.results = previewResults(previewEntries);
         data.className = selectedClass;
         data.splitControls = PREVIEW_SPLIT_CONTROLS;
@@ -595,7 +598,7 @@ export function registerEventHandlers(): void {
     monitors.set(kind, win);
     try {
       if (!app.isPackaged)
-        await win.loadURL(`http://localhost:5173/?monitor=${kind}`);
+        await win.loadURL(`http://localhost:5174/?monitor=${kind}`);
       else
         await win.loadFile(path.join(__dirname, "../../dist/index.html"), {
           search: `monitor=${kind}`,

@@ -3,27 +3,6 @@ import { io } from "socket.io-client";
 
 const EMPTY = { eventId: null, onAir: [], favorites: [], prepared: null };
 
-/** Desk graphics, for "on air" feedback and Hide buttons */
-const GRAPHICS = [
-  ["runner-identity", "Runner identity"],
-  ["runner-start", "Runner start"],
-  ["start-group", "Start group"],
-  ["start-list", "Start list"],
-  ["live-feed", "Live split / finish feed"],
-  ["results", "Results table"],
-  ["runner-splits", "Runner splits"],
-  ["position-history", "Position history"],
-  ["podium", "Podium / flowers"],
-  ["event-title", "Race title"],
-  ["course-info", "Course parameters"],
-  ["weather", "Weather"],
-  ["free-text", "Free text"],
-  ["speaker", "Commentators / speaker"],
-  ["timer", "Elapsed timer"],
-  ["team-standings", "Team standings"],
-].map(([id, label]) => ({ id, label }));
-const RUNNER_GRAPHICS = ["runner-identity", "runner-start", "runner-splits"];
-
 /** Transport buttons: action id, label, API path */
 const TRANSPORT = [
   ["show", "Show", "/show"],
@@ -124,12 +103,13 @@ export default class OLGrafik extends InstanceBase {
       callback: async ({ options }) =>
         this.send(`/favorite/${encodeURIComponent(options.favorite)}/show`),
     };
+    const graphics = (this.state.graphics ?? []).map(g => ({ id: g.key, label: g.label }));
     const graphicOption = {
       id: "graphic",
       type: "dropdown",
       label: "Graphic",
-      default: "runner-identity",
-      choices: GRAPHICS,
+      default: graphics[0]?.id ?? "",
+      choices: graphics,
     };
     actions.hide_graphic = {
       name: "Hide one graphic",
@@ -142,7 +122,7 @@ export default class OLGrafik extends InstanceBase {
         { id: "bib", type: "textinput", label: "Bib or virtual bib", default: "V101" },
         {
           ...graphicOption,
-          choices: GRAPHICS.filter((g) => RUNNER_GRAPHICS.includes(g.id)),
+          choices: graphics.filter(g => this.state.graphics?.find(t => t.key === g.id)?.params.includes("runner")),
         },
       ],
       callback: async ({ options }) =>
@@ -198,9 +178,10 @@ export default class OLGrafik extends InstanceBase {
     });
     this.checkFeedbacks("on_air", "favorite_on_air", "prepared");
     // Rebuild the button catalogue only when the favourites change, not on every tally
-    const catalog = JSON.stringify(s.favorites.map((f) => [f.id, f.label, f.key]));
+    const catalog = JSON.stringify([s.graphics, s.favorites.map((f) => [f.id, f.label, f.key])]);
     if (catalog === this.catalog) return;
     this.catalog = catalog;
+    this.configureActions();
     const presets = {};
     const button = (name, actionId, options = {}, feedbacks = [], bgcolor = 0x24573e) => ({
       type: "simple",

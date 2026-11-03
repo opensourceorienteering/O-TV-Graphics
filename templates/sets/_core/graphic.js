@@ -119,7 +119,14 @@ function reserveWidth(el, text, mode) {
   el.style.minWidth = `${el._reserved}px`;
 }
 
-export function createGraphic(kind, set) {
+/**
+ * @param {string} kind Stable kind used for CSS classes and the default built-in view.
+ * @param {object} set Theme configuration.
+ * @param {function} [view] Synchronous (data, context) => { html, steps?, key?, rekey? }.
+ * Custom views share paging, live patching and clocks with the built-in views.
+ */
+export function createGraphic(kind, set, view = (data, context) => renderView(kind, data, context)) {
+  if (typeof view !== 'function') throw new TypeError('A graphic view must be a function');
   return class OLGrafikGraphic extends HTMLElement {
     constructor() {
       super();
@@ -182,17 +189,13 @@ export function createGraphic(kind, set) {
       // template: the look's own logo; custom: the event's logo in the logo boxes; none: no logos
       const logo = this.data?.presentation?.logoMode;
       this.root.dataset.logo = logo === 'custom' || logo === 'none' ? logo : 'template';
-      // A look's own logo (set.logo) fills the logo boxes like an uploaded one; looks that draw
-      // their logo in CSS (IOF, Svensk Orientering) leave set.logo out
-      const data = this.root.dataset.logo === 'template' && set.logo
-        ? { ...this.data, presentation: { ...this.data?.presentation, logoUrl: set.logo, logoPlate: false } }
-        : this.data;
-      const view = renderView(kind, data, this.context());
-      this.steps = Math.max(1, view.steps || 1);
-      this.viewKey = view.key ?? '';
-      this.rekey = !!view.rekey;
-      if (live && this.root.firstChild) this.patch(view.html);
-      else this.root.innerHTML = view.html;
+      const output = this.draw();
+      this.steps = Math.max(1, output.steps || 1);
+      this.pageKey = output.pageKey;
+      this.viewKey = output.key ?? '';
+      this.rekey = !!output.rekey;
+      if (live && this.root.firstChild) this.patch(output.html);
+      else this.root.innerHTML = output.html;
       const code = String(this.data?.controlCode ?? '').trim();
       this.root.classList.toggle('is-finish', !code || /^(f|finish|1000)$/i.test(code));
       this.tick();
@@ -200,6 +203,18 @@ export function createGraphic(kind, set) {
       fitLogos(this.root);
       fitTimingPoints(this.root);
       fitLowerThird(this.root);
+    }
+
+    /** Use the same data for drawing and time-dependent key checks. */
+    draw() {
+      // A look's own logo (set.logo) fills the logo boxes like an uploaded one; looks that draw
+      // their logo in CSS (IOF, Svensk Orientering) leave set.logo out
+      const data = this.root.dataset.logo === 'template' && set.logo
+        ? { ...this.data, presentation: { ...this.data?.presentation, logoUrl: set.logo, logoPlate: false } }
+        : this.data;
+      const output = view(data, this.context());
+      if (!output || typeof output.html !== 'string') throw new TypeError('A graphic view must return { html: string }');
+      return output;
     }
 
     patch(html) {
@@ -244,7 +259,7 @@ export function createGraphic(kind, set) {
       // Views that change with time (next start group, a runner on the way climbing the
       // standings) re-render when their key changes; on air the change is animated in place
       if (this.rekey && !this.animating) {
-        const key = renderView(kind, this.data, this.context()).key ?? '';
+        const key = this.draw().key ?? '';
         if (key !== this.viewKey) this.render({ live: this.visible });
       }
     }
@@ -285,8 +300,11 @@ export function createGraphic(kind, set) {
       const target = params.goto ?? this.step + (params.delta ?? 1);
       const next = Math.min(Math.max(1, target), this.steps);
       if (next !== this.step) {
+        const previousPage = this.pageKey;
         this.step = next;
-        if (skip) { this.render(); await this.setState('on'); }
+        const samePage = previousPage !== undefined && this.draw().pageKey === previousPage;
+        if (samePage) { this.render({ live: true }); await this.setState('on'); }
+        else if (skip) { this.render(); await this.setState('on'); }
         else {
           await this.setState('step-out', d.stepOut ?? 250);
           this.render();

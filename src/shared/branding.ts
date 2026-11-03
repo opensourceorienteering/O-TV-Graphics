@@ -1,6 +1,6 @@
 /**
  * Event logos. An event shows the look's own logo (template), an uploaded logo (custom) or no
- * logo. The OK Tyr logo is now the own logo of Standard, Bold, Brutal, Signal and Contours; events
+ * logo. The Split Control mark is the own logo of Standard, Bold, Brutal, Signal and Contours; events
  * that chose the old built-in Tyr or IOF logo show the look's own logo.
  */
 import type { LogoMode, ProjectPresentation } from './types/spx';

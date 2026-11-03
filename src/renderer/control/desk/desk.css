@@ -318,3 +318,7 @@
 .d-next small { color: var(--d-muted); }
 .d-next .d-note { flex-basis: 100%; }
 .d-input.is-invalid { border-color: var(--status-danger-text, #ff6b6b); box-shadow: 0 0 0 1px var(--status-danger-text, #ff6b6b); }
+
+.d-runner-picks { min-width: 0; margin: 0; padding: 12px; border: 1px solid var(--d-line); }
+.d-runner-picks-list { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; padding: 8px 0; }
+.d-runner-picks-list .d-toggle { align-items: flex-start; }

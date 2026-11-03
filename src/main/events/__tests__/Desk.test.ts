@@ -77,6 +77,43 @@ describe('live desk', () => {
     expect(list.find(t => t.key === 'podium')?.available).toBe(false);
   });
 
+  it('plays a new declared kind and preserves its number when changing looks', async () => {
+    const custom = tpl('relay-summary', 'relay-summary', false);
+    custom.manifest.v_olgrafik_desk = { label: 'Relay summary', fields: ['text'], behaviours: ['holdOnAir'] };
+    templates.push(custom);
+    try {
+      const list = await desk.deskTemplates('p1');
+      expect(list.find(t => t.key === 'relay-summary')).toMatchObject({ available: true, label: 'Relay summary', liveUpdatesDefault: false });
+      const number = Object.entries(desk.loadDeskCommands()).find(([, key]) => key === 'relay-summary')![0];
+      await desk.deskShow('p1', { key: 'relay-summary', values: {}, fields: { text: 'Leg 2' } });
+      expect((await desk.deskState('p1')).onAir[0].key).toBe('relay-summary');
+      project.templateSet = 'another-look';
+      expect((await desk.deskTemplates('p1')).find(t => t.key === 'relay-summary')?.available).toBe(false);
+      expect(desk.loadDeskCommands()[number]).toBe('relay-summary');
+      project.templateSet = 'iof';
+      expect(desk.loadDeskCommands()[number]).toBe('relay-summary');
+    } finally {
+      templates.pop();
+      for (const page of pages) page.items = page.items.filter((i: any) => i.templateId !== 'relay-summary');
+    }
+  });
+
+  it('keeps manual presentation steps operator-controlled despite event auto-pagination', async () => {
+    const custom = tpl('sof-presentations', 'presentations', false);
+    custom.manifest.stepCount = -1;
+    custom.manifest.v_olgrafik_desk = { label: 'Presentations', fields: ['text'], behaviours: ['manualSteps'] };
+    templates.push(custom);
+    project.settings = { presentation: { autoPageDurationSeconds: 5 } };
+    try {
+      await desk.deskShow('p1', { key: 'presentations', values: {}, fields: { text: 'Start list' } });
+      const item = pages.flatMap(p => p.items).find((i: any) => i.templateId === 'sof-presentations');
+      expect(item.autoPageDurationSeconds).toBeUndefined();
+    } finally {
+      templates.pop();
+      for (const page of pages) page.items = page.items.filter((i: any) => i.templateId !== 'sof-presentations');
+    }
+  });
+
   it('refuses incomplete drafts and never plays them', async () => {
     await expect(desk.deskShow('p1', { key: 'runner-identity', values: { className: 'H21' }, fields: {} })).rejects.toThrow('Choose a runner first');
     await expect(desk.deskShow('p1', { key: 'free-text', values: {}, fields: {} })).rejects.toThrow('Choose Text first');
@@ -129,7 +166,7 @@ describe('live desk', () => {
     expect(desk.deleteDeskFavorite('p1', 'free-text', all['free-text'][0].id)['free-text']).toEqual([]);
 
     expect(desk.loadDeskCommands()['0']).toBe('event-title');
-    expect(desk.saveDeskCommands({ '1': 'results', '20': 'free-text' })).toEqual({ '1': 'results', '20': 'free-text' });
+    expect(desk.saveDeskCommands({ '1': 'results', '20': 'free-text' })).toMatchObject({ '1': 'results', '20': 'free-text' });
     expect(() => desk.saveDeskCommands({ '1': 'results', '2': 'results' })).toThrow('only one number');
     expect(() => desk.saveDeskCommands({ x: 'results' } as any)).toThrow('0–99');
   });

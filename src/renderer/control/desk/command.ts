@@ -13,7 +13,7 @@
 import { bibMatch, bibStartsWith, findByBib } from '../../../shared/bibs';
 import { DESK_TEMPLATES, hasBehaviour, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskParam, type DeskTemplate } from '../../../shared/desk';
 
-export interface PaletteRunner { name: string; club: string; className: string; bib?: string; virtualBib?: string; startTimeMs?: number }
+export interface PaletteRunner { name: string; club: string; className: string; bib?: string; virtualBib?: string; startTimeMs?: number; favourite?: boolean }
 export interface PaletteControl { code: number | string; name: string }
 
 export function nextStarter(runners: readonly PaletteRunner[], now = Date.now()): PaletteRunner | undefined {
@@ -25,6 +25,7 @@ export function nextStarter(runners: readonly PaletteRunner[], now = Date.now())
 }
 
 export interface PaletteData {
+  templates?: DeskTemplate[];
   commands: DeskCommandMap;
   /** Templates the event's look provides (keys) */
   available: Set<string>;
@@ -158,7 +159,7 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
   const graphicSuggestions = () =>
     Object.entries(data.commands)
       .sort((a, b) => Number(a[0]) - Number(b[0]))
-      .map(([n, key]) => ({ n, t: DESK_TEMPLATES.find(t => t.key === key)! }))
+      .map(([n, key]) => ({ n, t: (data.templates ?? DESK_TEMPLATES).find(t => t.key === key)! }))
       .filter(x => x.t && data.available.has(x.t.key) && !data.hidden?.has(x.t.key));
   if (!tokens.length) {
     out.next = 'graphic';
@@ -170,7 +171,7 @@ export function parseCommand(input: string, data: PaletteData): ParsedCommand {
   const typingGraphic = tokens.length === 1 && !endsWithSpace;
   out.tokenStart = 0;
   const key = data.commands[tokens[0]];
-  const template = DESK_TEMPLATES.find(t => t.key === key);
+  const template = (data.templates ?? DESK_TEMPLATES).find(t => t.key === key);
   if (!template || !data.available.has(template.key) || data.hidden?.has(template.key)) {
     const matches = graphicSuggestions().filter(x => x.n.startsWith(tokens[0]) || fold(x.t.label).includes(fold(tokens[0])));
     if (typingGraphic && matches.length) {
@@ -398,7 +399,7 @@ export function suggest(param: DeskParam, text: string, draft: DeskDraft, data: 
   if (param === 'control') {
     const controls = draft.values.className ? data.controls(draft.values.className) ?? [] : [];
     const finish: Suggestion = { token: 'F', label: 'Finish', detail: `${draft.values.className ?? ''} · finish` };
-    const start: Suggestion[] = hasBehaviour(draft.key, 'startControl') ? [{ token: 'S', label: 'Start', detail: 'countdown, then running time' }] : [];
+    const start: Suggestion[] = hasBehaviour((data.templates ?? DESK_TEMPLATES).find(t => t.key === draft.key), 'startControl') ? [{ token: 'S', label: 'Start', detail: 'countdown, then running time' }] : [];
     return [...start, finish, ...controls.map(c => ({ token: String(c.code), label: c.name || `Control ${c.code}`, detail: `${draft.values.className} · control ${c.code}` }))]
       .filter(s => !q || fold(s.token).startsWith(q) || fold(s.label).includes(q))
       .slice(0, 8);
@@ -437,7 +438,7 @@ export function applySuggestion(input: string, s: Suggestion, parsed: ParsedComm
  */
 export function commandForDraft(draft: DeskDraft, data: PaletteData): string | null {
   const number = Object.entries(data.commands).find(([, k]) => k === draft.key)?.[0];
-  const template = DESK_TEMPLATES.find(t => t.key === draft.key);
+  const template = (data.templates ?? DESK_TEMPLATES).find(t => t.key === draft.key);
   if (number === undefined || !template) return null;
   const fav = (data.favorites?.[draft.key] ?? []).find(f => sameDraft({ ...f.draft, key: draft.key }, draft));
   if (fav) return `${number} F${fav.n}`;
@@ -466,7 +467,7 @@ export function commandForDraft(draft: DeskDraft, data: PaletteData): string | n
   if (tokens.some(t => t === undefined)) return null;
   const input = [number, ...tokens].join(' ');
   // Only offer what the palette reads back as the same graphic and parameters
-  const check = parseCommand(input, { ...data, controls: cls => data.controls(cls) ?? (v.controlCode ? [{ code: v.controlCode, name: '' }] : []) });
+  const check = parseCommand(`${input} `, { ...data, controls: cls => data.controls(cls) ?? (v.controlCode ? [{ code: v.controlCode, name: '' }] : []) });
   if (!check.complete || !check.draft) return null;
   const same = (a: DeskDraft['values'], b: DeskDraft['values']) =>
     (a.className ?? '') === (b.className ?? '') && (a.runnerName ?? '') === (b.runnerName ?? '') &&

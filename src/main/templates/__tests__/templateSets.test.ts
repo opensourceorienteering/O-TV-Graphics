@@ -29,7 +29,8 @@ describe('template set discovery', () => {
   it('finds the nine sets in the repository', () => {
     const sets = manager.getTemplateSets();
     expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
-    for (const id of ['signal', 'brutal', 'bold', 'sof', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
+    for (const id of ['signal', 'brutal', 'bold', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(17);
+    expect(sets.find(s => s.id === 'sof')?.templateCount).toBe(18);
     expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 17 });
     expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
     expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);
@@ -63,7 +64,9 @@ describe('template set discovery', () => {
     expect(standard.every(Boolean)).toBe(true);
     expect(new Set(standard).size).toBe(17);
     expect(standard).not.toContain('test-pattern');
-    for (const id of ['iof', 'iof2', 'cz', 'sof', 'contours', 'bold', 'brutal', 'signal']) expect(roles(id), id).toEqual(standard);
+    for (const id of ['iof', 'iof2', 'cz', 'contours', 'bold', 'brutal', 'signal']) expect(roles(id), id).toEqual(standard);
+    expect(roles('sof')).toEqual([...standard, 'runner-presentations'].sort());
+    expect(manager.getTemplateById('sof-runner-presentations')).toMatchObject({ desk: { key: 'runner-presentations', previewData: 'starts', behaviours: ['holdOnAir', 'manualSteps'] }, deskWarnings: [] });
   });
 
   it('assigns clash zones to every bundled graphic', () => {

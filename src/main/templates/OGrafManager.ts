@@ -1,3 +1,4 @@
+import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
  * OGRAF Template Manager
  * Discovers, loads, and manages OGRAF templates
@@ -429,11 +430,16 @@ export class OGrafManager {
     const zoneValue = (manifest as any).v_olgrafik_zone;
     const zone: GraphicZone | undefined = ['main', 'lower', 'side', 'corner', 'full'].includes(zoneValue) ? zoneValue : undefined;
 
+    const declaration = resolveDeskDeclaration(manifest);
+    for (const warning of declaration.warnings) logger.warn(warning, { id: manifest.id });
+
     // Load datasource configuration (if exists)
     const dataSourceConfig = await this.loadDataSourceConfig(templateDir, manifest.id);
 
     return {
       type: 'ograf',
+      desk: declaration.desk,
+      deskWarnings: declaration.warnings,
       manifestPath,
       manifest,
       description: manifest.description || manifest.name,

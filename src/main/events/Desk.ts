@@ -1,3 +1,4 @@
+import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
  * Live desk: show / update / hide prepared drafts, template favourites and the command map.
  *
@@ -22,7 +23,7 @@ import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
 import {
-  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, fieldDefaults, hasBehaviour, hasFeed, isFrozenDraft, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
+  DEFAULT_DESK_COMMANDS, DESK_TEMPLATES, allocateDeskCommands, type DeskTemplate, fieldDefaults, hasBehaviour, hasFeed, isFrozenDraft, liveUpdatesDefault, orderDeskTemplates, type DeskCommandMap, type DeskDraft, type DeskFavorite,
   type DeskOnAir, type DeskState
 } from '../../shared/desk';
 import { applyStartList, loadEvent, loadStartList, syncPages } from './EventService';
@@ -36,14 +37,23 @@ function err(message: string, status = 400): Error {
   return Object.assign(new Error(message), { status });
 }
 
-/** The graphic a desk template uses in the event's template set */
+/** Validated entries and their exact graphics in a look. First entry wins duplicate keys. */
+function entriesFor(project: SPXProject) {
+  const entries = new Map<string, { def: DeskTemplate; template: OGrafTemplateInfo }>();
+  for (const template of getTemplateManager().getAllTemplates().filter(t => t.setId === (project.templateSet || DEFAULT_TEMPLATE_SET))) {
+    const def = template.desk ?? resolveDeskDeclaration(template.manifest).desk;
+    if (def && !entries.has(def.key)) entries.set(def.key, { def, template });
+  }
+  return entries;
+}
+export function deskDefinitions(project: SPXProject): DeskTemplate[] {
+  return [...entriesFor(project).values()].map(e => e.def);
+}
+function definition(project: SPXProject, key: string): DeskTemplate | undefined {
+  return entriesFor(project).get(key)?.def;
+}
 export function deskTemplateInfo(project: SPXProject, key: string): OGrafTemplateInfo | undefined {
-  const def = DESK_TEMPLATES.find(t => t.key === key);
-  if (!def) return undefined;
-  const setId = project.templateSet || DEFAULT_TEMPLATE_SET;
-  const inSet = getTemplateManager().getAllTemplates().filter(t => t.setId === setId);
-  return inSet.find(t => (t.manifest as any).v_olgrafik_kind === def.kind)
-    ?? inSet.find(t => def.fallbackIds?.includes(t.manifest.id));
+  return entriesFor(project).get(key)?.template;
 }
 
 /** Why the event's look has no graphic for a desk template */
@@ -58,14 +68,16 @@ function missingGraphic(project: SPXProject, label: string): Error {
 /** Which desk templates the event's set provides */
 export async function deskTemplates(projectId: string) {
   const project = await loadEvent(projectId);
-  return orderDeskTemplates(DESK_TEMPLATES, project.settings?.templateOrder).map(def => {
+  const remembered = new Set([...Object.values(loadDeskCommands()), ...Object.keys(loadDeskFavorites(projectId))]);
+  const missing = [...remembered].map(key => ({ key, kind: key, label: key, short: key, params: [], required: [], live: false } as DeskTemplate));
+  return orderDeskTemplates([...new Map([...missing, ...DESK_TEMPLATES, ...deskDefinitions(project)].map(t => [t.key, t])).values()], project.settings?.templateOrder).map(def => {
     const t = deskTemplateInfo(project, def.key);
     const settings = project.settings?.templates;
     return {
       ...def,
       hidden: !!settings?.[def.key]?.hidden,
-      liveUpdatesDefault: liveUpdatesDefault(def.key, settings),
-      fieldDefaults: fieldDefaults(def.key, settings),
+      liveUpdatesDefault: liveUpdatesDefault(def, settings),
+      fieldDefaults: fieldDefaults(def, settings),
       templateId: t?.manifest.id ?? null,
       available: !!t,
       schema: (t?.manifest.schema as any)?.properties ?? {},
@@ -109,11 +121,11 @@ function validate(def: (typeof DESK_TEMPLATES)[number], draft: DeskDraft, t: OGr
  * anything the operator typed wins.
  */
 async function automaticFields(project: SPXProject, key: string, typed: Record<string, any> = {}, className?: string): Promise<Record<string, any>> {
-  if (hasFeed(key, 'course')) {
-    const title = className && hasBehaviour(key, 'titleFromClass') ? { title: className } : {};
+  if (hasFeed(definition(project, key), 'course')) {
+    const title = className && hasBehaviour(definition(project, key), 'titleFromClass') ? { title: className } : {};
     return { ...title, ...(await courseFields(project, className)), ...typed };
   }
-  if (!hasFeed(key, 'weather')) return { ...typed };
+  if (!hasFeed(definition(project, key), 'weather')) return { ...typed };
   const { reading, error } = await eventWeather(project.info);
   const fields = weatherFields(reading, typed);
   if (!fields.condition && !fields.temperature)
@@ -161,7 +173,8 @@ function followWeather(projectId: string) {
 export async function refreshWeatherOnAir(): Promise<void> {
   for (const projectId of [...weatherProjects]) {
     try {
-      const on = (await deskState(projectId)).onAir.filter(o => hasFeed(o.key, 'weather'));
+      const project = await loadEvent(projectId);
+      const on = (await deskState(projectId)).onAir.filter(o => hasFeed(definition(project, o.key), 'weather'));
       if (!on.length) { weatherProjects.delete(projectId); continue; }
       for (const o of on) await deskUpdate(projectId, o.draft);
     } catch { /* keep the last reading on air */ }
@@ -190,7 +203,7 @@ function graphicValues(projectId: string, draft: DeskDraft): Record<string, any>
 
 async function writeDraft(projectId: string, draft: DeskDraft) {
   const project = await loadEvent(projectId);
-  const def = DESK_TEMPLATES.find(t => t.key === draft.key);
+  const def = definition(project, draft.key);
   if (!def) throw err('Unknown graphic');
   const t = deskTemplateInfo(project, draft.key);
   if (!t) throw missingGraphic(project, def.label);
@@ -202,8 +215,8 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
   const settings = project.settings?.templates;
   draft = {
     ...draft,
-    fields: { ...fieldDefaults(draft.key, settings), ...Object.fromEntries(Object.entries(draft.fields || {}).filter(([, v]) => v !== undefined && v !== '')) },
-    liveUpdates: draft.liveUpdates ?? liveUpdatesDefault(draft.key, settings)
+    fields: { ...fieldDefaults(definition(project, draft.key) ?? draft.key, settings), ...Object.fromEntries(Object.entries(draft.fields || {}).filter(([, v]) => v !== undefined && v !== '')) },
+    liveUpdates: draft.liveUpdates ?? liveUpdatesDefault(definition(project, draft.key) ?? draft.key, settings)
   };
   const values = graphicValues(projectId, draft);
   const rm = getRundownManager();
@@ -217,7 +230,7 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
     ? eventPageDuration
     : Math.max(0, Number(draft.autoPageDurationSeconds) || 0);
   // Only multi-page graphics page (and leave) on their own; the operator takes the rest off air
-  const autoPageDurationSeconds = isMultiStep(t.manifest) && requestedPageDuration > 0 ? requestedPageDuration : undefined;
+  const autoPageDurationSeconds = !hasBehaviour(def, 'manualSteps') && isMultiStep(t.manifest) && requestedPageDuration > 0 ? requestedPageDuration : undefined;
   if (!item) {
     item = await rm.addItem(projectId, page.id, {
       templateId: t.manifest.id, templatePath: t.directoryName, fields, layer: '1', out: 'animate',
@@ -235,6 +248,7 @@ function graphicId(projectId: string, pageId: string, itemId: string) {
 
 export async function deskShow(projectId: string, draft: DeskDraft): Promise<DeskState> {
   const { pageId, itemId } = await writeDraft(projectId, draft);
+  const project = await loadEvent(projectId);
   const engine = getPlaybackEngine();
   const id = graphicId(projectId, pageId, itemId);
   if (engine.getActiveGraphics().some(g => g.id === id && g.isPlaying)) {
@@ -244,7 +258,7 @@ export async function deskShow(projectId: string, draft: DeskDraft): Promise<Des
     for (let p = 1; p < (draft.page || 1); p++) await engine.nextItem(projectId, pageId, itemId);
   }
   onAirInfo.set(id, { since: onAirInfo.get(id)?.since ?? Date.now(), draft });
-  if (hasFeed(draft.key, 'weather')) followWeather(projectId);
+  if (hasFeed(definition(project, draft.key), 'weather')) followWeather(projectId);
   return deskState(projectId);
 }
 
@@ -302,14 +316,14 @@ export async function deskState(projectId: string | null): Promise<DeskState> {
   const playing = getPlaybackEngine().getActiveGraphics().filter(g => g.isPlaying && g.projectId === projectId);
   const onAir: DeskOnAir[] = [];
   for (const g of playing.filter(g => g.rundownId === page.id)) {
-    const def = DESK_TEMPLATES.find(d => deskTemplateInfo(project, d.key)?.manifest.id === g.templateId);
+    const def = deskDefinitions(project).find(d => deskTemplateInfo(project, d.key)?.manifest.id === g.templateId);
     if (!def) continue;
     const info = onAirInfo.get(g.id);
     onAir.push({
       key: def.key, templateId: g.templateId, name: def.label,
       since: info?.since ?? Date.now(), step: g.currentStep,
       draft: info?.draft ?? { key: def.key, values: {}, fields: {} },
-      held: (info?.draft?.liveUpdates ?? liveUpdatesDefault(def.key, project.settings?.templates)) === false && !isFrozenDraft(info?.draft),
+      held: (info?.draft?.liveUpdates ?? liveUpdatesDefault(def, project.settings?.templates)) === false && !isFrozenDraft(info?.draft),
       newData: g.newData || undefined
     });
   }
@@ -326,7 +340,7 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
     Object.entries((template.manifest.schema as any)?.properties || {})
       .filter(([, f]: any) => f.default !== undefined).map(([k, f]: any) => [k, f.default])
   );
-  const typed = { ...fieldDefaults(draft.key, project.settings?.templates), ...Object.fromEntries(Object.entries(draft.fields || {}).filter(([, v]) => v !== undefined && v !== '')) };
+  const typed = { ...fieldDefaults(definition(project, draft.key) ?? draft.key, project.settings?.templates), ...Object.fromEntries(Object.entries(draft.fields || {}).filter(([, v]) => v !== undefined && v !== '')) };
   let data: Record<string, any> = { ...defaults, ...(await automaticFields(project, draft.key, typed, draft.values?.className)) };
   if (template.dataSourceConfig) {
     const values = graphicValues(projectId, draft);
@@ -348,7 +362,7 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
 /** Like writeDraft's checks, but leaves the desk item untouched (Preview never changes what Show plays) */
 async function writeDraftForPreview(projectId: string, draft: DeskDraft) {
   const project = await loadEvent(projectId);
-  const def = DESK_TEMPLATES.find(t => t.key === draft.key);
+  const def = definition(project, draft.key);
   if (!def) throw err('Unknown graphic');
   const template = deskTemplateInfo(project, draft.key);
   if (!template) throw missingGraphic(project, def.label);
@@ -409,13 +423,24 @@ function commandsPath() {
   return path.join(getConfig().general.dataroot, 'desk-commands.json');
 }
 
+export function commandDefinitions(): DeskTemplate[] {
+  return getTemplateManager().getAllTemplates().flatMap(t => {
+    const def = t.desk ?? resolveDeskDeclaration(t.manifest).desk;
+    return def ? [def] : [];
+  });
+}
 export function loadDeskCommands(): DeskCommandMap {
   try {
     const saved = JSON.parse(fs.readFileSync(commandsPath(), 'utf-8')) as DeskCommandMap;
-    const valid = Object.entries(saved).filter(([n, key]) => /^\d{1,2}$/.test(n) && DESK_TEMPLATES.some(t => t.key === key));
-    return valid.length ? Object.fromEntries(valid) : { ...DEFAULT_DESK_COMMANDS };
+    const valid = Object.entries(saved).filter(([n, key]) => /^\d{1,2}$/.test(n) && typeof key === 'string' && !!key.trim());
+    const map = allocateDeskCommands(Object.fromEntries(valid), commandDefinitions());
+    if (JSON.stringify(map) !== JSON.stringify(saved)) fs.writeFileSync(commandsPath(), JSON.stringify(map, null, 2));
+    return map;
   } catch {
-    return { ...DEFAULT_DESK_COMMANDS };
+    const map = allocateDeskCommands(DEFAULT_DESK_COMMANDS, commandDefinitions());
+    fs.mkdirSync(path.dirname(commandsPath()), { recursive: true });
+    fs.writeFileSync(commandsPath(), JSON.stringify(map, null, 2));
+    return map;
   }
 }
 
@@ -424,7 +449,7 @@ export function saveDeskCommands(map: DeskCommandMap): DeskCommandMap {
   const keys = Object.values(map);
   if (numbers.some(n => !/^\d{1,2}$/.test(n))) throw err('Command numbers are 0–99');
   if (new Set(keys).size !== keys.length) throw err('Each graphic can have only one number');
-  if (keys.some(k => !DESK_TEMPLATES.some(t => t.key === k))) throw err('Unknown graphic in the command map');
+  if (keys.some(k => typeof k !== 'string' || !k.trim())) throw err('Unknown graphic in the command map');
   fs.writeFileSync(commandsPath(), JSON.stringify(map, null, 2));
   return loadDeskCommands();
 }

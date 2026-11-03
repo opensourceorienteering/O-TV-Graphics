@@ -20,7 +20,7 @@ let readyForResponses = false;
 const urlParams = new URLSearchParams(window.location.search);
 
 // Auto-detect server host from current page URL (for remote access)
-// If the page is accessed via http://192.168.1.100:5173/web-output, use 192.168.1.100
+// If the page is accessed via http://192.168.1.100:5174/web-output, use 192.168.1.100
 // This allows remote devices to automatically connect to the correct server
 const defaultHost = window.location.hostname || "localhost";
 

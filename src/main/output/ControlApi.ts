@@ -87,11 +87,12 @@ export function createControlApiRouter(): express.Router {
       }
     };
 
+  router.get("/graphics", read(async () => (await live.controlState()).graphics ?? []));
   router.get("/state", read(() => live.controlState()));
   router.get(
     "/favorites",
-    read(() =>
-      live.favorites().map((f) => ({
+    read(async () =>
+      (await live.favorites()).map((f) => ({
         id: f.id,
         /** F-number within the graphic: "<graphic number> F<n>" in the palette */
         n: f.n,

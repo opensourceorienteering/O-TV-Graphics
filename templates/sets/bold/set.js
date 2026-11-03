@@ -3,8 +3,8 @@ export default {
   id: 'bold',
   theme: new URL('./theme.css', import.meta.url).href,
   fonts: new URL('./fonts/fonts.css', import.meta.url).href,
-  // the look's own logo, in the logo boxes with "Use template logo" (OK Tyr)
-  logo: new URL('./tyr-logo.png', import.meta.url).href,
+  // the look's own logo, in the logo boxes with "Use template logo" (Split Control)
+  logo: new URL('./split-control-logo.svg', import.meta.url).href,
   durations: { in: 1150, out: 340, stepOut: 220, step: 650 },
   rowsPerPage: 10,
   colorVars: ['--hot', '--ink', '--paper'],

@@ -1,3 +1,6 @@
+import type { DeskTemplate } from '../desk';
+import type { DeskDeclaration } from '../deskDeclaration';
+
 /**
  * OGRAF (Open Graphics Format) Type Definitions
  * Based on EBU OGRAF v1 Specification
@@ -60,6 +63,9 @@ export interface OGrafManifest {
    * Use RundownItem.playbackMode instead.
    */
   playbackMode?: 'stackable' | 'solo';
+
+  /** Optional Live desk declaration; validated separately from OGRAF. */
+  v_olgrafik_desk?: DeskDeclaration;
 
   /** Vendor-specific fields (prefixed with v_) */
   [key: `v_${string}`]: any;
@@ -200,6 +206,9 @@ export interface GraphicState {
  */
 export interface OGrafTemplateInfo {
   type: 'ograf';
+  /** Validated declaration, or the legacy default for a known kind. */
+  desk?: DeskTemplate;
+  deskWarnings?: string[];
   manifestPath: string;
   manifest: OGrafManifest;
   description: string;

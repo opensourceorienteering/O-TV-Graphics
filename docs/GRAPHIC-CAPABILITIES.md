@@ -1,6 +1,6 @@
 # Graphics declare what the app offers for them
 
-Status: step 1 done; steps 2–4 proposed.
+Status: steps 1–4 implemented.
 
 ## Why
 
@@ -68,6 +68,7 @@ Defined once in `src/shared/capabilities.ts`.
 | `freeze` | the running clock of a runner on the way can be stopped by hand (`T`) |
 | `titleFromClass` | an empty title shows the class name |
 | `titleFromLocation` | an empty title shows the event's location |
+| `manualSteps` | advances only through operator actions, ignoring automatic page timers |
 | `holdOnAir` | keeps the data it went on air with until Update (live-updates default off) |
 | `rowsPartner:<key>` | shares the rows-per-page setting with another graphic |
 
@@ -80,20 +81,30 @@ Defined once in `src/shared/capabilities.ts`.
    `DESK_TEMPLATES` entry its feeds, behaviours and preview data, and replace every
    `key === '…'` check in the app with a check of the behaviour. Behaviour stays the same; the
    tests prove it. After this, nothing outside `desk.ts` knows the graphics by name.
-   *Done.* Left for step 3: the Companion module keeps its own list of graphics
+   *Done.* Resolved in step 3: the Companion module keeps its own list of graphics
    (`companion/src/main.js`), and the desk opens on Runner identity by default.
    Runner focus is the one graphic that can follow the next starter (one follow state in Live).
 2. **Graphics declare their desk entry.** A manifest may carry `v_olgrafik_desk` with label,
    short name, inputs, required inputs, fields, feeds, behaviours and preview data. Known kinds
    default to today's entry, so existing looks need nothing. The app validates declarations
    against the building blocks and ignores unknown ones (with a warning in Graphics library).
+   *Done.* Declarations are resolved into `OGrafTemplateInfo.desk` at template load time;
+   `deskWarnings` appear in Graphics library. The Live desk consumes these in step 3.
 3. **The desk follows the event's look.** The Live list, command numbers, favourites, Companion
    and the HTTP API list the graphics of the event's look. Command numbers and favourites are
    kept per desk key; a key the look doesn't have is shown as unavailable rather than dropped,
    so switching looks back and forth loses nothing.
+   *Done.* Live, palette, template settings and remote runner preparation use the look's
+   declarations. The control state includes a graphic catalogue (`GET /api/control/graphics`),
+   used by Companion. Saved command keys and favourites survive absent graphics; new keys get
+   persisted free numbers. Unavailable favourites remain visible in Live.
 4. **New graphics bring their own drawing.** `createGraphic` accepts a view function, so a new
    kind uses the shared lifecycle (animation states, pages, clocks, live patching) with its own
    markup. The preview site simulates data for every feed.
+   *Done.* `createGraphic(kind, set, view)` accepts a synchronous drawing callback. Rendering
+   and time-dependent redraws use it; existing two-argument graphics keep the built-in views.
+   Plan respects declared preview data, and the browser preview carries declarations/schema
+   defaults for built-in and uploaded looks and supplies timing, course, weather and event data.
 
 ## Risks
 
@@ -102,3 +113,113 @@ Defined once in `src/shared/capabilities.ts`.
 - Companion buttons and the HTTP API name graphics by key; they must list per look.
 - Old looks (imported zips) without declarations must keep working: defaults by kind.
 - A wrong declaration must not break the desk: validate and fall back.
+
+## Declaring a desk entry
+
+Add `v_olgrafik_kind` and `v_olgrafik_desk` to the graphic's `.ograf.json` manifest:
+
+```json
+{
+  "v_olgrafik_kind": "relay-overview",
+  "v_olgrafik_desk": {
+    "label": "Relay overview",
+    "short": "Relay",
+    "inputs": ["class", "page"],
+    "required": ["class"],
+    "fields": ["title"],
+    "feeds": ["timing"],
+    "behaviours": ["holdOnAir", "titleFromClass"],
+    "previewData": "results"
+  }
+}
+```
+
+`title` must also exist in the manifest's `schema.properties`. For a new kind, the kind
+and label are required; inputs, required inputs, fields, feeds and behaviours default to empty.
+The stable desk `key` defaults to the kind, and `short` defaults to the label. `live` is derived
+from the timing feed. `settingsFields` lists schema fields shown only in template settings;
+`rowsPartner` names a desk key with which to share the rows-per-page setting.
+
+For known kinds, omitted properties inherit the existing desk entry. Empty arrays clear an
+inherited list; `previewData: null` clears an inherited preview requirement. Legacy fallback
+manifest IDs also retain their defaults. Required inputs must appear in `inputs`; `startControl`
+needs `control`, and `freeze` / `followNextStarter` need `runner`.
+
+Unknown properties, unsupported blocks, duplicate list entries, missing schema fields and
+invalid combinations produce warnings. The whole declaration falls back to the known kind's
+entry, or has no desk entry for a new kind. The graphic itself remains available in the library.
+Use the `rowsPartner` property rather than a `rowsPartner:<key>` behaviour string.
+
+## Bringing a new drawing
+
+A hand-made graphic's `graphic.js` can import the lifecycle and provide its own view:
+
+```js
+import { createGraphic } from '../../_core/graphic.js';
+import { esc } from '../../_core/util.js';
+import set from '../set.js';
+
+function relayOverview(data, ctx) {
+  const results = Array.isArray(data.results) ? data.results : [];
+  const rows = Math.max(1, Number(data.rowsPerPage) || 6);
+  const steps = Math.max(1, Math.ceil(results.length / rows));
+  const page = Math.min(ctx.step, steps);
+  const shown = results.slice((page - 1) * rows, page * rows);
+  return {
+    steps,
+    html: `<div class="panel panel--relay-overview">
+      <div class="hdr"><span>${esc(data.title || data.className)}</span></div>
+      <div class="rows">${shown.map(r => `<div class="row" data-key="${esc(r.bib || r.name)}">
+        <span class="c-name">${esc(r.name)}</span>
+        <span class="c-time">${esc(r.time)}</span>
+      </div>`).join('')}</div>
+    </div>`,
+  };
+}
+
+export default createGraphic('relay-overview', set, relayOverview);
+```
+
+The callback takes the graphic data and the look configuration plus `kind` and one-based
+`step`. It returns `{ html, steps? }`; it must be synchronous. Escape data inserted into HTML
+with `esc`. Style the new kind in the look's `theme.css`, including its animation states.
+Existing shared markup classes can use the theme's usual table styling.
+
+The lifecycle handles Show/Hide, page changes, updates, logo settings, scaling and cleanup.
+Stable `data-key` values let live patches keep rows in place. Return an optional `pageKey`
+to identify the visible page: Next/Previous patches steps with the same `pageKey` in place,
+so focus changes crossfade without replaying page animations. A changed `pageKey` uses the
+usual page transition. The usual `[data-tick]` elements
+get clock updates every 250 ms. A view whose choice of rows changes with time may return
+`rekey: true` and a stable `key`: the lifecycle redraws when that key changes. Use `now(data)`
+from `_core/util.js` for simulated/frozen time. Keep a key unchanged while the shown content's
+identity stays the same.
+
+The browser preview's built catalogue and uploaded zip catalogue retain the manifest's desk
+entry and schema. Unknown kinds receive the declared feeds and schema defaults, with manual
+JSON overrides still available. Timing samples follow the simulated race; the other feeds
+provide representative event, course and weather values. Plan theme previews use a declared
+`previewData` requirement when deciding whether timing results are usable or need samples.
+
+## Verification
+
+On 2026-11-02, type checking and the Vite production build passed. The final full suite passed
+522 tests across 44 files, including the connected capabilities scenario.
+
+`src/main/events/__tests__/graphicCapabilities.integration.test.ts` also passes. It imports a
+look zip containing an unknown kind, discovers its declaration, parses its command, prepares
+Preview without activating output, then exercises HTTP Show, Update, Page and Hide. It switches
+to Standard and back and checks that the favourite and command number survive. Template,
+project, rundown and playback managers use real temporary disk state. Renderer replies and
+hardware/output status are simulated; this is a backend integration test, not a visual UI test.
+
+A visual end-to-end run in Electron remains pending: the browser/app automation service was
+unavailable in this session. That run should check the Live inspector and output monitor for
+the custom kind, page transitions and live patches, library declaration warnings, and the
+unavailable/restored favourite when switching looks. Companion hardware has not been exercised.
+
+
+The SOFT look's [Runner presentations](RUNNER-PRESENTATIONS.md) is the first hand-made
+example: it uses a schema `v_olgrafik_control: "runner-multi-select"` on a string-array field
+for its Live picker, `manualSteps` for operator-controlled advances and `pageKey` for focus
+changes within a visible page.

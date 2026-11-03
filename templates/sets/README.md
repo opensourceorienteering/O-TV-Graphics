@@ -65,6 +65,11 @@ for markup, and a set's `theme.css` for its look. Hand-made graphics in a set fo
 alone by the generator; any folder with a `<name>.ograf.json`
 is picked up.
 
+For a new kind, declare `v_olgrafik_desk` in its manifest and pass a view function as the third
+argument to `createGraphic(kind, set, view)`. It shares the usual lifecycle without adding a
+branch to `_core/views.js`. See [graphic capabilities](../../docs/GRAPHIC-CAPABILITIES.md)
+for the declaration format and a paged custom-view example.
+
 ## The look's own logo
 
 A look may carry a logo (e.g. a federation's). The event chooses **Use template logo**,
@@ -74,7 +79,7 @@ on `.gfx` (from `presentation.logoMode`).
 - Name the file in `set.json` (`"logo": "logo.svg"`, inside the look's folder); Plan shows it.
 - Either put it in the logo boxes: `logo: new URL('./logo.png', import.meta.url).href` in
   `set.js`, and the graphics show it there like an uploaded logo (`standard`, `bold`, `brutal`,
-  `signal` and `contours` carry the OK Tyr logo this way),
+  `signal` and `contours` carry the Split Control logo this way),
 - or draw it yourself, only under `.gfx[data-logo="template"]`, so a custom logo replaces it and
   "No logotype" hides it (`iof`, `iof2` and `sof`; leave `logo` out of `set.js` then).
 - The uploaded logo fills the logo boxes (`.hdr-logo`, `.title-logo`…) only with `custom`:

@@ -16,3 +16,11 @@ describe('orderDeskTemplates', () => {
     expect(list).toHaveLength(DESK_TEMPLATES.length);
   });
 });
+
+import { allocateDeskCommands } from '../desk';
+it('reserves absent graphic numbers and fills free slots without moving existing keys', () => {
+  const saved = { '0': 'missing-look-graphic', '2': 'results' };
+  const result = allocateDeskCommands(saved, [{ key: 'relay' }, { key: 'results' }]);
+  expect(result).toEqual({ '0': 'missing-look-graphic', '1': 'relay', '2': 'results' });
+  expect(saved).toEqual({ '0': 'missing-look-graphic', '2': 'results' });
+});

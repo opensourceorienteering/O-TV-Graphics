@@ -1,3 +1,4 @@
+import { graphicFeedData } from './feeds.js';
 // Split Control preview: every look's graphics in the browser, driven by a simulated race.
 import { createRace, raceEvents } from './sim.js';
 import { unzipSync } from './vendor/fflate.js';
@@ -112,7 +113,7 @@ async function loadZip(file) {
         const m = /^([^/]+)\/\1\.ograf\.json$/.exec(n);
         if (!m) continue;
         const manifest = JSON.parse(text(n));
-        graphics.push({ folder: m[1], kind: manifest.v_olgrafik_kind || '', name: manifest.name || m[1], main: manifest.main || 'graphic.js' });
+        graphics.push({ folder: m[1], kind: manifest.v_olgrafik_kind || '', name: manifest.name || m[1], main: manifest.main || 'graphic.js', desk: manifest.v_olgrafik_desk, schema: manifest.schema });
       }
       if (!graphics.length) throw new Error(`The look "${id}" has no graphics`);
       // each load gets its own address, so the browser never reuses files of an earlier one
@@ -236,11 +237,12 @@ function graphicData() {
   const runner = picked || autoRunner();
   // Live split and tables without a runner show the leader and the latest passings, as on
   // race day; with one, they follow that runner (and a running clock on the way)
-  const focus = picked || (RUNNER_KINDS.includes(state.graphic?.kind) ? runner : null);
+  const focus = picked || ((state.graphic?.desk?.inputs?.includes('runner') || RUNNER_KINDS.includes(state.graphic?.kind)) ? runner : null);
   const offset = state.simNow - Date.now();
   const extra = extraData();
+  const samples = graphicFeedData(state.graphic, race);
   return {
-    ...race,
+    ...samples,
     date: new Date(state.race.firstStart).toISOString().slice(0, 10),
     ...(focus ? { runnerName: focus.name, runnerClub: focus.club, runnerBib: focus.bib } : {}),
     club: runner.club, country: runner.country, bib: runner.bib,
@@ -260,7 +262,7 @@ function graphicData() {
       logoMode: $('logo').value,
       ...($('logo').value === 'custom' ? { logoUrl: new URL('../logo.svg', location.href).href } : {}),
     },
-    event: { name: extra.title, date: new Date(state.race.firstStart).toISOString().slice(0, 10), location: extra.place },
+    event: { ...samples.event, name: extra.title || 'SM Långdistans', date: new Date(state.race.firstStart).toISOString().slice(0, 10), location: extra.place || 'Önnestad, Kristianstad' },
   };
 }
 

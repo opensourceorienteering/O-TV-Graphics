@@ -168,6 +168,7 @@ export interface EventSummary {
 
 /** What control surfaces (web API, Companion) see of the live event */
 export interface ControlState {
+  graphics?: { key: string; label: string; params: import('../capabilities').DeskParam[] }[];
   eventId: string | null;
   eventName?: string;
   /** Desk graphics on air, newest first */

@@ -5,6 +5,7 @@ const mock = vi.hoisted(() => ({
   mapped: vi.fn(async () => ({ results: [{ name: "Runner" }] })),
   startList: { entries: [], updated: 0 } as any,
   templateKind: "results",
+  declaration: undefined as any,
   play: vi.fn(),
   navigation: vi.fn(async (..._args: any[]) => {}),
   packaged: false,
@@ -93,6 +94,7 @@ vi.mock("../../templates/OGrafManager", () => ({
           id: "tpl",
           name: "Results",
           v_olgrafik_kind: mock.templateKind,
+          v_olgrafik_desk: mock.declaration,
         },
         setId: "standard",
         directoryName: "sets/standard/results",
@@ -140,6 +142,7 @@ describe("Event monitor and preview IPC", () => {
       .mockResolvedValue({ results: [{ name: "Runner" }] });
     mock.startList = { entries: [], updated: 0 };
     mock.templateKind = "results";
+    mock.declaration = undefined;
     delete (mock.project as any).dataSource;
     registerEventHandlers();
   });
@@ -150,10 +153,10 @@ describe("Event monitor and preview IPC", () => {
     expect(program.options.x).toBeGreaterThanOrEqual(1400);
     expect(program.options.webPreferences.contextIsolation).toBe(true);
     expect(program.loadURL).toHaveBeenCalledWith(
-      "http://localhost:5173/?monitor=program",
+      "http://localhost:5174/?monitor=program",
     );
     expect(preview.loadURL).toHaveBeenCalledWith(
-      "http://localhost:5173/?monitor=preview",
+      "http://localhost:5174/?monitor=preview",
     );
     await invoke("window:openMonitor", "program");
     expect(program.focus).toHaveBeenCalledOnce();
@@ -245,6 +248,16 @@ describe("Event monitor and preview IPC", () => {
     expect(result.data.payload.data.results[0].splitTimes).toHaveLength(4);
     expect(result.data.payload.data.runnerName).toBe("Alex Andersson");
     expect(mock.play).not.toHaveBeenCalled();
+  });
+  it("honours a new kind's declared split preview requirement", async () => {
+    mock.templateKind = "relay-overview";
+    mock.declaration = { label: "Relay overview", previewData: "splits", feeds: ["timing"] };
+    (mock.project as any).dataSource = { sourceId: "source", competitionId: 42 };
+    mock.mapped.mockResolvedValueOnce({ results: [{ name: "Finished Runner", time: "35:42" }], splitControls: [] } as any);
+    const result = await invoke("preview:template", "event", "tpl", "H21");
+    expect(result.success).toBe(true);
+    expect(result.data.payload.data.results[0].splitTimes).toHaveLength(4);
+    expect(result.data.payload.data.splitControls).toHaveLength(4);
   });
   it("clears stale preview when a new selection fails", async () => {
     await invoke("preview:draft", "event", { key: "results", values: {}, fields: {} });

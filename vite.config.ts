@@ -78,7 +78,10 @@ export default defineConfig({
     }
   },
   server: {
-    port: 5173,
+    port: 5174,
+    // Electron windows and the development CSP use this port. Never silently move to
+    // another port while Electron loads an unrelated app already running on 5174.
+    strictPort: true,
     host: '0.0.0.0' // Allow remote access from other machines on the network
   }
 });

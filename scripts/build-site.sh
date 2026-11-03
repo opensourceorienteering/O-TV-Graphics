@@ -17,7 +17,7 @@ cp -R "$root/site/." "$out/"
 # this build's version, so a new version loads at once
 version="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || date +%s)"
 sed -i.bak -e "s#src=\"app.js\"#src=\"app.js?v=$version\"#" -e "s#href=\"preview.css\"#href=\"preview.css?v=$version\"#" "$out/preview/index.html"
-sed -i.bak -e "s#from './sim.js'#from './sim.js?v=$version'#" -e "s#from './vendor/fflate.js'#from './vendor/fflate.js?v=$version'#" "$out/preview/app.js"
+sed -i.bak -e "s#from './feeds.js'#from './feeds.js?v=$version'#" -e "s#from './sim.js'#from './sim.js?v=$version'#" -e "s#from './vendor/fflate.js'#from './vendor/fflate.js?v=$version'#" "$out/preview/app.js"
 rm -f "$out/preview/"*.bak
 "$root/scripts/zip-looks.sh" "$out/looks" > /dev/null
 
@@ -36,7 +36,7 @@ const looks = fs.readdirSync(dir, { withFileTypes: true })
       .filter((g) => fs.existsSync(path.join(dir, d.name, g, `${g}.ograf.json`)))
       .map((g) => {
         const m = JSON.parse(fs.readFileSync(path.join(dir, d.name, g, `${g}.ograf.json`), 'utf-8'));
-        return { folder: g, kind: m.v_olgrafik_kind || '', name: m.name || g, main: m.main || 'graphic.js' };
+        return { folder: g, kind: m.v_olgrafik_kind || '', name: m.name || g, main: m.main || 'graphic.js', desk: m.v_olgrafik_desk, schema: m.schema };
       });
     return { id: d.name, name: meta.name || d.name, description: meta.description || '', colors: meta.colors || [], approvedEventsOnly: meta.approvedEventsOnly === true, graphics };
   })

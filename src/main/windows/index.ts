@@ -71,7 +71,7 @@ export function createMainWindow(): BrowserWindow {
 
   // Load the app
   if (isDev) {
-    window.loadURL("http://localhost:5173");
+    window.loadURL("http://localhost:5174");
     window.webContents.openDevTools();
   } else {
     // In production, files are in the asar archive
@@ -121,7 +121,7 @@ export function createGraphicsWindow(): BrowserWindow {
   if (isDev) {
     const { port, wsPort } = getConfig().general;
     window.loadURL(
-      `http://localhost:5173/graphics.html?webPort=${port}&wsPort=${wsPort}`,
+      `http://localhost:5174/graphics.html?webPort=${port}&wsPort=${wsPort}`,
     );
     // Open graphics DevTools only on demand; an inspector adds capture overhead.
   } else {

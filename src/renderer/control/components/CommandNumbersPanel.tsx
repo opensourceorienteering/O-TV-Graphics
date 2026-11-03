@@ -1,10 +1,9 @@
 import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
-import { DESK_TEMPLATES, DEFAULT_DESK_COMMANDS, type DeskCommandMap } from "../../../shared/desk";
+import { DESK_TEMPLATES, DEFAULT_DESK_COMMANDS, type DeskCommandMap, type DeskTemplate } from "../../../shared/desk";
 import { call } from "../events/api";
 import { DragHandle, useSortable } from "./useSortable";
 
-const byKey = new Map(DESK_TEMPLATES.map((t) => [t.key, t]));
 const defaultOrder = DESK_TEMPLATES.map((t) => t.key);
 
 /** Saved map -> list order: numbered graphics by number, then the rest in default order */
@@ -12,7 +11,7 @@ function orderOf(map: DeskCommandMap): string[] {
   const numbered = Object.entries(map)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([, key]) => key)
-    .filter((key) => byKey.has(key));
+;
   return [...numbered, ...defaultOrder.filter((k) => !numbered.includes(k))];
 }
 
@@ -21,6 +20,8 @@ function orderOf(map: DeskCommandMap): string[] {
  * first graphic is 0, the next 1, and so on. Events order their own Live list in Plan.
  */
 export function CommandNumbersPanel() {
+  const [catalog, setCatalog] = useState<DeskTemplate[]>(DESK_TEMPLATES);
+  const byKey = new Map(catalog.map(t => [t.key, t]));
   const [saved, setSaved] = useState<DeskCommandMap>({});
   const [order, setOrder] = useState<string[]>(defaultOrder);
   const [error, setError] = useState("");
@@ -28,8 +29,9 @@ export function CommandNumbersPanel() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    call<DeskCommandMap>("desk:commands")
-      .then((map) => {
+    Promise.all([call<DeskCommandMap>("desk:commands"), call<DeskTemplate[]>("desk:catalog")])
+      .then(([map, list]) => {
+        setCatalog(list);
         setSaved(map);
         setOrder(orderOf(map));
       })
@@ -69,7 +71,7 @@ export function CommandNumbersPanel() {
       <p role="status" className="muted">{notice ? tr(notice) : ""}</p>
       <ul className="template-list" {...sortable.listProps}>
         {order.map((key, index) => {
-          const t = byKey.get(key)!;
+          const t = byKey.get(key) ?? { label: `${key} (unavailable)`, params: [] };
           const before = Object.entries(saved).find(([, k]) => k === key)?.[0];
           const changed = before !== String(index);
           return (

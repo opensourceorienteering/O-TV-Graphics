@@ -33,9 +33,11 @@ export type DeskBehaviour =
   /** an empty title shows the event's location */
   | 'titleFromLocation'
   /** keeps the data it went on air with until Update (live updates default off) */
-  | 'holdOnAir';
+  | 'holdOnAir'
+  /** steps are operator-controlled, even when the event automatically pages other graphics */
+  | 'manualSteps';
 export const DESK_BEHAVIOURS: readonly DeskBehaviour[] = [
-  'startControl', 'followNextStarter', 'freeze', 'titleFromClass', 'titleFromLocation', 'holdOnAir'
+  'startControl', 'followNextStarter', 'freeze', 'titleFromClass', 'titleFromLocation', 'holdOnAir', 'manualSteps'
 ];
 
 /**

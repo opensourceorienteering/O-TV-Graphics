@@ -137,7 +137,7 @@ function deskFields(def: DeskTemplateInfo): string[] {
   return Object.keys(schema).filter(f => !DATA_FIELDS.has(f));
 }
 /** The graphic whose runner follows the next starter (Runner focus) */
-const FOLLOW_KEY = DESK_TEMPLATES.find(t => hasBehaviour(t, 'followNextStarter'))?.key ?? '';
+
 
 const DATA_FIELDS = new Set(['className', 'results', 'runnerName', 'runnerClub', 'runnerBib', 'controlCode', 'splitControls', 'startList']);
 
@@ -146,12 +146,14 @@ export function LiveDesk() {
   const navigate = useNavigate();
   const [event, setEvent] = useState<any>(null);
   const [templates, setTemplates] = useState<DeskTemplateInfo[]>([]);
+  const FOLLOW_KEY = templates.find(t => hasBehaviour(t, 'followNextStarter'))?.key ?? '';
+  const lookup = (key: string) => templates.find(t => t.key === key);
   const [commands, setCommands] = useState<DeskCommandMap>({});
   const [classes, setClasses] = useState<string[]>([]);
   const [runners, setRunners] = useState<PaletteRunner[]>([]);
   const [controls, setControls] = useState<Record<string, PaletteControl[]>>({});
   const [favorites, setFavorites] = useState<Record<string, DeskFavorite[]>>({});
-  const [selected, setSelected] = useState('runner-identity');
+  const [selected, setSelected] = useState('');
   const [drafts, setDrafts] = useState<Record<string, DeskDraft>>({});
   const [desk, setDesk] = useState<DeskState>({ eventId: null, onAir: [], otherOnAir: 0 });
   const [output, setOutput] = useState<{ web?: boolean; ndi?: boolean }>({});
@@ -180,6 +182,7 @@ export function LiveDesk() {
       className: e.className,
       bib: e.bib,
       virtualBib: e.virtualBib,
+      favourite: e.favourite,
       startTimeMs: e.startTimeMs
     }));
     setRunners(loadedRunners);
@@ -207,7 +210,7 @@ export function LiveDesk() {
         setFavorites(favs);
         applyStartList(sl.entries || []);
         const first = list.find(t => t.available);
-        if (first && !list.find(t => t.key === selected && t.available)) setSelected(first.key);
+        if (!list.find(t => t.key === selected && t.available)) setSelected(first?.key ?? '');
         const entered = await call<{ outputErrors?: string[] }>('live:enter', eventId);
         if (entered?.outputErrors?.length) say(entered.outputErrors.join(' · '), 'err');
         call<string[]>('event:classes', eventId).then(c => alive && setClasses(c)).catch(() => undefined);
@@ -237,7 +240,7 @@ export function LiveDesk() {
         // A Stream Deck button prepared a favourite or runner: show it here as the draft
         if (p.origin === 'remote' && p.draft && remoteSeen.current !== null && p.version > remoteSeen.current) {
           const remote = p.draft;
-          if (hasBehaviour(remote.key, 'followNextStarter') && remote.values?.runnerName) setFollowNext(false);
+          if (hasBehaviour(lookup(remote.key), 'followNextStarter') && remote.values?.runnerName) setFollowNext(false);
           setSelected(remote.key);
           setDrafts(all => ({ ...all, [remote.key]: remote }));
           say('Draft prepared from a control surface');
@@ -254,7 +257,7 @@ export function LiveDesk() {
   const def = templates.find(t => t.key === selected);
 
   // --- weather: the graphic fills itself; show the operator what it will say ---
-  const weatherKey = hasFeed(selected, 'weather') ? selected : '';
+  const weatherKey = hasFeed(lookup(selected), 'weather') ? selected : '';
   const weatherDraft = weatherKey ? drafts[weatherKey] : undefined;
   const loadWeather = useCallback(async (force = false) => {
     try {
@@ -264,7 +267,7 @@ export function LiveDesk() {
     } catch (e) { setWeather({ reading: null, source: 'none', error: (e as Error).message }); }
   }, [eventId, weatherKey, weatherDraft]);
   useEffect(() => {
-    if (!hasFeed(selected, 'weather')) return;
+    if (!hasFeed(lookup(selected), 'weather')) return;
     void loadWeather();
     const t = setInterval(() => void loadWeather(), 60_000);
     return () => clearInterval(t);
@@ -280,17 +283,17 @@ export function LiveDesk() {
   const inheritedFor = (key: string, f: string, d: DeskDraft): { value: string; from: string } | undefined => {
     const info = event?.info ?? {};
     const fromEvent = (value?: string) => (value ? { value, from: 'event setup' } : undefined);
-    if (hasFeed(key, 'event')) {
+    if (hasFeed(lookup(key), 'event')) {
       if (f === 'title') return fromEvent(event?.name);
       if (f === 'series') return fromEvent(info.series);
       if (f === 'place') return fromEvent(info.location);
       if (f === 'date') return fromEvent(info.date);
     }
-    if (f === 'title' && hasBehaviour(key, 'titleFromLocation')) return fromEvent(info.location);
-    if (hasFeed(key, 'weather')) {
+    if (f === 'title' && hasBehaviour(lookup(key), 'titleFromLocation')) return fromEvent(info.location);
+    if (hasFeed(lookup(key), 'weather')) {
       return weatherAuto[f] ? { value: weatherAuto[f], from: 'automatic weather' } : undefined;
     }
-    if (f === 'title' && hasBehaviour(key, 'titleFromClass') && d.values.className)
+    if (f === 'title' && hasBehaviour(lookup(key), 'titleFromClass') && d.values.className)
       return { value: d.values.className, from: 'selected class' };
     return undefined;
   };
@@ -370,7 +373,7 @@ export function LiveDesk() {
    */
   const freeze = () => {
     const at = pressedAt();
-    if (!onAirSel || !canFreeze(onAirSel.draft)) return say('Freeze needs a runner on the way, on air (Live split or Runner focus at a control)', 'err');
+    if (!onAirSel || !canFreeze(onAirSel.draft, lookup(onAirSel.key))) return say('Freeze needs a runner on the way, on air (Live split or Runner focus at a control)', 'err');
     const frozen = isFrozenDraft(onAirSel.draft);
     const apply = (d: DeskDraft): DeskDraft => frozen ? unfrozen(d) : { ...d, fields: { ...d.fields, frozenAt: at } };
     setDrafts(all => ({ ...all, [selected]: apply(all[selected] ?? onAirSel.draft) }));
@@ -416,7 +419,7 @@ export function LiveDesk() {
     try { setFavorites(await call('desk:deleteFavorite', eventId, selected, id)); } catch (e) { say((e as Error).message, 'err'); }
   };
   const recall = (f: DeskFavorite) => {
-    if (hasBehaviour(selected, 'followNextStarter') && f.draft.values?.runnerName) setFollowNext(false);
+    if (hasBehaviour(lookup(selected), 'followNextStarter') && f.draft.values?.runnerName) setFollowNext(false);
     setDraft({ ...f.draft, key: selected });
     say(`Prepared: ${f.label} · Space to Show`);
   };
@@ -474,6 +477,7 @@ export function LiveDesk() {
   // --- palette data ---
   const paletteData: PaletteData = useMemo(() => ({
     commands,
+    templates,
     available: new Set(templates.filter(t => t.available).map(t => t.key)),
     hidden: new Set(templates.filter(t => t.hidden).map(t => t.key)),
     classes,
@@ -497,12 +501,12 @@ export function LiveDesk() {
       if (seen.has(o.key)) continue;
       const input = commandForDraft(o.draft, paletteData);
       if (!input) continue;
-      const def = DESK_TEMPLATES.find(t => t.key === o.key);
+      const def = templates.find(t => t.key === o.key);
       const v = o.draft.values ?? {};
       const fields = typedFields(o.draft.fields);
       const favN = / F(\d+)$/.exec(input)?.[1];
       const fav = favN ? (favorites[o.key] ?? []).find(f => f.n === Number(favN)) : undefined;
-      const control = v.controlCode === undefined ? (hasBehaviour(o.key, 'startControl') ? 'Start' : undefined)
+      const control = v.controlCode === undefined ? (hasBehaviour(lookup(o.key), 'startControl') ? 'Start' : undefined)
         : v.controlCode === '' || v.controlCode === 'F' ? 'Finish' : `Control ${v.controlCode}`;
       const detail = fav ? `F${fav.n} ${fav.label}`
         : [v.className, v.runnerName, control, o.draft.page && o.draft.page > 1 ? `Page ${o.draft.page}` : undefined,
@@ -517,7 +521,7 @@ export function LiveDesk() {
   // Re-tested in the background while Live; polled with the rest of the state
   const lastCheck = dataCheck ?? event?.dataSource?.lastCheck;
   // While Runner start follows the start list, search uses the follow filter, not the auto-picked class
-  const searchClass = hasBehaviour(selected, 'followNextStarter') && followNext ? nextClass : draft.values.className;
+  const searchClass = hasBehaviour(lookup(selected), 'followNextStarter') && followNext ? nextClass : draft.values.className;
   const classRunners = searchClass ? runners.filter(r => r.className === searchClass) : runners;
 
   // --- runner start: keep the draft on the next starter (manual pick overrides) ---
@@ -528,7 +532,7 @@ export function LiveDesk() {
     [runners, now, nextClass]
   );
   const nextUp = upcoming[0];
-  const following = hasBehaviour(selected, 'followNextStarter') && followNext;
+  const following = hasBehaviour(lookup(selected), 'followNextStarter') && followNext;
   useEffect(() => {
     if (!followNext) return;
     setDrafts(all => {
@@ -546,7 +550,7 @@ export function LiveDesk() {
         }
       };
     });
-  }, [followNext, nextUp, nextClass]);
+  }, [followNext, nextUp, nextClass, FOLLOW_KEY]);
   const programOnAir = desk.onAir[0];
   // Paging acts on the most recent paged graphic on air (results, start list …)
   const pagedOnAir = desk.onAir.find(o => templates.find(t => t.key === o.key)?.multiStep);
@@ -611,7 +615,7 @@ export function LiveDesk() {
         <nav className="desk-nav" aria-label={tr("Graphics")}>
           <span className="desk-label">{tr("Templates")}</span>
           <ul role="listbox" aria-label={tr("Graphics")} onKeyDown={navKey}>
-            {templates.filter(t => !t.hidden || desk.onAir.some(o => o.key === t.key)).map(t => {
+            {templates.filter(t => (t.available || favorites[t.key]?.length) && (!t.hidden || desk.onAir.some(o => o.key === t.key))).map(t => {
               const n = numberOf(t.key);
               const air = desk.onAir.some(o => o.key === t.key);
               return (
@@ -680,8 +684,8 @@ export function LiveDesk() {
                   <span className="lbl">{tr("Timing point")}</span>
                   <div className="d-row2">
                     <div className="d-segment" role="group" aria-label={tr("Timing point")}>
-                      {hasBehaviour(selected, 'startControl') && <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Start")}</button>}
-                      {hasBehaviour(selected, 'startControl')
+                      {hasBehaviour(lookup(selected), 'startControl') && <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Start")}</button>}
+                      {hasBehaviour(lookup(selected), 'startControl')
                         ? <button type="button" aria-pressed={draft.values.controlCode === 'F'} onClick={() => set({ controlCode: 'F' })}>{tr("Finish")}</button>
                         : <button type="button" aria-pressed={!draft.values.controlCode} onClick={() => set({ controlCode: undefined })}>{tr("Finish")}</button>}
                       <button type="button" aria-pressed={!!draft.values.controlCode && draft.values.controlCode !== 'F'} onClick={() => set({ controlCode: String(controls[draft.values.className ?? '']?.[0]?.code ?? '') || undefined })} disabled={!controls[draft.values.className ?? '']?.length}>{tr("Control")}</button>
@@ -700,11 +704,11 @@ export function LiveDesk() {
                     id="d-runner"
                     runners={classRunners}
                     value={draft.values}
-                    onPick={r => { if (hasBehaviour(selected, 'followNextStarter')) setFollowNext(false); set({ runnerName: r.name, runnerClub: r.club, runnerBib: r.bib || r.virtualBib, className: searchClass || r.className }); }}
-                    onClear={() => { if (hasBehaviour(selected, 'followNextStarter')) setFollowNext(false); set({ runnerName: undefined, runnerClub: undefined, runnerBib: undefined }); }}
+                    onPick={r => { if (hasBehaviour(lookup(selected), 'followNextStarter')) setFollowNext(false); set({ runnerName: r.name, runnerClub: r.club, runnerBib: r.bib || r.virtualBib, className: searchClass || r.className }); }}
+                    onClear={() => { if (hasBehaviour(lookup(selected), 'followNextStarter')) setFollowNext(false); set({ runnerName: undefined, runnerClub: undefined, runnerBib: undefined }); }}
                   />
                   {draft.values.runnerName && <span className="d-note">{[draft.values.runnerClub, draft.values.className].filter(Boolean).join(' / ')}</span>}
-                  {hasBehaviour(selected, 'followNextStarter') && (
+                  {hasBehaviour(lookup(selected), 'followNextStarter') && (
                     <div className={`d-next ${followNext ? 'on' : ''}`} role="status">
                       {followNext ? (
                         nextUp ? (
@@ -749,7 +753,7 @@ export function LiveDesk() {
                   </span>
                 </div>
               )}
-              {def.multiStep && (
+              {def.multiStep && !hasBehaviour(def, 'manualSteps') && (
                 <div className="d-field">
                   <label htmlFor="d-page-timing">{tr("Automatic pagination")}</label>
                   <div className="d-row2">
@@ -764,7 +768,7 @@ export function LiveDesk() {
                   <span className="d-note">{tr("Seconds per page · 0 = manual. Reset follows the event default. The final page uses the same hold, then animates off air.")}</span>
                 </div>
               )}
-              {hasFeed(selected, 'weather') && (
+              {hasFeed(lookup(selected), 'weather') && (
                 <div className="d-auto" role="status">
                   {weather?.reading ? (
                     <span>
@@ -778,7 +782,10 @@ export function LiveDesk() {
                 </div>
               )}
               {deskFields(def).map(f => (
-                <SchemaField key={f} name={f} schema={def.schema[f]} value={draft.fields[f]} fallback={def.fieldDefaults?.[f]} inherited={inheritedFor(selected, f, draft)} onChange={v => setDraft({ ...draft, fields: { ...draft.fields, [f]: v } })} />
+                <SchemaField runnerChoices={classRunners} onRefreshRunners={async () => {
+                  try { const sl = await call<EventStartList>('startlist:refresh', eventId); applyStartList(sl.entries); say(`${sl.entries.length} runners loaded`); }
+                  catch (e) { say((e as Error).message, 'err'); }
+                }} key={f} name={f} schema={def.schema[f]} value={draft.fields[f]} fallback={def.fieldDefaults?.[f]} inherited={inheritedFor(selected, f, draft)} onChange={v => setDraft({ ...draft, fields: { ...draft.fields, [f]: v } })} />
               ))}
 
               <div className={`d-note ${previewError ? 'err' : preparedAt ? 'ok' : ''}`} role="status">
@@ -836,7 +843,7 @@ export function LiveDesk() {
               </button>
               <div className="pair">
                 <button type="button" className="d-btn big" style={{ fontSize: 17 }} onClick={update} disabled={!onAirSel || (!changed && !freshData)}>{tr("Update")} <kbd>U</kbd></button>
-                <button type="button" className={`d-btn big${frozenOnAir ? ' frozen' : ''}`} style={{ fontSize: 15 }} onClick={freeze} disabled={!onAirSel || !canFreeze(onAirSel.draft)}
+                <button type="button" className={`d-btn big${frozenOnAir ? ' frozen' : ''}`} style={{ fontSize: 15 }} onClick={freeze} disabled={!onAirSel || !canFreeze(onAirSel.draft, lookup(onAirSel.key))}
                   title={tr("Stop the running time when you see the runner pass. The official time replaces it when it arrives.")}>
                   {frozenOnAir ? tr("Resume clock") : tr("Freeze time")} <kbd>T</kbd>
                 </button>
@@ -902,7 +909,7 @@ export function LiveDesk() {
           onClose={() => setPalette(false)}
           onLoad={d => {
             setPalette(false);
-            if (hasBehaviour(d.key, 'followNextStarter') && d.values.runnerName) setFollowNext(false);
+            if (hasBehaviour(lookup(d.key), 'followNextStarter') && d.values.runnerName) setFollowNext(false);
             setSelected(d.key);
             setDraft(d);
             say('Draft loaded into Preview · Space to Show');
@@ -948,7 +955,7 @@ function CommandsDialog({ map, templates, onClose, onSave }: {
   map: DeskCommandMap; templates: DeskTemplateInfo[]; onClose: () => void; onSave: (m: DeskCommandMap) => void;
 }) {
   const [nums, setNums] = useState<Record<string, string>>(() =>
-    Object.fromEntries(templates.map(t => [t.key, Object.entries(map).find(([, k]) => k === t.key)?.[0] ?? ''])));
+    Object.fromEntries([...Object.entries(map).map(([n, k]) => [k, n]), ...templates.filter(t => !Object.values(map).includes(t.key)).map(t => [t.key, ''])]));
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
     window.addEventListener('keydown', k, true);
@@ -974,7 +981,7 @@ function CommandsDialog({ map, templates, onClose, onSave }: {
         <div className="d-actions">
           <button type="button" className="d-btn primary" disabled={dupes.length > 0}
             onClick={() => onSave(Object.fromEntries(Object.entries(nums).filter(([, n]) => n !== '').map(([k, n]) => [n, k])))}>{tr("Save")}</button>
-          <button type="button" className="d-btn" onClick={() => setNums(Object.fromEntries(DESK_TEMPLATES.map((t, i) => [t.key, String(i)])))}>{tr("Reset to")} 0–{DESK_TEMPLATES.length - 1}</button>
+          <button type="button" className="d-btn" onClick={() => setNums(Object.fromEntries(templates.map((t, i) => [t.key, String(i)])))}>{tr("Reset to")} 0–{templates.length - 1}</button>
         </div>
       </div>
     </div>

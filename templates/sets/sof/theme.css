@@ -352,3 +352,47 @@
 /* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
    (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; }
+
+/* Runner presentations: focus changes crossfade in place; page changes use the usual motion. */
+.panel--presentations .row::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: var(--yellow); opacity: 0; transition: opacity 180ms ease-in;
+}
+.panel--presentations .row.is-presented::after { opacity: .12; transition: opacity 240ms ease-out; }
+.panel--presentations .c-name { position: relative; }
+.panel--presentations .presentation-name { opacity: 1; transition: opacity 180ms ease-in; }
+.panel--presentations .presentation-focus-name {
+  position: absolute; inset: 0; display: block; padding-right: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--yellow); opacity: 0; transition: opacity 180ms ease-in;
+}
+.panel--presentations .is-presented .presentation-name { opacity: 0; }
+.panel--presentations .is-presented .presentation-focus-name { opacity: 1; transition: opacity 240ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .panel--presentations .row::after,
+  .panel--presentations .presentation-name,
+  .panel--presentations .presentation-focus-name { transition: none; }
+}
+
+/* Use exactly the same placement and width tokens as results and the normal start list. */
+.gfx--runner-presentations .panel {
+  top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px);
+}
+/* Lift the focused runner without changing row heights or shifting the list. */
+.panel--presentations .row {
+  isolation: isolate; z-index: 0; transform-origin: center;
+  transition: transform 220ms var(--ease);
+}
+.panel--presentations .row::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: -2;
+  background: var(--blue); box-shadow: 0 10px 22px #0009, 0 0 0 1px #ffffff40;
+  opacity: 0; transition: opacity 180ms ease-in;
+}
+.panel--presentations .row::after { z-index: -1; }
+.panel--presentations .row.is-presented { z-index: 3; transform: translateY(-3px) scale(1.015); }
+.panel--presentations .row.is-presented::before { opacity: 1; transition: opacity 240ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .panel--presentations .row { transition: none; }
+  .panel--presentations .row.is-presented { transform: none; }
+  .panel--presentations .row::before { transition: none; }
+}

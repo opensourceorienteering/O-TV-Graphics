@@ -2,7 +2,6 @@ import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  deskTemplate,
   hasBehaviour,
   DESK_TEMPLATES,
   liveUpdatesDefault,
@@ -111,7 +110,7 @@ export function EventTemplates({
           .map(([k, v]) => [k, Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined && !(typeof x === "object" && !Object.keys(x).length)))])
           .filter(([, v]) => Object.keys(v as object).length),
       );
-      const defaultOrder = DESK_TEMPLATES.map((t) => t.key);
+      const defaultOrder = templates.map((t) => t.key);
       const templateOrder = order.join() === defaultOrder.join() ? undefined : order;
       await call("event:update", eventId, { settings: { templates: clean, templateOrder } });
       const map = Object.fromEntries(Object.entries(nums).filter(([, n]) => n !== "").map(([k, n]) => [n, k]));
@@ -131,9 +130,9 @@ export function EventTemplates({
       <ul className="template-list" {...sortable.listProps}>
         {ordered.map((t, index) => {
           const s = settings[t.key] ?? {};
-          const live = t.live ? liveUpdatesDefault(t.key, settings) : undefined;
+          const live = t.live ? liveUpdatesDefault(t, settings) : undefined;
           const fields = [...(t.fields ?? []), ...(t.settingsFields ?? [])].filter((f) => t.schema?.[f]);
-          const rowsPartner = deskTemplate(t.rowsPartner)?.label ?? "";
+          const rowsPartner = templates.find(p => p.key === t.rowsPartner)?.label ?? "";
           const isOpen = open.has(t.key);
           const bodyId = `template-body-${t.key}`;
           const dupe = isDupe(t.key);
@@ -246,7 +245,7 @@ export function EventTemplates({
           className="studio-button"
           disabled={busy}
           onClick={() => {
-            setOrder(DESK_TEMPLATES.map((t) => t.key).filter((k) => byKey.has(k)));
+            setOrder(templates.map((t) => t.key).filter((k) => byKey.has(k)));
             setDirty(true);
           }}
         >
@@ -288,7 +287,11 @@ function StudioField({ name, schema, value, onChange, disabled, settingsOnly }: 
   return (
     <label>
       {title}
-      {schema.multiline ? (
+      {schema.type === "array" && schema.items?.type === "string" ? (
+        <textarea rows={3} value={Array.isArray(value) ? value.join("\n") : ""} disabled={disabled}
+          placeholder={tr("One value per line")}
+          onChange={e => onChange(e.target.value.split(/\r?\n/).filter(Boolean))} />
+      ) : schema.multiline ? (
         <textarea rows={3} value={value ?? ""} disabled={disabled} placeholder={schema.description ? tr(schema.description) : ""} onChange={(e) => onChange(e.target.value)} />
       ) : (
         <input

@@ -346,7 +346,7 @@ function setupContentSecurityPolicy() {
       // Production also needs localhost:5657 for dynamic ES module imports from web server
       // Allow cdnjs.cloudflare.com for highlight.js in documentation
       isDev
-        ? "script-src 'self' 'unsafe-inline' http://localhost:5173 http://localhost:5657 https://cdnjs.cloudflare.com"
+        ? "script-src 'self' 'unsafe-inline' http://localhost:5174 http://localhost:5657 https://cdnjs.cloudflare.com"
         : "script-src 'self' http://localhost:5657 https://cdnjs.cloudflare.com",
 
       // Styles: allow self and inline styles (required for React inline styles)
@@ -355,7 +355,7 @@ function setupContentSecurityPolicy() {
 
       // Images: allow self, data URIs, and localhost
       isDev
-        ? "img-src 'self' data: http://localhost:5173 http://localhost:5657"
+        ? "img-src 'self' data: http://localhost:5174 http://localhost:5657"
         : `img-src 'self' data: ${webOrigin}`,
 
       // Fonts: allow self and data URIs
@@ -364,7 +364,7 @@ function setupContentSecurityPolicy() {
       // Connect: allow WebSocket and HTTP connections to localhost
       // Allow cdnjs.cloudflare.com for documentation assets
       isDev
-        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5173 http://localhost:5173 http://localhost:5657 https://cdnjs.cloudflare.com"
+        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5174 http://localhost:5174 http://localhost:5657 https://cdnjs.cloudflare.com"
         : "connect-src 'self' ws://localhost:5656 http://localhost:5657 https://cdnjs.cloudflare.com",
 
       // Media: allow self

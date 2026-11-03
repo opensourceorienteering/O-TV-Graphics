@@ -335,6 +335,9 @@ export function TemplatesView() {
                           template.manifest.description ||
                           "Graphic template"}
                       </p>
+                      {template.deskWarnings?.map((warning) => (
+                        <p role="status" key={warning}>{warning}</p>
+                      ))}
                       <div className="template-badges">
                         {(template as any).dataSourceConfig && (
                           <span>{tr("Timing data")}</span>

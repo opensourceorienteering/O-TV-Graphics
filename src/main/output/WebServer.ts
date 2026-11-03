@@ -153,7 +153,7 @@ export class WebServer {
         // Preserve the original hostname for remote access
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
-        const viteUrl = `http://${hostname}:5173/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        const viteUrl = `http://${hostname}:5174/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
         logger.debug('Redirecting to Vite dev server for preview', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
@@ -179,7 +179,7 @@ export class WebServer {
         // Preserve the original hostname for remote access
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
-        const viteUrl = `http://${hostname}:5173/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        const viteUrl = `http://${hostname}:5174/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
         logger.debug('Redirecting to Vite dev server', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
@@ -210,7 +210,7 @@ export class WebServer {
         const hostname = host.split(':')[0];
         const queryParams = new URLSearchParams(req.query as any);
         queryParams.set('id', id);
-        const viteUrl = `http://${hostname}:5173/web-output.html?${queryParams.toString()}`;
+        const viteUrl = `http://${hostname}:5174/web-output.html?${queryParams.toString()}`;
         logger.debug('Redirecting to Vite dev server with ID', { viteUrl, originalHost: host, id });
         res.redirect(viteUrl);
       } else {

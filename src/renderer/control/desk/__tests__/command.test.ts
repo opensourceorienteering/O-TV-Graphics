@@ -257,3 +257,15 @@ describe('command for a draft shown on air', () => {
     expect(commandForDraft(draft('live-feed', { className: 'Men Elite' }), { ...data, commands: {} })).toBeNull();
   });
 });
+
+it('parses and reconstructs commands for a look-defined graphic', () => {
+  const custom: PaletteData = {
+    ...data,
+    templates: [{ key: 'relay', kind: 'relay', label: 'Relay', short: 'Relay', params: ['class'], required: ['class'], live: true }],
+    commands: { '42': 'relay' }, available: new Set(['relay'])
+  };
+  const parsed = parseCommand('42 2 ', custom);
+  expect(parsed.template?.key).toBe('relay');
+  expect(parsed.complete).toBe(true);
+  expect(commandForDraft({ key: 'relay', values: { className: 'Men Elite' }, fields: {} }, custom)).toBe('42 2');
+});
