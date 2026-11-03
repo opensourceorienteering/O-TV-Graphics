@@ -41,7 +41,7 @@ website's Looks page and each release offer every set as a zip, made by
 sets/
 ├── _core/                 shared code for every set (not a set)
 │   ├── graphic.js         OGraf Web Component base: lifecycle, pages, clocks, scaling
-│   ├── views.js           data -> markup for every graphic kind
+│   ├── views.js           data -> markup for the standard graphic kinds
 │   ├── util.js            times, names, club/flag rule, club logos
 │   ├── nations.js         IOC/ISO codes and names -> flags
 │   ├── base.css           placement and structure shared by all themes
@@ -54,14 +54,16 @@ sets/
     └── <set>-<kind>/      one OGraf package per graphic (generated)
 ```
 
-The packages in `<set>-<kind>/` are generated from one catalogue:
+The standard packages in `<set>-<kind>/` are generated from one catalogue; hand-made packages
+can add or omit kinds per look:
 
 ```bash
 npm run generate:sets
 ```
 
-Edit `scripts/generate-template-sets.js` to add a graphic kind or a field, `_core/views.js`
-for markup, and a set's `theme.css` for its look. Hand-made graphics in a set folder are left
+Edit `scripts/generate-template-sets.js` and `_core/views.js` when extending the shared standard
+catalogue. For a look-specific graphic, add a separate hand-made package and custom view.
+Edit the set's `theme.css` for its look. Hand-made graphics in a set folder are left
 alone by the generator; any folder with a `<name>.ograf.json`
 is picked up.
 
@@ -69,6 +71,10 @@ For a new kind, declare `v_olgrafik_desk` in its manifest and pass a view functi
 argument to `createGraphic(kind, set, view)`. It shares the usual lifecycle without adding a
 branch to `_core/views.js`. See [graphic capabilities](../../docs/GRAPHIC-CAPABILITIES.md)
 for the declaration format and a paged custom-view example.
+
+For the full workflow, compatibility rules, runner picker and test commands, read the
+[template developer guide](../../docs/TEMPLATE-DEVELOPMENT.md). Run `npm run test:templates`
+to check every package in a real Chromium renderer and save screenshots plus a JSON report.
 
 ## The look's own logo
 

@@ -2,11 +2,11 @@
 
 Status: steps 1–4 implemented.
 
-## Why
+## Starting point
 
-Every look today has the same 17 graphics, and the app has one fixed list of what the Live
-desk offers (`DESK_TEMPLATES` in `src/shared/desk.ts`): names, command-palette parameters,
-fields, and how each graphic behaves. A look can't leave a graphic out cleanly or add a new one
+Before the rebuild, every look had the same 17 graphics, and the app had one fixed list of what the Live
+desk offered (`DESK_TEMPLATES` in `src/shared/desk.ts`): names, command-palette parameters,
+fields, and how each graphic behaved. A look couldn't leave a graphic out cleanly or add a new one
 (a relay overview, a leg summary, a sponsor bug) without changing the app.
 
 The goal: the app keeps a **standard set of building blocks**, and each graphic in a look says
@@ -19,7 +19,7 @@ which ones it uses. A look can then:
 Data the app doesn't fetch at all (GPS tracking, for example) still needs app work: it becomes a
 new building block that every look can then use.
 
-## What exists today
+## Before the rebuild
 
 | Piece | Where | Per graphic already? |
 |---|---|---|
@@ -81,8 +81,8 @@ Defined once in `src/shared/capabilities.ts`.
    `DESK_TEMPLATES` entry its feeds, behaviours and preview data, and replace every
    `key === '…'` check in the app with a check of the behaviour. Behaviour stays the same; the
    tests prove it. After this, nothing outside `desk.ts` knows the graphics by name.
-   *Done.* Resolved in step 3: the Companion module keeps its own list of graphics
-   (`companion/src/main.js`), and the desk opens on Runner identity by default.
+   *Done.* Step 3 also removed Companion’s fixed graphic list and the desk’s hard-coded
+   initial graphic.
    Runner focus is the one graphic that can follow the next starter (one follow state in Live).
 2. **Graphics declare their desk entry.** A manifest may carry `v_olgrafik_desk` with label,
    short name, inputs, required inputs, fields, feeds, behaviours and preview data. Known kinds
@@ -203,21 +203,25 @@ provide representative event, course and weather values. Plan theme previews use
 
 ## Verification
 
-On 2026-11-02, type checking and the Vite production build passed. The final full suite passed
-522 tests across 44 files, including the connected capabilities scenario.
+On 2026-11-03, the catalogue has 155 packages: 154 graphics across nine looks and the system
+output test pattern. All 155 passed, with zero missing assets or renderer errors. The full
+regression suite passed 532 tests, and type checking, the production build and site build passed.
+The [recorded browser report](validation/template-rendering-2026-11-03.json) includes per-template
+geometry and step counts. `npm run test:templates` runs their actual JavaScript, CSS, fonts and
+images in an isolated real Chromium renderer. It covers loading, Show, paging, updates,
+custom logo/identity, empty data, Hide and Dispose; it saves screenshots and a JSON report.
+SOFT focus and normal start-list placement are checked explicitly. See the
+[developer guide](TEMPLATE-DEVELOPMENT.md) for commands, output paths and test boundaries.
 
-`src/main/events/__tests__/graphicCapabilities.integration.test.ts` also passes. It imports a
-look zip containing an unknown kind, discovers its declaration, parses its command, prepares
-Preview without activating output, then exercises HTTP Show, Update, Page and Hide. It switches
-to Standard and back and checks that the favourite and command number survive. Template,
-project, rundown and playback managers use real temporary disk state. Renderer replies and
-hardware/output status are simulated; this is a backend integration test, not a visual UI test.
+The connected backend test imports an unknown kind, discovers its declaration, parses its
+command, prepares Preview without activating output, exercises HTTP Show/Update/Page/Hide,
+and checks retained favourites and command numbers across look switches. Disk managers and
+playback are real; renderer replies and hardware status are simulated in that test.
 
-A visual end-to-end run in Electron remains pending: the browser/app automation service was
-unavailable in this session. That run should check the Live inspector and output monitor for
-the custom kind, page transitions and live patches, library declaration warnings, and the
-unavailable/restored favourite when switching looks. Companion hardware has not been exercised.
-
+The browser matrix verifies actual template rendering, while the backend tests verify the
+control path. Full click-through operator UI automation, physical Companion controls, NDI
+capture quality and motion smoothness remain manual checks. Synthetic race data is used; the
+matrix is not a live external timing-provider test or a pixel-baseline comparison.
 
 The SOFT look's [Runner presentations](RUNNER-PRESENTATIONS.md) is the first hand-made
 example: it uses a schema `v_olgrafik_control: "runner-multi-select"` on a string-array field

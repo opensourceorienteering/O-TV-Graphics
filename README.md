@@ -202,6 +202,7 @@ npm run dev              # Vite dev server + Electron
 npm run type-check       # TypeScript
 npm run lint             # ESLint
 npx vitest run           # tests, once (npm test watches)
+npm run test:templates   # every repository template in real Chromium; screenshots + report
 npm run build            # type-check, bundle and package for this platform
 npm run generate:sets    # regenerate the template set packages from templates/sets/_core
 scripts/zip-looks.sh out # zip every look for download (what the website and releases offer)
@@ -290,6 +291,7 @@ rename.
   build and test your own looks
 - [Replay a race](docs/REPLAY-A-RACE.md): rehearse with a finished race played back live
 - [Build & Packaging Guide](docs/BUILD-PACKAGING.md)
+- [Template developer guide](docs/TEMPLATE-DEVELOPMENT.md): declarations, custom views and verification
 - [Template sets](templates/sets/README.md)
 - [Companion module](companion/README.md)
 

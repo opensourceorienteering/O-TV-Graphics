@@ -69,6 +69,20 @@ describe('template set discovery', () => {
     expect(manager.getTemplateById('sof-runner-presentations')).toMatchObject({ desk: { key: 'runner-presentations', previewData: 'starts', behaviours: ['holdOnAir', 'manualSteps'] }, deskWarnings: [] });
   });
 
+  it('resolves every declared desk entry and keeps keys unique within each look', () => {
+    const keys = new Map<string, Set<string>>();
+    for (const template of manager.getAllTemplates()) {
+      expect(template.deskWarnings, template.manifest.id).toEqual([]);
+      if (!template.desk) continue;
+      const seen = keys.get(template.setId) ?? new Set<string>();
+      expect(seen.has(template.desk.key), `${template.setId}/${template.desk.key}`).toBe(false);
+      seen.add(template.desk.key);
+      keys.set(template.setId, seen);
+      expect(template.desk.required.every(p => template.desk!.params.includes(p)), template.manifest.id).toBe(true);
+    }
+    expect([...keys.keys()].sort()).toEqual(['bold', 'brutal', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
+  });
+
   it('assigns clash zones to every bundled graphic', () => {
     for (const template of manager.getAllTemplates()) {
       expect(template.zone, template.manifest.id).toBeTruthy();

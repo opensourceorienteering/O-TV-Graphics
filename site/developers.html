@@ -75,13 +75,14 @@
         looks</strong> clears them all.</p>
 
       <h2 id="how">How a look works</h2>
-      <p>Every look has the same 17 graphics. The markup is shared: it comes from
-        <code>sets/_core/</code>, which ships with the app. A look only decides the
-        <strong>style and motion</strong>, mostly in one CSS file.</p>
+      <p>The app provides 17 standard drawings through <code>sets/_core/</code>. A look can use
+        these drawings, leave graphics out, or add a custom drawing with its own Live desk
+        declaration. SOFT adds Runner presentations this way. Shared style and motion live in
+        the look’s CSS.</p>
       <pre><code>sets/
 ├── _core/                 shared code (ships with the app, not part of a look)
 │   ├── graphic.js         the OGraf Web Component: lifecycle, pages, clocks, scaling
-│   ├── views.js           data → markup for every graphic
+│   ├── views.js           data → markup for standard graphics
 │   └── base.css           placement and structure shared by all looks
 └── my-look/               one look
     ├── set.json           name, description, the three theme colours, approvedEventsOnly
@@ -133,6 +134,34 @@ export default createGraphic('results', set);</code></pre>
       <p>Every look in the repository is a working example. <code>standard</code> is a good start;
         <code>sof</code> follows a full graphic manual. See also
         <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">templates/sets/README.md</a>.</p>
+
+      <h2 id="custom-graphics">Add a custom graphic</h2>
+      <p>Add a hand-made OGraf package alongside the standard generated folders. Its manifest
+        declares <code>v_olgrafik_kind</code>, <code>v_olgrafik_zone</code> and an optional
+        <code>v_olgrafik_desk</code> with its label, inputs, required inputs, manual fields,
+        feeds, behaviours and preview data. Known kinds inherit defaults; invalid declarations
+        fall back and show a warning in Graphics library.</p>
+      <pre><code>"v_olgrafik_desk": {
+  "label": "Relay overview",
+  "inputs": ["class", "page"],
+  "required": ["class"],
+  "fields": ["title"],
+  "feeds": ["timing"],
+  "behaviours": ["holdOnAir", "titleFromClass"],
+  "previewData": "results"
+}</code></pre>
+      <p>Declare manual fields in <code>schema.properties</code> and supply a datasource file for
+        timing mappings. A custom view is passed to <code>createGraphic(kind, set, view)</code>.
+        It returns <code>{ html, steps?, pageKey?, key?, rekey? }</code>. Shared lifecycle code
+        handles pages, clocks and live patches. A new kind also needs an explicit CSS placement
+        rule using tokens such as <code>--table-top</code> and <code>--table-x</code>.</p>
+      <p>Use <code>pageKey</code> for focus changes within one visible page and
+        <code>manualSteps</code> to disable automatic page timers. SOFT’s runner picker uses a
+        string-array field with <code>v_olgrafik_control: "runner-multi-select"</code> and
+        <code>v_olgrafik_default: "favourites"</code>. Stable desk keys retain command numbers
+        and favourites when changing looks. Companion reads the current event’s catalogue.</p>
+      <p>The <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/TEMPLATE-DEVELOPMENT.md">template developer guide</a>
+        contains the complete contract and examples.</p>
 
       <h2 id="css">Styling the graphics</h2>
       <p>Start <code>theme.css</code> with <code>@import url('../_core/base.css');</code>. The
@@ -294,8 +323,13 @@ export default createGraphic('results', set);</code></pre>
       <p>The preview's <strong>More data (JSON)</strong> box shows and edits these fields.</p>
 
       <h2 id="test">Test before race day</h2>
+      <p>In the repository, run <code>npm run type-check</code>, <code>npm test -- --run</code>
+        and <code>npm run test:templates</code>. The last command loads every package in real
+        Chromium, exercises the lifecycle and variants, and writes screenshots and a JSON
+        report to the system temporary directory. Synthetic data and hidden rendering do not
+        replace a final check in Live or testing physical NDI/Companion outputs.</p>
       <ul>
-        <li>All 17 graphics, on air and while changing page.</li>
+        <li>Every graphic your look provides, on air and while changing page or focus step.</li>
         <li>Long names and clubs, accents, and 10+ runners (the results table pages).</li>
         <li>Clubs, flags, and both; English and Swedish labels.</li>
         <li>Live updates: run the simulator at 20× with a results table on air.</li>

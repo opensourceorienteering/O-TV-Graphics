@@ -24,6 +24,7 @@
     "logos:fetch:no": "npm run logos:fetch -- --country no",
     "logos:fetch:au": "npm run logos:fetch -- --country au",
     "test": "vitest",
+    "test:templates": "env -u ELECTRON_RUN_AS_NODE electron scripts/test-template-rendering.cjs",
     "postinstall": "node scripts/verify-grandiose.js",
     "companion:package": "npm run package --prefix companion"
   },

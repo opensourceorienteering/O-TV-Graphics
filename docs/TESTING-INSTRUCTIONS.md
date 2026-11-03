@@ -1,4 +1,29 @@
-# Testing Instructions - LiveResults Time Formatting Debug
+# Testing instructions
+
+For template development and catalogue-wide verification, use the
+[template developer guide](TEMPLATE-DEVELOPMENT.md). The repeatable checks are:
+
+```sh
+npm run type-check
+npm test -- --run
+npm run test:templates
+npx vite build
+```
+
+The Chromium matrix covers all current template packages, real DOM/CSS/fonts/images, paging,
+updates, identity/logo variants, empty data and disposal. It writes screenshots and a JSON
+report to `os.tmpdir()/split-control-template-tests`; override with `TEMPLATE_TEST_OUTPUT`.
+The connected Vitest test covers import, disk storage and HTTP controls with simulated
+renderer replies. Neither suite clicks through the full operator UI or tests physical output
+hardware. See the developer guide for those boundaries and the manual review checklist.
+
+Development runs on port 5174. If the shell inherits Electron's Node mode, start with
+`env -u ELECTRON_RUN_AS_NODE npm run dev`.
+
+## LiveResults time-formatting diagnostic
+
+The remaining sections describe the older, targeted timing/logging diagnostic. Use these
+when investigating timing conversion, alongside the current automated tests above.
 
 ## Overview
 
