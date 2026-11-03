@@ -27,10 +27,13 @@
     <nav class="toc" aria-label="Contents">
       <p>Contents</p>
       <ol>
+        <li><a href="#start-here">Start here</a></li>
         <li><a href="#preview">Preview tool</a></li>
         <li><a href="#how">How a look works</a></li>
         <li><a href="#quick">Change an existing look</a></li>
         <li><a href="#new">Make a new look</a></li>
+        <li><a href="#first-graphic">Your first graphic</a></li>
+        <li><a href="#reference">Command and option reference</a></li>
         <li><a href="#css">Styling the graphics</a></li>
         <li><a href="#logo">The look's own logo</a></li>
         <li><a href="#fonts">Fonts</a></li>
@@ -54,6 +57,39 @@
           look's zip, right in your browser.</p>
         <p><a class="button primary" href="preview/" style="margin-top:8px">Open the preview</a></p>
       </div>
+
+
+      <h2 id="start-here">Start here</h2>
+      <p>You can try the graphics in your browser before installing anything. For a simple
+        colour change, start with an existing look. To make a new graphic, you need a text
+        editor and basic HTML, CSS and JavaScript; the shared code handles playback for you.</p>
+<div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">I want to…</th><th scope="col">Start with</th><th scope="col">What you need</th></tr></thead>
+        <tbody><tr><td>Change colours or the event logo</td><td>Plan → Theme in the app</td><td>No coding</td></tr>
+          <tr><td>Change fonts, spacing or animations</td><td><a href="#quick">Change an existing look</a></td><td>CSS and a downloaded look zip</td></tr>
+          <tr><td>Add a new graphic with my own text</td><td><a href="#first-graphic">Your first graphic</a></td><td>Three small code changes, shown below</td></tr>
+          <tr><td>Show a class’s runners or results</td><td><a href="#reference">Inputs and feeds</a></td><td>A desk declaration and a timing datasource file</td></tr>
+          <tr><td>Test or share my work</td><td><a href="#test">Test</a> and <a href="#share">Share</a></td><td>The browser preview, then the app</td></tr></tbody>
+      </table>
+      </div>
+      <h3>The words used in this guide</h3>
+<div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Word</th><th scope="col">Plain meaning</th><th scope="col">Example</th></tr></thead>
+        <tbody><tr><td>Look</td><td>A folder of graphics with the same visual style.</td><td><code>standard</code> or <code>sof</code></td></tr>
+          <tr><td>Graphic</td><td>One thing you put on screen.</td><td>A start list or a name plate</td></tr>
+          <tr><td>Manifest</td><td>A JSON file describing a graphic and its controls.</td><td><code>standard-results.ograf.json</code></td></tr>
+          <tr><td>Kind</td><td>The drawing/type of graphic. CSS uses it in a class name.</td><td><code>results</code> → <code>.gfx--results</code></td></tr>
+          <tr><td>Desk key</td><td>The stable identifier used by favourites, command numbers and remote controls.</td><td><code>timer</code> uses the <code>clock</code> drawing</td></tr>
+          <tr><td>Schema</td><td>The list of editable fields, their types and defaults.</td><td><code>title</code> is a text field</td></tr>
+          <tr><td>View</td><td>A JavaScript function that turns data into HTML.</td><td>Returns <code>{ html, steps }</code></td></tr>
+          <tr><td>Feed</td><td>A type of data the app can fill in.</td><td><code>timing</code> or <code>weather</code></td></tr>
+          <tr><td>Step</td><td>One press of Next. It may change the page or focus a runner.</td><td>SOFT Runner presentations</td></tr></tbody>
+      </table>
+      </div>
+      <p>Commands in a terminal run from the repository folder. Code blocks labelled with a
+        filename go in that file. Keep JSON keys in double quotes, and leave out trailing commas.</p>
 
       <h2 id="preview">Preview tool</h2>
       <p>The <a href="preview/">preview</a> runs the real graphics, the same files the app uses,
@@ -135,6 +171,120 @@ export default createGraphic('results', set);</code></pre>
         <code>sof</code> follows a full graphic manual. See also
         <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/templates/sets/README.md">templates/sets/README.md</a>.</p>
 
+      <h2 id="first-graphic">Your first graphic: a welcome card</h2>
+      <p>This example adds a small, editable welcome card to your local Standard look. It needs
+        no competition, runners or internet data. Use a working copy of the repository; editing
+        this copy does not change anyone else’s installed app.</p>
+      <h3>1. Install and start the app</h3>
+      <p>Install Node.js 22 or newer. Open a terminal, clone the repository and install its
+        dependencies. Native NDI dependencies may need the platform build tools listed in the
+        repository README.</p>
+<pre><code>git clone https://github.com/opensourceorienteering/O-TV-Graphics.git
+cd O-TV-Graphics
+npm install
+npm run dev</code></pre>
+      <p>If your shell has Electron’s Node mode enabled, start with
+        <code>env -u ELECTRON_RUN_AS_NODE npm run dev</code> on macOS/Linux. Split Control’s
+        dev server uses port 5174; another project can use 5173 at the same time.</p>
+      <h3>2. Create the manifest</h3>
+      <p>Create the folder <code>templates/sets/standard/standard-welcome/</code>. Inside it,
+        create <code>standard-welcome.ograf.json</code> with this complete JSON:</p>
+<pre><code>{
+  &quot;$schema&quot;: &quot;https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json&quot;,
+  &quot;id&quot;: &quot;standard-welcome&quot;,
+  &quot;name&quot;: &quot;Standard – Welcome card&quot;,
+  &quot;main&quot;: &quot;graphic.js&quot;,
+  &quot;supportsRealTime&quot;: true,
+  &quot;supportsNonRealTime&quot;: false,
+  &quot;stepCount&quot;: 1,
+  &quot;schema&quot;: {
+    &quot;type&quot;: &quot;object&quot;,
+    &quot;properties&quot;: {
+      &quot;title&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;title&quot;: &quot;Heading&quot;, &quot;default&quot;: &quot;Welcome&quot; },
+      &quot;message&quot;: { &quot;type&quot;: &quot;string&quot;, &quot;title&quot;: &quot;Message&quot;, &quot;default&quot;: &quot;Good luck to every runner!&quot; }
+    }
+  },
+  &quot;v_olgrafik_set&quot;: &quot;standard&quot;,
+  &quot;v_olgrafik_kind&quot;: &quot;welcome-card&quot;,
+  &quot;v_olgrafik_zone&quot;: &quot;main&quot;,
+  &quot;v_olgrafik_desk&quot;: {
+    &quot;label&quot;: &quot;Welcome card&quot;,
+    &quot;short&quot;: &quot;Welcome&quot;,
+    &quot;inputs&quot;: [],
+    &quot;required&quot;: [],
+    &quot;fields&quot;: [&quot;title&quot;, &quot;message&quot;],
+    &quot;feeds&quot;: [],
+    &quot;behaviours&quot;: []
+  }
+}</code></pre>
+      <p><code>schema.properties</code> creates the two text fields. <code>fields</code> puts
+        them in the Live inspector. Empty <code>inputs</code> and <code>feeds</code> mean there
+        is no class/runner selection and no timing connection to set up.</p>
+      <h3>3. Add the drawing</h3>
+      <p>In the same folder, create <code>graphic.js</code>:</p>
+<pre><code>import { createGraphic } from &#x27;../../_core/graphic.js&#x27;;
+import { esc } from &#x27;../../_core/util.js&#x27;;
+import set from &#x27;../set.js&#x27;;
+
+function welcomeCard(data) {
+  const title = data.title || &#x27;Welcome&#x27;;
+  const message = data.message || &#x27;Good luck to every runner!&#x27;;
+  return {
+    steps: 1,
+    html: `&lt;div class=&quot;panel panel--table&quot;&gt;
+      &lt;header class=&quot;hdr&quot;&gt;&lt;span class=&quot;hdr-title&quot;&gt;${esc(title)}&lt;/span&gt;&lt;/header&gt;
+      &lt;div class=&quot;rows&quot;&gt;&lt;div class=&quot;row&quot;&gt;
+        &lt;span class=&quot;c-name&quot;&gt;${esc(message)}&lt;/span&gt;
+      &lt;/div&gt;&lt;/div&gt;
+    &lt;/div&gt;`
+  };
+}
+
+export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code></pre>
+      <p><code>esc()</code> safely inserts text into HTML. <code>createGraphic()</code> supplies
+        Show, Hide, updates and cleanup. The view just describes what to draw.</p>
+      <h3>4. Give the new kind a position</h3>
+      <p>Add this CSS at the end of <code>templates/sets/standard/theme.css</code>:</p>
+<pre><code>.gfx--welcome-card .panel {
+  top: var(--table-top, 144px);
+  left: var(--table-x, 480px);
+  right: var(--table-x, 480px);
+}
+.gfx--welcome-card .row { padding: 16px; }</code></pre>
+      <p>The picture is designed at 1920 × 1080. These shared table settings give the card the
+        same centred width as Standard’s results and start list. New kinds need a positioning
+        rule; otherwise their panel can sit at the top left.</p>
+      <h3>5. See it on screen</h3>
+      <ol>
+        <li>In Graphics library, scan the library (or restart the dev app).</li>
+        <li>Create/open a test event and choose <strong>Standard</strong> as its look.</li>
+        <li>Open Live and choose <strong>Welcome card</strong>. Type a heading and message.</li>
+        <li>Check Preview, then press <strong>Show</strong>. Edit the message and press
+          <strong>Update</strong>; press <strong>Hide</strong> when finished.</li>
+      </ol>
+      <p><strong>Success looks like:</strong> a centred card using Standard’s fonts and colours,
+        two editable fields in Live, and changes reaching Program only when you press Update.</p>
+      <h3>6. Try two pages</h3>
+      <p>In the manifest, change <code>stepCount</code> to <code>-1</code> (the drawing decides
+        its step count). Replace only the view function with this; keep the imports and export:</p>
+<pre><code>function welcomeCard(data, ctx) {
+  const messages = [data.message || &#x27;Welcome!&#x27;, &#x27;The next class starts soon.&#x27;];
+  const page = Math.min(Math.max(ctx.step, 1), messages.length);
+  return {
+    steps: messages.length,
+    pageKey: `page-${page}`,
+    html: `&lt;div class=&quot;panel panel--table&quot;&gt;
+      &lt;header class=&quot;hdr&quot;&gt;&lt;span class=&quot;hdr-title&quot;&gt;${esc(data.title || &#x27;Welcome&#x27;)}&lt;/span&gt;&lt;/header&gt;
+      &lt;div class=&quot;rows&quot;&gt;&lt;div class=&quot;row&quot;&gt;&lt;span class=&quot;c-name&quot;&gt;${esc(messages[page - 1])}&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;footer class=&quot;ftr&quot;&gt;&lt;span class=&quot;ftr-page&quot;&gt;${page}/${messages.length}&lt;/span&gt;&lt;/footer&gt;
+    &lt;/div&gt;`
+  };
+}</code></pre>
+      <p>Rescan/restart, hide the card if it is on air, then Show it again. Use Next/Previous
+        to move between the two pages. For operator-controlled steps, add
+        <code>"manualSteps"</code> to the declaration’s <code>behaviours</code> array. For focus
+        changes on one page, return the same <code>pageKey</code> for those steps.</p>
+
       <h2 id="custom-graphics">Add a custom graphic</h2>
       <p>Add a hand-made OGraf package alongside the standard generated folders. Its manifest
         declares <code>v_olgrafik_kind</code>, <code>v_olgrafik_zone</code> and an optional
@@ -163,6 +313,132 @@ export default createGraphic('results', set);</code></pre>
       <p>The <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/TEMPLATE-DEVELOPMENT.md">template developer guide</a>
         contains the complete contract and examples.</p>
 
+
+      <h2 id="reference">Command and option reference</h2>
+      <p>There are three kinds of “command”: terminal commands for development, methods that
+        the app calls on a graphic, and operator controls in Live. The tables separate them.</p>
+      <p><a href="#terminal-commands">Terminal commands</a> · <a href="#graphic-actions">Graphic methods and actions</a> · <a href="#view-properties">What a custom view returns</a> · <a href="#desk-properties">Desk declaration properties</a> · <a href="#desk-inputs">Inputs</a> · <a href="#desk-feeds">Feeds</a> · <a href="#desk-behaviours">Behaviours</a> · <a href="#standard-drawings">Existing standard drawings</a> · <a href="#live-keys">Live keyboard controls</a> · <a href="#troubleshooting">Common problems</a></p>
+      <h3 id="terminal-commands">Terminal commands</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Run in the repository folder</th><th scope="col">What it does</th><th scope="col">When to use it</th></tr></thead>
+        <tbody><tr><td><code>npm run dev</code></td><td>Starts the dev app and Vite on port 5174.</td><td>While editing a look</td></tr>
+          <tr><td><code>npm run type-check</code></td><td>Checks TypeScript without building.</td><td>Before sharing code changes</td></tr>
+          <tr><td><code>npm test -- --run</code></td><td>Runs the unit and backend integration tests once.</td><td>After app-side changes</td></tr>
+          <tr><td><code>npm run test:templates</code></td><td>Loads every repository graphic in real Chromium and saves screenshots/report.</td><td>After changing markup, CSS or a manifest</td></tr>
+          <tr><td><code>npm run generate:sets</code></td><td>Rewrites the standard generated graphic packages.</td><td>After editing the generator; keep custom folders separate</td></tr>
+          <tr><td><code>npx vite build</code></td><td>Builds the app code without making an installer.</td><td>To check the production bundle</td></tr>
+          <tr><td><code>npm run build</code></td><td>Type-checks, builds and makes an installer for your platform.</td><td>To package the application</td></tr>
+          <tr><td><code>bash scripts/build-site.sh /tmp/split-control-site</code></td><td>Builds the site, previews and look downloads. Replaces the target directory.</td><td>To test the website in a dedicated output folder</td></tr>
+          <tr><td><code>bash scripts/zip-looks.sh /tmp/split-control-looks</code></td><td>Creates one downloadable zip per look.</td><td>To share updated looks</td></tr></tbody>
+      </table>
+      </div><h3 id="graphic-actions">Graphic methods and actions</h3><p>The app calls these methods for you. These examples are useful when writing a test or a custom player; <code>graphic</code> means an already-created graphic element.</p><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Method/action</th><th scope="col">Example call</th><th scope="col">Result</th></tr></thead>
+        <tbody><tr><td><code>load</code></td><td><code>await graphic.load({ data: { title: &#x27;Welcome&#x27; } })</code></td><td>Loads styles and prepares the graphic. It is still off air.</td></tr>
+          <tr><td><code>playAction</code></td><td><code>await graphic.playAction({})</code></td><td>Shows an off-air graphic; when already visible, advances one step.</td></tr>
+          <tr><td><code>playAction</code> with <code>delta</code></td><td><code>await graphic.playAction({ delta: -1 })</code></td><td>Moves back one step when visible.</td></tr>
+          <tr><td><code>playAction</code> with <code>goto</code></td><td><code>await graphic.playAction({ goto: 1 })</code></td><td>Goes to a specific one-based step.</td></tr>
+          <tr><td><code>updateAction</code></td><td><code>await graphic.updateAction({ data: { title: &#x27;Updated&#x27; } })</code></td><td>Replaces the data object and patches the visible content. Send the full data you want to retain.</td></tr>
+          <tr><td><code>stopAction</code></td><td><code>await graphic.stopAction({})</code></td><td>Plays the exit and hides the graphic.</td></tr>
+          <tr><td><code>customAction</code></td><td><code>await graphic.customAction({ id: &#x27;next-page&#x27; })</code></td><td>Built-in alias for the next step.</td></tr>
+          <tr><td><code>customAction</code></td><td><code>await graphic.customAction({ id: &#x27;previous-page&#x27; })</code></td><td>Built-in alias for the previous step.</td></tr>
+          <tr><td><code>customAction</code></td><td><code>await graphic.customAction({ id: &#x27;first-page&#x27; })</code></td><td>Built-in alias for step 1.</td></tr>
+          <tr><td><code>dispose</code></td><td><code>await graphic.dispose()</code></td><td>Stops ticking and removes the graphic’s DOM/listeners.</td></tr></tbody>
+      </table>
+      </div><p>Add <code>skipAnimation: true</code> to play, stop or update options when you need an instant state in a test. A “page” action advances a step; a custom graphic can use steps for runner focus instead of page changes.</p><h3 id="view-properties">What a custom view returns</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Property</th><th scope="col">Example</th><th scope="col">Meaning</th></tr></thead>
+        <tbody><tr><td><code>html</code></td><td><code>html: &#x27;&lt;div class=&quot;panel&quot;&gt;Welcome&lt;/div&gt;&#x27;</code></td><td>Required HTML string. Escape any operator/timing text with esc().</td></tr>
+          <tr><td><code>steps</code></td><td><code>steps: 3</code></td><td>Total operator steps. Omit for a one-step graphic.</td></tr>
+          <tr><td><code>pageKey</code></td><td><code>pageKey: &#x27;page-1&#x27;</code></td><td>Keep the key the same for in-place focus steps; change it for a page transition.</td></tr>
+          <tr><td><code>rekey</code> + <code>key</code></td><td><code>rekey: true, key: &#x27;next-start-group&#x27;</code></td><td>For content that changes with time. The ticker redraws when the key changes; do not generate a new key on every call.</td></tr></tbody>
+      </table>
+      </div><h3 id="desk-properties">Desk declaration properties</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Property</th><th scope="col">Example</th><th scope="col">Meaning</th></tr></thead>
+        <tbody><tr><td><code>key</code></td><td><code>&quot;welcome-card&quot;</code></td><td>Stable control/favourite ID. Defaults to the kind for new graphics.</td></tr>
+          <tr><td><code>label</code> / <code>short</code></td><td><code>&quot;Welcome card&quot;</code> / <code>&quot;Welcome&quot;</code></td><td>Full Live label and short palette label.</td></tr>
+          <tr><td><code>inputs</code></td><td><code>[&quot;class&quot;, &quot;page&quot;]</code></td><td>Palette parameters, in the order you want them typed.</td></tr>
+          <tr><td><code>required</code></td><td><code>[&quot;class&quot;]</code></td><td>Inputs needed to prepare the graphic; each must also be in inputs.</td></tr>
+          <tr><td><code>fields</code></td><td><code>[&quot;title&quot;, &quot;message&quot;]</code></td><td>Schema fields to show in the Live inspector.</td></tr>
+          <tr><td><code>settingsFields</code></td><td><code>[&quot;nameStyle&quot;]</code></td><td>Schema fields to edit only in template settings.</td></tr>
+          <tr><td><code>feeds</code></td><td><code>[&quot;timing&quot;]</code></td><td>Existing data sources the graphic uses; timing needs a datasource mapping file too.</td></tr>
+          <tr><td><code>behaviours</code></td><td><code>[&quot;holdOnAir&quot;, &quot;manualSteps&quot;]</code></td><td>Existing desk behaviours; see below.</td></tr>
+          <tr><td><code>rowsPartner</code></td><td><code>&quot;start-list&quot;</code></td><td>A graphic whose rows-per-page setting this graphic can follow.</td></tr>
+          <tr><td><code>previewData</code></td><td><code>&quot;results&quot;</code>, <code>&quot;splits&quot;</code> or <code>&quot;starts&quot;</code></td><td>What Plan needs to find in real timing data, otherwise it uses samples. Use null to clear an inherited requirement.</td></tr></tbody>
+      </table>
+      </div><h3 id="desk-inputs">Inputs</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Name</th><th scope="col">What the operator picks/types</th><th scope="col">Example</th></tr></thead>
+        <tbody><tr><td><code>class</code></td><td>A class number or name.</td><td>Class 2, or D21</td></tr>
+          <tr><td><code>runner</code></td><td>A bib or runner name.</td><td>Bib 101</td></tr>
+          <tr><td><code>control</code></td><td>A radio control or finish; start requires startControl.</td><td><code>45</code>, <code>F</code>; <code>S</code> when enabled</td></tr>
+          <tr><td><code>page</code></td><td>A one-based starting step/page number.</td><td><code>2</code></td></tr></tbody>
+      </table>
+      </div><h3 id="desk-feeds">Feeds</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Name</th><th scope="col">Supplies</th><th scope="col">Setup</th></tr></thead>
+        <tbody><tr><td><code>timing</code></td><td>Class results, split times and start times.</td><td>Timing connection plus a .datasource.json mapping file</td></tr>
+          <tr><td><code>course</code></td><td>Course length, climb, controls and other supported class facts.</td><td>A class and a source that supplies course facts; manual values can override</td></tr>
+          <tr><td><code>weather</code></td><td>Condition, temperature, wind and humidity.</td><td>Event location/coordinates, or manual weather values</td></tr>
+          <tr><td><code>event</code></td><td>Event title, series, place and date.</td><td>Event setup</td></tr></tbody>
+      </table>
+      </div><h3 id="desk-behaviours">Behaviours</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Name</th><th scope="col">What changes</th><th scope="col">Requirement</th></tr></thead>
+        <tbody><tr><td><code>startControl</code></td><td>Allows S (start); no control also means start.</td><td>control input</td></tr>
+          <tr><td><code>followNextStarter</code></td><td>Follows the next starter until the operator makes a manual pick.</td><td>runner input; the current Live desk has one shared follow state</td></tr>
+          <tr><td><code>freeze</code></td><td>Enables manually stopping a running clock on the way to a control.</td><td>runner input; no freeze at the start</td></tr>
+          <tr><td><code>titleFromClass</code></td><td>Uses the class name when the title is empty.</td><td>A chosen class</td></tr>
+          <tr><td><code>titleFromLocation</code></td><td>Uses the event location when the title is empty.</td><td>Event location</td></tr>
+          <tr><td><code>holdOnAir</code></td><td>Defaults live timing updates to held until Update.</td><td>Useful for tables and presentations</td></tr>
+          <tr><td><code>manualSteps</code></td><td>Disables automatic page timers. Only operator actions advance steps.</td><td>Useful for presentations</td></tr></tbody>
+      </table>
+      </div><h3 id="standard-drawings">Existing standard drawings</h3><p>Pass the kind to <code>createGraphic(kind, set)</code> to reuse its drawing. Desk keys can differ from kinds. Two legacy drawings have no default Live entry; add a desk declaration to offer them there.</p><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Kind</th><th scope="col">Graphic</th><th scope="col">Default desk key</th></tr></thead>
+        <tbody><tr><td><code>clock</code></td><td>Elapsed timer</td><td><code>timer</code></td></tr>
+          <tr><td><code>course-info</code></td><td>Course parameters</td><td><code>course-info</code></td></tr>
+          <tr><td><code>event-title</code></td><td>Race title</td><td><code>event-title</code></td></tr>
+          <tr><td><code>free-text</code></td><td>Identity plate</td><td><code>free-text</code></td></tr>
+          <tr><td><code>name-strap</code></td><td>Name strap</td><td>No default Live entry</td></tr>
+          <tr><td><code>podium</code></td><td>Podium / flowers</td><td><code>podium</code></td></tr>
+          <tr><td><code>position-history</code></td><td>Position history</td><td><code>position-history</code></td></tr>
+          <tr><td><code>results</code></td><td>Results table</td><td><code>results</code></td></tr>
+          <tr><td><code>runner-identity</code></td><td>Runner identity</td><td><code>runner-identity</code></td></tr>
+          <tr><td><code>runner-lower-third</code></td><td>Runner lower third</td><td>No default Live entry</td></tr>
+          <tr><td><code>runner-splits</code></td><td>Runner split comparison</td><td><code>runner-splits</code></td></tr>
+          <tr><td><code>runner-start</code></td><td>Runner focus</td><td><code>runner-start</code></td></tr>
+          <tr><td><code>speaker</code></td><td>Commentators / speaker</td><td><code>speaker</code></td></tr>
+          <tr><td><code>standings-lower-third</code></td><td>Live split</td><td><code>live-feed</code></td></tr>
+          <tr><td><code>start-group</code></td><td>Start group</td><td><code>start-group</code></td></tr>
+          <tr><td><code>start-list</code></td><td>Start list</td><td><code>start-list</code></td></tr>
+          <tr><td><code>weather</code></td><td>Weather</td><td><code>weather</code></td></tr></tbody>
+      </table>
+      </div><p>SOFT additionally declares <code>runner-presentations</code>. Its Next action lifts chosen runners one at a time; start-list favourites are selected by default. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/RUNNER-PRESENTATIONS.md">Runner presentations guide</a>.</p><h3 id="live-keys">Live keyboard controls</h3><p>Use these in Live with focus outside a text field. Command numbers are configurable—check the current desk rather than assuming a fixed number.</p><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+        <tbody><tr><td><code>Space</code></td><td>Show/hide the selected graphic</td></tr>
+          <tr><td><code>U</code></td><td>Update its on-air data from Preview</td></tr>
+          <tr><td><code>H</code></td><td>Hide the active graphic</td></tr>
+          <tr><td><code>← / →</code></td><td>Previous/next step on Program</td></tr>
+          <tr><td><code>T</code></td><td>Freeze/resume an eligible running clock</td></tr>
+          <tr><td><code>Esc</code></td><td>Hide all; in a field, leave the field</td></tr>
+          <tr><td><code>F</code></td><td>Save the draft as a favourite</td></tr>
+          <tr><td><code>Ctrl/Cmd+K</code></td><td>Open the command palette, including from a field</td></tr></tbody>
+      </table>
+      </div><p>Palette example: if your Results graphic is number 4, <code>4 2 F 1</code> means Results, class 2, finish, first page. <code>4 F1</code> recalls that graphic’s first saved favourite. Preparing a command changes Preview; Show puts it on air.</p><h3 id="troubleshooting">Common problems</h3><div class="table-wrap">
+      <table>
+        <thead><tr><th scope="col">What you see</th><th scope="col">Check this</th></tr></thead>
+        <tbody><tr><td>My graphic is missing from Live.</td><td>Check the event’s selected look, unique manifest ID and desk key, and declaration warnings in Graphics library. Rescan after adding a package.</td></tr>
+          <tr><td>The panel is small or at the top left.</td><td>Add a placement rule for your exact .gfx--kind; reuse table tokens for a results-sized panel.</td></tr>
+          <tr><td>The inspector has no field.</td><td>Declare it in schema.properties and list it in v_olgrafik_desk.fields.</td></tr>
+          <tr><td>The graphic has no timing results.</td><td>Check the class, event timing connection, timing feed and .datasource.json mappings. A feed name alone does not fetch a new data type.</td></tr>
+          <tr><td>My data disappears after Update.</td><td>updateAction receives a replacement data object. Retain the fields you still need.</td></tr>
+          <tr><td>Next changes the whole page when I only want to focus a runner.</td><td>Keep the same pageKey for those steps; use manualSteps to disable timers.</td></tr>
+          <tr><td>The dev server reports a busy port.</td><td>Stop the old Split Control dev process on 5174 and restart. Other projects may keep using 5173.</td></tr></tbody>
+      </table>
+      </div>
       <h2 id="css">Styling the graphics</h2>
       <p>Start <code>theme.css</code> with <code>@import url('../_core/base.css');</code>. The
         canvas is 1920 × 1080; graphics scale to the output size.</p>

@@ -1,5 +1,8 @@
 # Developing graphic templates
 
+New to graphics development? Start with the [beginner walkthrough](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html#first-graphic)
+for a complete welcome-card example, then use the [command and option tables](https://opensourceorienteering.github.io/O-TV-Graphics/developers.html#reference).
+
 A look is a directory in `templates/sets/<look>/` with `set.json`, `set.js`, `theme.css`,
 bundled fonts and one directory per OGraf graphic. Looks may omit graphics or add their own.
 The standard catalogue currently supplies 17 reusable drawings; SOFT also has a hand-made
