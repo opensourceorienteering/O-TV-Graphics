@@ -1,3 +1,4 @@
+import { timingClasses, mapTimingClasses } from '../data/timingScope';
 import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
  * IPC for events (folders, Plan sections, start lists) and Live mode.
@@ -206,16 +207,16 @@ export function registerEventHandlers(): void {
   });
   handle("event:controls", async (id: string, className: string) => {
     const { client, competitionId } = await eventClient(id);
-    const res = await client.getClassResults(competitionId, className, {
-      maxAgeMs: 30_000,
-    });
+    const classes = await timingClasses(client, competitionId, className);
+    const snapshots = await mapTimingClasses<any>(classes, name => client.getClassResults(competitionId, name, { maxAgeMs: 30_000 }));
     // Names as graphics show them (Plan → Radio controls), with the data source's name
     const names = events.loadStartList(id).controlNames;
-    return (res.data.splitcontrols ?? []).map((c: any) => {
+    const controls = snapshots.flatMap((res, index) => (res.data.splitcontrols ?? []).map((c: any) => {
       const code = typeof c === "object" ? c.code : c;
       const sourceName = typeof c === "object" ? c.name : `Control ${c}`;
-      return { code, name: events.controlNameFor(names, className, code) || sourceName, sourceName };
-    });
+      return { code, name: events.controlNameFor(names, classes[index], code) || sourceName, sourceName };
+    }));
+    return [...new Map(controls.map(c => [String(c.code), c])).values()];
   });
 
   // --- start lists ---

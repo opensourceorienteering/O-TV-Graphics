@@ -44,6 +44,13 @@ for (const { manifest, folder } of catalogue) {
       presentation: { language: 'en', identity: 'club', logoMode: 'template' },
       event: { name: 'Template regression', location: 'Arena', date: timing.competitionDate },
     };
+    if (manifest.v_olgrafik_kind === 'finish-watch') {
+      data.triggerControl = String(timing.splitControls[0].code);
+      data.measureControl = 'F';
+      data.className = '';
+      data.results = data.results.map((r, i) => i < 2 ? { ...r, className: i ? 'H21' : 'D21', statusCode: 10, time: '--:--',
+        startTimeMs: race.end - (35 + i) * 60000 } : { ...r, className: 'D21' });
+    }
     await el.load({ data, renderType: 'realtime' });
     const shown = await el.playAction({ skipAnimation: true });
     await document.fonts.ready;
@@ -78,6 +85,22 @@ for (const { manifest, folder } of catalogue) {
       const last = await el.playAction({ goto: result.steps, skipAnimation: true });
       assert(last.currentStep === result.steps, 'Cannot reach last step');
       await capture(`${manifest.id}-last`);
+    }
+    if (manifest.v_olgrafik_kind === 'finish-watch') {
+      assert(el.shadowRoot.querySelectorAll('.is-approaching').length === 2, 'Prewarning did not show both classes');
+      assert(el.shadowRoot.textContent.includes('35:00'), 'Clock must show total race time, not the radio interval');
+      const registered = { ...data, results: data.results.map((r, i) => i ? r : { ...r, statusCode: 0, time: '35:12', finishTimeMs: 2112000, position: 1 }) };
+      await el.updateAction({ data: registered });
+      assert(el.shadowRoot.querySelector('.is-registered'), 'Finish did not freeze the runner');
+      assert(el.shadowRoot.querySelector('.is-registered .c-time').textContent === '35:12', 'Wrong official finish time');
+      await capture(`${manifest.id}-registered`);
+      await el.updateAction({ data: { ...registered, frozenAt: data.frozenAt + 5000 } });
+      assert(!el.shadowRoot.querySelector('.is-registered'), 'Completed runner did not leave after the hold');
+      assert(el.shadowRoot.querySelector('.is-approaching'), 'Other approaching runner was removed');
+      await capture(`${manifest.id}-after-hold`);
+      await el.updateAction({ data: { ...data, title: '', presentation: { ...data.presentation, language: 'sv' } } });
+      assert(el.shadowRoot.textContent.includes('På väg mot Mål'), 'Swedish finish-watch labels did not apply');
+      await capture(`${manifest.id}-sv`);
     }
     await el.updateAction({ data: { ...data, title: 'Updated title', text: 'Updated text' } });
     await frames();

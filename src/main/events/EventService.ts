@@ -968,7 +968,7 @@ export function applyStartList(
     ...data,
     results: data.results.map((r: any) => {
       const e =
-        index.get(entryKey(cls, r.name, r.club)) ??
+        index.get(entryKey(r.className || cls, r.name, r.club)) ??
         index.get(
           `*|${String(r.name).trim().toLowerCase()}|${String(r.club ?? "")
             .trim()

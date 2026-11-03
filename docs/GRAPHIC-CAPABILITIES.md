@@ -203,9 +203,9 @@ provide representative event, course and weather values. Plan theme previews use
 
 ## Verification
 
-On 2026-11-03, the catalogue has 155 packages: 154 graphics across nine looks and the system
-output test pattern. All 155 passed, with zero missing assets or renderer errors. The full
-regression suite passed 532 tests, and type checking, the production build and site build passed.
+On 2026-11-03, the catalogue has 156 packages: 155 graphics across nine looks and the system
+output test pattern. All 156 passed, with zero missing assets or renderer errors. The full
+regression suite passed 542 tests, and type checking, the production build and site build passed.
 The [recorded browser report](validation/template-rendering-2026-11-03.json) includes per-template
 geometry and step counts. `npm run test:templates` runs their actual JavaScript, CSS, fonts and
 images in an isolated real Chromium renderer. It covers loading, Show, paging, updates,
@@ -227,3 +227,7 @@ The SOFT look's [Runner presentations](RUNNER-PRESENTATIONS.md) is the first han
 example: it uses a schema `v_olgrafik_control: "runner-multi-select"` on a string-array field
 for its Live picker, `manualSteps` for operator-controlled advances and `pageKey` for focus
 changes within a visible page.
+
+SOFT’s [Finish watch](FINISH-WATCH.md) uses the optional all-class timing scope and two
+control fields. Its prewarning reveals the runner; total race time and placing refer to the
+measuring point. Registered rows hold briefly, then leave.

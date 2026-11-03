@@ -320,14 +320,15 @@ export function LiveDesk() {
   const numberOf = (key: string) => Object.entries(commands).find(([, k]) => k === key)?.[0];
 
   const loadControls = useCallback((cls: string) => {
-    if (!cls || controls[cls]) return;
+    if (controls[cls]) return;
     call<PaletteControl[]>('event:controls', eventId, cls)
       .then(list => setControls(c => ({ ...c, [cls]: list })))
       .catch(() => setControls(c => ({ ...c, [cls]: [] })));
   }, [controls, eventId]);
 
   useEffect(() => {
-    if (def?.params.includes('control') && draft.values.className) loadControls(draft.values.className);
+    const radioFields = Object.values(def?.schema ?? {}).some((field: any) => field.v_olgrafik_control === 'radio-control');
+    if (radioFields || (def?.params.includes('control') && draft.values.className)) loadControls(draft.values.className || '');
   }, [def, draft.values.className, loadControls]);
 
   // --- preview: every draft change prepares Preview (never the output) ---
@@ -782,7 +783,7 @@ export function LiveDesk() {
                 </div>
               )}
               {deskFields(def).map(f => (
-                <SchemaField runnerChoices={classRunners} onRefreshRunners={async () => {
+                <SchemaField controlChoices={controls[draft.values.className || ''] ?? []} excludedControl={draft.fields[def.schema[f]?.v_olgrafik_distinctFrom]} runnerChoices={classRunners} onRefreshRunners={async () => {
                   try { const sl = await call<EventStartList>('startlist:refresh', eventId); applyStartList(sl.entries); say(`${sl.entries.length} runners loaded`); }
                   catch (e) { say((e as Error).message, 'err'); }
                 }} key={f} name={f} schema={def.schema[f]} value={draft.fields[f]} fallback={def.fieldDefaults?.[f]} inherited={inheritedFor(selected, f, draft)} onChange={v => setDraft({ ...draft, fields: { ...draft.fields, [f]: v } })} />

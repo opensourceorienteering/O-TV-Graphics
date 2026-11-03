@@ -1,5 +1,5 @@
 {
-  "total": 155,
+  "total": 156,
   "failed": 0,
   "results": [
     {
@@ -1467,6 +1467,18 @@
       "steps": 1
     },
     {
+      "id": "sof-finish-watch",
+      "kind": "finish-watch",
+      "ok": true,
+      "geometry": {
+        "x": 400,
+        "y": 200,
+        "width": 1120,
+        "height": 286
+      },
+      "steps": 1
+    },
+    {
       "id": "sof-free-text",
       "kind": "free-text",
       "ok": true,
@@ -1857,6 +1869,6 @@
       "steps": 1
     }
   ],
-  "testedAt": "2026-11-03T13:16:28.820Z",
+  "testedAt": "2026-11-03T14:05:44.182Z",
   "assetFailures": []
 }

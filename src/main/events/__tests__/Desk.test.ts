@@ -114,6 +114,24 @@ describe('live desk', () => {
     }
   });
 
+  it('requires distinct prewarning/measuring points and accepts Finish with an optional class', async () => {
+    const custom = tpl('sof-finish-watch', 'finish-watch', false);
+    custom.manifest.schema = { type: 'object', properties: {
+      triggerControl: { type: 'string', v_olgrafik_control: 'radio-control' },
+      measureControl: { type: 'string', default: 'F', v_olgrafik_control: 'radio-control', v_olgrafik_includeFinish: true, v_olgrafik_distinctFrom: 'triggerControl' }
+    }, required: ['triggerControl', 'measureControl'] };
+    custom.manifest.v_olgrafik_desk = { label: 'Finish watch', inputs: ['class'], fields: ['triggerControl', 'measureControl'] };
+    templates.push(custom);
+    try {
+      await expect(desk.deskShow('p1', { key: 'finish-watch', values: {}, fields: { triggerControl: '45', measureControl: '45' } })).rejects.toThrow('two different');
+      await expect(desk.deskShow('p1', { key: 'finish-watch', values: {}, fields: { triggerControl: 'F' } })).rejects.toThrow('radio control');
+      await expect(desk.deskShow('p1', { key: 'finish-watch', values: {}, fields: { triggerControl: '45', measureControl: 'F' } })).resolves.toBeDefined();
+    } finally {
+      templates.pop();
+      for (const page of pages) page.items = page.items.filter((i: any) => i.templateId !== 'sof-finish-watch');
+    }
+  });
+
   it('refuses incomplete drafts and never plays them', async () => {
     await expect(desk.deskShow('p1', { key: 'runner-identity', values: { className: 'H21' }, fields: {} })).rejects.toThrow('Choose a runner first');
     await expect(desk.deskShow('p1', { key: 'free-text', values: {}, fields: {} })).rejects.toThrow('Choose Text first');

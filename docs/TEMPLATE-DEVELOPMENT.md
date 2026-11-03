@@ -156,3 +156,20 @@ Together these cover the backend and browser runtime boundaries. They do not aut
 through the full Electron operator UI or physical Companion/NDI devices. Review screenshots
 and use the app's Live desk for those final checks. Development uses port 5174 with strict
 port binding, so another Vite project on 5173 cannot appear in the Electron window.
+
+
+## Optional class scope and control selectors
+
+A datasource may set `api.classScope: "optional"`. With a selected class it uses the usual
+mapping; without one it combines all known classes, preserves each row's `className`, and
+starts/stops live polling for those classes. Requests are batched to four concurrent class
+fetches; the class catalogue is shared/cached for thirty seconds. A failed class snapshot
+aborts the update so the last good complete graphic remains on air.
+
+String fields using `v_olgrafik_control: "radio-control"` get a radio dropdown. Add
+`v_olgrafik_includeFinish: true` to offer Finish and `v_olgrafik_distinctFrom` with another
+field's name to require different points. Empty class selection merges the available radios
+across classes. See [SOFT Finish watch](FINISH-WATCH.md) for a stateful custom view and operator
+semantics: prewarning only reveals the runner; clocks and places refer to the measuring point.
+The shared runtime invokes custom views with the graphic instance as `this`, allowing
+per-instance state while retaining shared ticking, patching, fit and cleanup.

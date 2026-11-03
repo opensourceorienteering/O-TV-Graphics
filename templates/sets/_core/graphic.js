@@ -212,7 +212,7 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
       const data = this.root.dataset.logo === 'template' && set.logo
         ? { ...this.data, presentation: { ...this.data?.presentation, logoUrl: set.logo, logoPlate: false } }
         : this.data;
-      const output = view(data, this.context());
+      const output = view.call(this, data, this.context());
       if (!output || typeof output.html !== 'string') throw new TypeError('A graphic view must return { html: string }');
       return output;
     }

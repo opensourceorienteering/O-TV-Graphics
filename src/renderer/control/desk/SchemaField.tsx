@@ -9,7 +9,7 @@ import { t as tr } from '../i18n';
  * graphic fills in by itself when there is no fallback (event setup, automatic weather, the class).
  * An empty text field says under it what goes on air, so the operator never guesses.
  */
-export function SchemaField({ name, schema, value, onChange, inherited, fallback, idPrefix = 'field', runnerChoices = [], onRefreshRunners }: {
+export function SchemaField({ name, schema, value, onChange, inherited, fallback, idPrefix = 'field', controlChoices = [], excludedControl, runnerChoices = [], onRefreshRunners }: {
   name: string;
   schema: any;
   value: any;
@@ -17,6 +17,8 @@ export function SchemaField({ name, schema, value, onChange, inherited, fallback
   inherited?: { value: string; from: string };
   fallback?: any;
   idPrefix?: string;
+  controlChoices?: { code: string | number; name: string }[];
+  excludedControl?: string;
   runnerChoices?: PaletteRunner[];
   onRefreshRunners?: () => void;
 }) {
@@ -25,6 +27,18 @@ export function SchemaField({ name, schema, value, onChange, inherited, fallback
   const base = fallback ?? schema.default;
   if (schema.v_olgrafik_control === 'runner-multi-select') {
     return <RunnerMultiSelect defaultFavorites={schema.v_olgrafik_default === 'favourites'} id={id} title={schema.title || name} description={schema.description} runners={runnerChoices} onRefresh={onRefreshRunners} value={value ?? base} onChange={onChange} />;
+  }
+  if (schema.v_olgrafik_control === 'radio-control') {
+    return <div className="d-field">
+      <label htmlFor={id}>{tr(schema.title || name)}</label>
+      <select id={id} className="d-select" value={value ?? base ?? ''} onChange={e => onChange(e.target.value || undefined)}>
+        <option value="">{tr('Choose a radio control')}</option>
+        {schema.v_olgrafik_includeFinish && <option value="F">{tr('Finish')}</option>}
+        {controlChoices.filter(c => Number(c.code) > 0 && Number(c.code) !== 1000).map(c =>
+          <option key={c.code} value={String(c.code)} disabled={String(c.code) === excludedControl}>{c.code} · {c.name}</option>)}
+      </select>
+      {!controlChoices.length && <span className="d-note">{tr('No radio controls found for this class or event')}</span>}
+    </div>;
   }
   if (schema.type === 'boolean') {
     const on = value ?? base ?? false;

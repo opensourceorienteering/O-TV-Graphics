@@ -1,3 +1,4 @@
+import { timingClasses, mapTimingClasses } from './timingScope';
 /**
  * Data Source Field Mapper
  * Applies field mappings from datasource configuration to transform API data into template fields
@@ -17,6 +18,7 @@ const logger = getLogger();
  * Apply field mappings to transform API data into template fields
  */
 export class DataSourceFieldMapper {
+  private static optionalSnapshots = new WeakMap<TemplateDataSourceConfig, Map<string, Promise<Record<string, any>>>>();
   /**
    * Fetch and map data based on datasource configuration and UI control values
    */
@@ -54,6 +56,32 @@ export class DataSourceFieldMapper {
     if (!dataSourceConfig.api) {
       logger.warn('API mode but no API config found');
       return {};
+    }
+
+    if (dataSourceConfig.api.provider === 'liveresults' && dataSourceConfig.api.classScope === 'optional' && !dataSourceValues.className) {
+      const requests = this.optionalSnapshots.get(dataSourceConfig) ?? new Map();
+      this.optionalSnapshots.set(dataSourceConfig, requests);
+      const key = JSON.stringify([competitionId, dataSourceId, dataSourceValues, rundownSettings]);
+      const pending = requests.get(key);
+      if (pending) return pending;
+      const request = (async () => {
+        const source: any = dataSourceId ? getDataSourceRegistry().get(dataSourceId) : undefined;
+        const client = source?.getClient?.();
+        if (!client) throw new Error('Choose a timing source for this event');
+        const classes = await timingClasses(client, competitionId);
+        const mapped = await mapTimingClasses(classes, className => this.fetchAndMapData(
+          dataSourceConfig, competitionId, { ...dataSourceValues, className }, rundownSettings, dataSourceId
+        ));
+        // A failed class aborts the update, preserving the graphic's last complete snapshot.
+        return {
+          ...(mapped[0] ?? {}), className: '',
+          results: mapped.flatMap((data, i) => (data.results ?? []).map((r: any) => ({ ...r, className: classes[i] }))),
+          splitControls: [...new Map(mapped.flatMap(data => data.splitControls ?? []).map((c: any) => [String(c.code), c])).values()],
+        };
+      })();
+      requests.set(key, request);
+      try { return await request; } finally { requests.delete(key); }
+
     }
 
     // Fetch data based on provider
@@ -202,7 +230,8 @@ export class DataSourceFieldMapper {
           const raw = rawByRunner.get(`${runner.name}|${runner.club}`);
           const startCs = raw?.start ? Number(raw.start) : undefined;
           const startTimeMs = clock && startCs ? startTimeEpochMs(clock, startCs) : undefined;
-          const extra: Record<string, any> = {};
+          const extra: Record<string, any> = { className };
+          if (Number(raw?.status) === 0 && Number(raw?.result) > 0) extra.finishTimeMs = Number(raw.result) * 10;
           if (startTimeMs) extra.startTimeMs = startTimeMs;
           if (raw?.country) extra.country = raw.country;
           const logo = logos?.lookup(runner.club);

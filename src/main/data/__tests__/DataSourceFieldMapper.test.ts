@@ -7,6 +7,7 @@ vi.mock('../../utils/logger', () => {
 
 const client = {
   getCompetitionInfo: vi.fn(),
+  getClasses: vi.fn(),
   getCompetitions: vi.fn(),
   getClassResults: vi.fn(),
   getServerClockOffsetMs: vi.fn()
@@ -56,6 +57,24 @@ describe('DataSourceFieldMapper live clock data', () => {
       data: { className: 'Mixed-1', splitcontrols: [], results: [{ name: 'Lucie Gaudion', club: 'France 1', start: 420000 }] },
       hash: 'h', timestamp: 1, changed: true
     });
+  });
+
+  it('combines optional all-class data while preserving each runner’s class and clock', async () => {
+    client.getClasses.mockResolvedValue({ data: [{ className: 'D21' }, { className: 'H21' }] });
+    const scoped = { ...config, api: { ...config.api, classScope: 'optional' } };
+    const [result, shared] = await Promise.all([
+      DataSourceFieldMapper.fetchAndMapData(scoped, 37049, {}, {}, 'src'),
+      DataSourceFieldMapper.fetchAndMapData(scoped, 37049, {}, {}, 'src'),
+    ]);
+    expect(shared).toBe(result);
+    expect(client.getClassResults).toHaveBeenCalledTimes(2);
+    expect(result.className).toBe('');
+    expect(result.results.map((r: any) => r.className)).toEqual(['D21', 'H21']);
+    expect(result.results.every((r: any) => r.startTimeMs > 0)).toBe(true);
+    expect(result.clockOffsetMs).toBe(-120);
+    client.getClasses.mockClear();
+    await DataSourceFieldMapper.fetchAndMapData(scoped, 37049, { className: 'D21' }, {}, 'src');
+    expect(client.getClasses).not.toHaveBeenCalled();
   });
 
   it('adds absolute start times and the server clock offset', async () => {

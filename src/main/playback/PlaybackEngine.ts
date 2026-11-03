@@ -1,3 +1,4 @@
+import { timingClasses } from '../data/timingScope';
 /**
  * Playback Engine
  * Manages graphics playback and coordinates between rundown items and graphics renderer
@@ -238,15 +239,15 @@ export class PlaybackEngine {
   private resolveLiveBinding(
     rundown: { dataSource?: { competitionId?: number; sourceId?: string } },
     item: { liveResultsData?: any },
-    template?: { dataSourceConfig?: { mode?: string } }
+    template?: { dataSourceConfig?: { mode?: string; api?: { classScope?: string } } }
   ): { competitionId: number; className: string; sourceId?: string; dataSourceValues: Record<string, any> } | null {
     const lr = item.liveResultsData || {};
     const dataSourceValues: Record<string, any> = lr.dataSourceValues || {};
     const autoUpdate = lr.autoUpdate ?? (template?.dataSourceConfig?.mode === 'api');
     const competitionId = Number(rundown.dataSource?.competitionId || lr.competitionId || 0);
     const className: string | undefined = dataSourceValues.className || lr.className;
-    if (!autoUpdate || !competitionId || !className) return null;
-    return { competitionId, className, sourceId: rundown.dataSource?.sourceId, dataSourceValues };
+    if (!autoUpdate || !competitionId || (!className && template?.dataSourceConfig?.api?.classScope !== 'optional')) return null;
+    return { competitionId, className: className || '', sourceId: rundown.dataSource?.sourceId, dataSourceValues };
   }
 
   /**
@@ -279,7 +280,8 @@ export class PlaybackEngine {
         const template = templates.find(t => t.manifest.id === item.templateId);
         const binding = this.resolveLiveBinding(rundown, item, template);
         if (!binding) continue;
-        desired.set(`${binding.sourceId ?? ''}|${binding.competitionId}|${binding.className}`, binding);
+        const classes = binding.className ? [binding.className] : await timingClasses(await this.getSourceClient(binding.sourceId), binding.competitionId);
+        for (const className of classes) desired.set(`${binding.sourceId ?? ''}|${binding.competitionId}|${className}`, { ...binding, className });
       } catch (error) {
         logger.warn('syncPolling: could not inspect graphic', {
           graphicId: graphic.id,
@@ -358,7 +360,7 @@ export class PlaybackEngine {
         if (!item) continue;
         const template = templates.find(t => t.manifest.id === item.templateId);
         const binding = this.resolveLiveBinding(rundown, item, template);
-        if (!binding || binding.competitionId !== competitionId || binding.className !== className) continue;
+        if (!binding || binding.competitionId !== competitionId || (binding.className && binding.className !== className)) continue;
         if (!template?.dataSourceConfig) {
           logger.warn('Template has no dataSourceConfig; cannot auto-update', { graphicId, templateId: item.templateId });
           continue;

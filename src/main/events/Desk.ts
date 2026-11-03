@@ -106,11 +106,20 @@ function validate(def: (typeof DESK_TEMPLATES)[number], draft: DeskDraft, t: OGr
   const missing: string[] = [];
   if (def.required.includes('class') && !draft.values.className) missing.push('a class');
   if (def.required.includes('runner') && !draft.values.runnerName) missing.push('a runner');
+  for (const [name, property] of Object.entries(t.manifest.schema?.properties ?? {})) {
+    const field = property as any;
+    if (field.v_olgrafik_control !== 'radio-control') continue;
+    const value = draft.fields?.[name];
+    if (value !== undefined && value !== '' && !(field.v_olgrafik_includeFinish && String(value) === 'F') && (!Number.isFinite(Number(value)) || Number(value) <= 0 || Number(value) === 1000))
+      throw err('Choose a radio control');
+    if (field.v_olgrafik_distinctFrom && value && String(value) === String(draft.fields?.[field.v_olgrafik_distinctFrom]))
+      throw err('Choose two different radio controls');
+  }
   // Fields the timing data fills in (results, class name …) are not the operator's to type
   const fromData = new Set<string>((t.dataSourceConfig?.api?.fieldMappings ?? []).map((m: any) => m.templateField));
   for (const field of ((t.manifest.schema as any)?.required ?? []) as string[]) {
     if (fromData.has(field)) continue;
-    const v = draft.fields?.[field];
+    const v = draft.fields?.[field] ?? (t.manifest.schema as any)?.properties?.[field]?.default;
     if (v === undefined || v === '') missing.push((t.manifest.schema as any)?.properties?.[field]?.title || field);
   }
   if (missing.length) throw err(`Choose ${missing.join(' and ')} first`);

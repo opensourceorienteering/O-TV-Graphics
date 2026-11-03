@@ -30,6 +30,9 @@ export interface ApiDataSourceConfig {
   /** Which API provider to use */
   provider: 'liveresults' | 'custom';
 
+  /** Optional class selection: an empty class combines every class in the event. */
+  classScope?: 'optional';
+
   /** Field mappings: template field -> API data path */
   fieldMappings: FieldMapping[];
 

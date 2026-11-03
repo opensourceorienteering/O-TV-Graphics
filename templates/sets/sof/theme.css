@@ -396,3 +396,13 @@
   .panel--presentations .row.is-presented { transform: none; }
   .panel--presentations .row::before { transition: none; }
 }
+
+/* Finish watch: the prewarning only reveals a runner; times/places refer to the measuring point. */
+.gfx--finish-watch .panel { top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px); }
+.panel--finish-watch > .rows { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.panel--finish-watch .c-id { min-width: 100px; color: var(--light); }
+.panel--finish-watch .is-approaching .c-time { color: var(--yellow); }
+.panel--finish-watch .is-registered .c-place { background: var(--yellow); color: var(--on-yellow); }
+.panel--finish-watch .watch-provisional { font-size: .65em; margin-left: 2px; }
+.panel--finish-watch .ftr { display: flex !important; min-height: 44px; justify-content: space-between; gap: 24px; padding: 8px 26px; }
+.panel--finish-watch .watch-note { font-size: 16px; text-transform: none; }

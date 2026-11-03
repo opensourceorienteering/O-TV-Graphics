@@ -1,0 +1,20 @@
+{
+  "total": 1,
+  "failed": 0,
+  "results": [
+    {
+      "id": "sof-finish-watch",
+      "kind": "finish-watch",
+      "ok": true,
+      "geometry": {
+        "x": 400,
+        "y": 200,
+        "width": 1120,
+        "height": 286
+      },
+      "steps": 1
+    }
+  ],
+  "testedAt": "2026-11-03T14:12:21.491Z",
+  "assetFailures": []
+}

@@ -73,6 +73,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/time') return send(res, req, '/time', { serverTime: Date.now() + SERVER_AHEAD_MS });
   if (url.pathname === '/competitions') return send(res, req, '/competitions', { competitions: [{ id: 40001, name: 'Test', organizer: 'OK', date: '2026-10-25', timediff: 0 }] }, '"c1"');
   if (url.pathname === '/competitions/40001') return send(res, req, '/competitions/40001', { id: 40001, name: 'Testtävling', organizer: 'OK', date: '2026-10-25', timediff: 0, timezone: 'Europe/Stockholm', serverTime: Date.now() }, '"i1"');
+  if (url.pathname === '/competitions/40001/classes') return send(res, req, '/classes', { classes: ['H21', 'D21'] });
   if (url.pathname === '/competitions/40001/classresults') {
     return send(res, req, '/classresults', { className: url.searchParams.get('class'), splitControls: [], results }, `"r${version}"`);
   }
@@ -165,6 +166,23 @@ describe('live loop (integration)', () => {
     results = [...results, { place: '', name: 'Cesar Cykel', club: 'IK X', result: null, status: 9, timeplus: null, progress: 0, start: 3720000, changed: 3 }];
     version = 3;
     await vi.waitFor(() => expect(updates.at(-1)?.results?.length).toBe(3), { timeout: 5000, interval: 50 });
+  });
+
+  it('polls all classes for an optional scope and updates the combined graphic from either class', async () => {
+    (template.dataSourceConfig.api as any).classScope = 'optional';
+    rundown.items[0].liveResultsData.dataSourceValues.className = '';
+    try {
+      await engine.syncPolling();
+      expect([...engine.livePolls.values()].map((p: any) => p.className).sort()).toEqual(['D21', 'H21']);
+      await engine.handleLiveResultsUpdate(40001, 'D21', {});
+      const combined = updates.at(-1);
+      expect(new Set(combined.results.map((r: any) => r.className))).toEqual(new Set(['H21', 'D21']));
+      expect(combined.className).toBe('');
+    } finally {
+      delete (template.dataSourceConfig.api as any).classScope;
+      rundown.items[0].liveResultsData.dataSourceValues.className = 'H21';
+      await engine.syncPolling();
+    }
   });
 
   it('stops polling when the graphic goes off air', async () => {
