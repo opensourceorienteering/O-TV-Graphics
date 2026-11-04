@@ -306,3 +306,10 @@
 /* Start lists and results carry the event logo: a box tall enough to draw it at least 42 px
    (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; width: 112px; }
+
+/* Runner presentations and Finish watch follow this look’s palette. */
+.gfx {
+  --presentation-focus: var(--accent);
+  --presentation-surface: var(--raised);
+  --presentation-on-focus: var(--on-accent);
+}

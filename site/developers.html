@@ -113,7 +113,7 @@
       <h2 id="how">How a look works</h2>
       <p>The app provides 17 standard drawings through <code>sets/_core/</code>. A look can use
         these drawings, leave graphics out, or add a custom drawing with its own Live desk
-        declaration. SOFT adds Runner presentations this way. Shared style and motion live in
+        declaration. Runner presentations and Finish watch use shared views with per-look styling; IOF and ČO omit them. Shared style and motion live in
         the look’s CSS.</p>
       <pre><code>sets/
 ├── _core/                 shared code (ships with the app, not part of a look)
@@ -185,7 +185,7 @@ npm install
 npm run dev</code></pre>
       <p>If your shell has Electron’s Node mode enabled, start with
         <code>env -u ELECTRON_RUN_AS_NODE npm run dev</code> on macOS/Linux. Split Control’s
-        dev server uses port 5174; another project can use 5173 at the same time.</p>
+        dev server uses port 5175; another project can use 5173 at the same time.</p>
       <h3>2. Create the manifest</h3>
       <p>Create the folder <code>templates/sets/standard/standard-welcome/</code>. Inside it,
         create <code>standard-welcome.ograf.json</code> with this complete JSON:</p>
@@ -321,7 +321,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
       <h3 id="terminal-commands">Terminal commands</h3><div class="table-wrap">
       <table>
         <thead><tr><th scope="col">Run in the repository folder</th><th scope="col">What it does</th><th scope="col">When to use it</th></tr></thead>
-        <tbody><tr><td><code>npm run dev</code></td><td>Starts the dev app and Vite on port 5174.</td><td>While editing a look</td></tr>
+        <tbody><tr><td><code>npm run dev</code></td><td>Starts the dev app and Vite on port 5175.</td><td>While editing a look</td></tr>
           <tr><td><code>npm run type-check</code></td><td>Checks TypeScript without building.</td><td>Before sharing code changes</td></tr>
           <tr><td><code>npm test -- --run</code></td><td>Runs the unit and backend integration tests once.</td><td>After app-side changes</td></tr>
           <tr><td><code>npm run test:templates</code></td><td>Loads every repository graphic in real Chromium and saves screenshots/report.</td><td>After changing markup, CSS or a manifest</td></tr>
@@ -415,7 +415,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td><code>start-list</code></td><td>Start list</td><td><code>start-list</code></td></tr>
           <tr><td><code>weather</code></td><td>Weather</td><td><code>weather</code></td></tr></tbody>
       </table>
-      </div><p>SOFT additionally declares <code>runner-presentations</code> and <code>finish-watch</code>. Its Next action lifts chosen runners one at a time; start-list favourites are selected by default. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/RUNNER-PRESENTATIONS.md">Runner presentations guide</a>. Finish watch uses a prewarning to reveal runners, shows total race time and class placing, and freezes at a measuring point before removing completed rows. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/FINISH-WATCH.md">Finish watch guide</a>.</p><h3 id="live-keys">Live keyboard controls</h3><p>Use these in Live with focus outside a text field. Command numbers are configurable—check the current desk rather than assuming a fixed number.</p><div class="table-wrap">
+      </div><p>All looks except IOF and ČO declare <code>runner-presentations</code> and <code>finish-watch</code>. Its Next action lifts chosen runners one at a time; start-list favourites are selected by default. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/RUNNER-PRESENTATIONS.md">Runner presentations guide</a>. Finish watch uses a prewarning to reveal runners, shows total race time and class placing, and freezes at a measuring point before removing completed rows. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/FINISH-WATCH.md">Finish watch guide</a>.</p><h3 id="live-keys">Live keyboard controls</h3><p>Use these in Live with focus outside a text field. Command numbers are configurable—check the current desk rather than assuming a fixed number.</p><div class="table-wrap">
       <table>
         <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
         <tbody><tr><td><code>Space</code></td><td>Show/hide the selected graphic</td></tr>
@@ -436,7 +436,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td>The graphic has no timing results.</td><td>Check the class, event timing connection, timing feed and .datasource.json mappings. A feed name alone does not fetch a new data type.</td></tr>
           <tr><td>My data disappears after Update.</td><td>updateAction receives a replacement data object. Retain the fields you still need.</td></tr>
           <tr><td>Next changes the whole page when I only want to focus a runner.</td><td>Keep the same pageKey for those steps; use manualSteps to disable timers.</td></tr>
-          <tr><td>The dev server reports a busy port.</td><td>Stop the old Split Control dev process on 5174 and restart. Other projects may keep using 5173.</td></tr></tbody>
+          <tr><td>The dev server reports a busy port.</td><td>Stop the process using 5175 and restart. Other projects may keep using 5173.</td></tr></tbody>
       </table>
       </div>
       <h3>Optional class filters and radio selectors</h3>

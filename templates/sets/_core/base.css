@@ -1,3 +1,5 @@
+@import url('./extra-graphics.css');
+
 /*
  * Shared layout for all Split Control template sets. Themes @import this and then set colours,
  * fonts, sizes and motion. Canvas: 1920x1080, scaled by the graphic to the output size.
@@ -23,9 +25,11 @@
 /* --- placement ---------------------------------------------------------------------- */
 .panel { position: absolute; display: flex; flex-direction: column; }
 .gfx--results .panel,
-.gfx--start-list .panel   { top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px); }
+.gfx--start-list .panel,
+.gfx--runner-presentations .panel { top: var(--table-top, 144px); left: var(--table-x, 480px); right: var(--table-x, 480px); }
 .gfx--podium .panel       { bottom: var(--podium-bottom, 144px); left: var(--podium-x, 260px); right: var(--podium-x, 260px); }
 .gfx--position-history .panel { top: var(--chart-top, 96px); left: 50%; transform: translateX(-50%); }
+.gfx--finish-watch .panel,
 .gfx--standings-lower-third .panel,
 .gfx--runner-lower-third .panel,
 .gfx--start-group .panel,

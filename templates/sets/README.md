@@ -126,5 +126,5 @@ installed fonts.
 
 Graphic ids must be unique across sets (the generator prefixes them with the set id).
 
-SOFT also includes [Finish watch](../../docs/FINISH-WATCH.md): prewarning-triggered total race
+All looks except IOF and ČO include [Finish watch](../../docs/FINISH-WATCH.md): prewarning-triggered total race
 clocks with an optional class filter and registered-time hold.

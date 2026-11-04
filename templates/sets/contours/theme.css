@@ -320,3 +320,10 @@
    (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 58px; width: 112px; }
 
+
+/* Runner presentations and Finish watch follow this look’s palette. */
+.gfx {
+  --presentation-focus: var(--sky);
+  --presentation-surface: var(--glass-top);
+  --presentation-on-focus: var(--glass-bottom);
+}

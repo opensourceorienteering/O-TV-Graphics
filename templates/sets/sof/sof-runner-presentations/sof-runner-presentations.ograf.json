@@ -1,8 +1,6 @@
 {
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
-  "id": "sof-runner-presentations",
   "version": "1.0.0",
-  "name": "Svensk Orientering – Runner presentations",
   "description": "Start list with operator-selected runners presented one at a time using Next and Previous.",
   "author": {
     "name": "Split Control"
@@ -64,7 +62,6 @@
       }
     }
   ],
-  "v_olgrafik_set": "sof",
   "v_olgrafik_kind": "runner-presentations",
   "v_olgrafik_zone": "main",
   "v_olgrafik_desk": {
@@ -88,5 +85,8 @@
       "manualSteps"
     ],
     "previewData": "starts"
-  }
+  },
+  "id": "sof-runner-presentations",
+  "name": "Svensk Orientering – Runner presentations",
+  "v_olgrafik_set": "sof"
 }

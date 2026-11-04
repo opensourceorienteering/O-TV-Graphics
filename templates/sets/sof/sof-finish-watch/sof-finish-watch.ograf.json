@@ -1,7 +1,5 @@
 {
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
-  "id": "sof-finish-watch",
-  "name": "Svensk Orientering – Finish watch",
   "version": "1.0.0",
   "description": "Prewarning-triggered race clocks, class and provisional placing; freezes at the finish or another radio and removes the runner after a hold.",
   "main": "graphic.js",
@@ -48,7 +46,6 @@
       "measureControl"
     ]
   },
-  "v_olgrafik_set": "sof",
   "v_olgrafik_kind": "finish-watch",
   "v_olgrafik_zone": "lower",
   "v_olgrafik_desk": {
@@ -70,5 +67,8 @@
     ],
     "behaviours": [],
     "previewData": "splits"
-  }
+  },
+  "id": "sof-finish-watch",
+  "name": "Svensk Orientering – Finish watch",
+  "v_olgrafik_set": "sof"
 }

@@ -1,10 +1,10 @@
-# SOFT — Finish watch
+# Finish watch
 
-Shows runners approaching a measuring point in SOFT’s bottom-left lower-third position. The first radio is a **prewarning trigger**;
+Shows runners approaching a measuring point in the look’s bottom-left lower-third position. The first radio is a **prewarning trigger**;
 it does not start a new stopwatch. Each row shows the runner's name, class, total race time
 and provisional place in that class. The measuring point can be another radio or **Finish**.
 
-1. In an event using the updated Svensk Orientering look, open Live → **Finish watch**.
+1. In an event using a supported look, open Live → **Finish watch**.
 2. Leave **Class** on **All classes**, or select one class to filter the graphic.
 3. Choose the **Prewarning control** and **Measuring point** (Finish by default). They must
    be different. Only competitors with a valid passing at the prewarning can appear.
@@ -35,9 +35,17 @@ receives the registered time, so late results still get a readable hold. All-cla
 subscribes to the event's known classes; refresh/update the graphic if new classes are added
 mid-production. Choose the measuring point shared by the classes you intend to show.
 
+Rows slide and fade in, ease into their new positions when the list changes, and fade out
+over 240 ms after the registered-time hold. Registration gives the official time a brief
+settling animation. Reduced-motion settings remove the movement while keeping fades.
+A zero-second hold still removes rows immediately.
+
 ## Implementation
 
-The package is `templates/sets/sof/sof-finish-watch/`, declared only in SOFT. It uses:
+Available in Standard, Bold, Brutal, Contours, Signal, Svensk Orientering and IOF inspired. IOF and ČO are excluded.
+
+Packages are generated as `templates/sets/<look>/<look>-finish-watch/`. Shared behavior lives
+in `_core/finish-watch.js` and `_core/finish-watch-graphic.js`; each look supplies its theme. It uses:
 
 - `api.classScope: "optional"` in its datasource: a missing class combines all classes;
   selected-class mode keeps the normal one-class data path.
@@ -48,5 +56,5 @@ The package is `templates/sets/sof/sof-finish-watch/`, declared only in SOFT. It
   and completion expiry without waiting for another timing request. Completed history is
   remembered so an expired row does not reappear on each poll.
 
-The shared view callback runs with the graphic element as `this`; SOFT uses that to isolate
+The shared view callback runs with the graphic element as `this`; Finish watch uses that to isolate
 its state between Preview and Program. Keep mutable state out of a module-global singleton.

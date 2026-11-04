@@ -1,0 +1,74 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "version": "1.0.0",
+  "description": "Prewarning-triggered race clocks, class and provisional placing; freezes at the finish or another radio and removes the runner after a hold.",
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "triggerControl": {
+        "type": "string",
+        "title": "Prewarning control",
+        "v_olgrafik_control": "radio-control"
+      },
+      "measureControl": {
+        "type": "string",
+        "title": "Measuring point",
+        "v_olgrafik_control": "radio-control",
+        "v_olgrafik_includeFinish": true,
+        "v_olgrafik_distinctFrom": "triggerControl",
+        "default": "F"
+      },
+      "title": {
+        "type": "string",
+        "title": "Title"
+      },
+      "holdSeconds": {
+        "type": "number",
+        "title": "Hold registered time (seconds)",
+        "default": 4,
+        "minimum": 0,
+        "maximum": 30
+      },
+      "maxRows": {
+        "type": "number",
+        "title": "Maximum visible runners",
+        "default": 8,
+        "minimum": 1,
+        "maximum": 12
+      }
+    },
+    "required": [
+      "triggerControl",
+      "measureControl"
+    ]
+  },
+  "v_olgrafik_kind": "finish-watch",
+  "v_olgrafik_zone": "lower",
+  "v_olgrafik_desk": {
+    "label": "Finish watch",
+    "short": "Finish watch",
+    "inputs": [
+      "class"
+    ],
+    "required": [],
+    "fields": [
+      "triggerControl",
+      "measureControl",
+      "title",
+      "holdSeconds",
+      "maxRows"
+    ],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": [],
+    "previewData": "splits"
+  },
+  "id": "iof2-finish-watch",
+  "name": "IOF inspired – Finish watch",
+  "v_olgrafik_set": "iof2"
+}

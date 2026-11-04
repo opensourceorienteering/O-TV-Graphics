@@ -8,6 +8,7 @@ import { getLogger } from '../utils/logger';
 import { getTemplateManager } from '../templates/OGrafManager';
 import { getRundownManager } from '../projects/RundownManager';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
+import { getLiveResultsClient } from '../data/LiveResultsClient';
 import { WebSocketServer, SocketRoom } from '../data/WebSocketServer';
 import { getDataStore } from '../data/DataStore';
 import type { OGrafResultsData } from '../data/LiveResultsTransformer';
@@ -60,7 +61,15 @@ export class PlaybackEngine {
   // Track in-progress play operations to prevent race conditions
   private playInProgress: Set<string> = new Set();
   // Live-results polls currently running, keyed by `${sourceId}|${competitionId}|${className}`
-  private livePolls: Map<string, { competitionId: number; className: string; client: any }> = new Map();
+  private livePolls: Map<string, {
+    competitionId: number;
+    className: string;
+    client: any;
+    sourceId?: string;
+    sourceName: string;
+    sourceType: import('../../shared/types/dataSource').DataSourceType;
+    apiFlavor: 'legacy' | 'rest' | 'backend';
+  }> = new Map();
   // Coalescing of live updates per competition/class: one run at a time, at most one queued
   private liveUpdateRunning: Set<string> = new Set();
   private liveUpdatePending: Set<string> = new Set();
@@ -301,9 +310,22 @@ export class PlaybackEngine {
     for (const [key, binding] of desired) {
       if (this.livePolls.has(key)) continue;
       const client = await this.getSourceClient(binding.sourceId);
+      const { getDataSourceRegistry } = await import('../data/DataSourceRegistry');
+      const source = binding.sourceId ? getDataSourceRegistry().get(binding.sourceId) : null;
+      const sourceType = source?.config.type ?? 'liveresults';
+      const pollingClient = client ?? getLiveResultsClient();
+      const apiFlavor = pollingClient.getApiFlavor();
       // Interval 0 = the client's own minimum: 10 s for the REST API, 15 s for legacy api.php
       dataStore.startPolling(binding.competitionId, binding.className, 0, client);
-      this.livePolls.set(key, { competitionId: binding.competitionId, className: binding.className, client });
+      this.livePolls.set(key, {
+        competitionId: binding.competitionId,
+        className: binding.className,
+        client,
+        sourceId: binding.sourceId,
+        sourceName: source?.config.name || (sourceType === 'liveresults' ? 'Liveresultat' : sourceType),
+        sourceType,
+        apiFlavor
+      });
       logger.info('Started live polling', {
         competitionId: binding.competitionId,
         className: binding.className,
@@ -313,8 +335,20 @@ export class PlaybackEngine {
   }
 
   getLivePollingStatus() {
-    return getDataStore().getPollingStatus().filter(status => status.active &&
-      [...this.livePolls.values()].some(p => p.competitionId === status.competitionId && p.className === status.className));
+    return getDataStore().getPollingStatus().flatMap(status => {
+      if (!status.active) return [];
+      const poll = [...this.livePolls.entries()].find(([key, p]) =>
+        key === `${p.sourceId ?? ''}|${p.competitionId}|${p.className}` &&
+        p.competitionId === status.competitionId && p.className === status.className
+      )?.[1];
+      return poll ? [{
+        ...status,
+        sourceId: poll.sourceId,
+        sourceName: poll.sourceName,
+        sourceType: poll.sourceType,
+        apiFlavor: poll.apiFlavor
+      }] : [];
+    });
   }
 
   /**
@@ -1508,4 +1542,3 @@ export function getPlaybackEngine(): PlaybackEngine {
   }
   return playbackEngine;
 }
-

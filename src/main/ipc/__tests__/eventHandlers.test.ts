@@ -153,10 +153,10 @@ describe("Event monitor and preview IPC", () => {
     expect(program.options.x).toBeGreaterThanOrEqual(1400);
     expect(program.options.webPreferences.contextIsolation).toBe(true);
     expect(program.loadURL).toHaveBeenCalledWith(
-      "http://localhost:5174/?monitor=program",
+      "http://localhost:5175/?monitor=program",
     );
     expect(preview.loadURL).toHaveBeenCalledWith(
-      "http://localhost:5174/?monitor=preview",
+      "http://localhost:5175/?monitor=preview",
     );
     await invoke("window:openMonitor", "program");
     expect(program.focus).toHaveBeenCalledOnce();
@@ -331,4 +331,3 @@ describe("Entering and leaving Live", () => {
     expect(mock.deactivate).toHaveBeenCalledOnce();
   });
 });
-

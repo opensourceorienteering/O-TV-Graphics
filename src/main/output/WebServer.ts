@@ -17,6 +17,7 @@ import { createDirectorApiRouter } from './DirectorApi';
 import { createControlApiRouter } from './ControlApi';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from '../utils/config';
+import { PortInUseError } from '../utils/portAvailability';
 
 const logger = getLogger();
 const isDev = process.env.NODE_ENV === 'development';
@@ -153,7 +154,7 @@ export class WebServer {
         // Preserve the original hostname for remote access
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
-        const viteUrl = `http://${hostname}:5174/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        const viteUrl = `http://${hostname}:5175/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
         logger.debug('Redirecting to Vite dev server for preview', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
@@ -179,7 +180,7 @@ export class WebServer {
         // Preserve the original hostname for remote access
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
-        const viteUrl = `http://${hostname}:5174/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
+        const viteUrl = `http://${hostname}:5175/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
         logger.debug('Redirecting to Vite dev server', { viteUrl, originalHost: host });
         res.redirect(viteUrl);
       } else {
@@ -210,7 +211,7 @@ export class WebServer {
         const hostname = host.split(':')[0];
         const queryParams = new URLSearchParams(req.query as any);
         queryParams.set('id', id);
-        const viteUrl = `http://${hostname}:5174/web-output.html?${queryParams.toString()}`;
+        const viteUrl = `http://${hostname}:5175/web-output.html?${queryParams.toString()}`;
         logger.debug('Redirecting to Vite dev server with ID', { viteUrl, originalHost: host, id });
         res.redirect(viteUrl);
       } else {
@@ -364,27 +365,31 @@ export class WebServer {
       try {
         // Bind to 0.0.0.0 to allow remote access from other devices on the network
         // This is essential for Web Output to work on remote devices
-        this.server = this.app.listen(this.port, '0.0.0.0', () => {
+        const server = this.app.listen(this.port, '0.0.0.0');
+        this.server = server;
+
+        const handleError = (error: NodeJS.ErrnoException) => {
+          if (this.server === server) this.server = null;
+          if (error.code === 'EADDRINUSE') {
+            logger.error('Web server port already in use', {
+              port: this.port,
+              error: error.message
+            });
+            reject(new PortInUseError(this.port));
+          } else {
+            logger.error('Failed to start web server', { error });
+            reject(error);
+          }
+        };
+        server.once('error', handleError);
+        server.once('listening', () => {
+          server.removeListener('error', handleError);
           logger.info('Web server started', {
             port: this.port,
             host: '0.0.0.0',
             note: 'Accessible from network devices'
           });
           resolve();
-        });
-
-        // Handle server errors (e.g., EADDRINUSE)
-        this.server.on('error', (error: NodeJS.ErrnoException) => {
-          if (error.code === 'EADDRINUSE') {
-            logger.error('Web server port already in use', {
-              port: this.port,
-              error: error.message
-            });
-            reject(new Error(`Port ${this.port} is already in use. Please close any other instances of Split Control or change the port in config.json`));
-          } else {
-            logger.error('Failed to start web server', { error });
-            reject(error);
-          }
         });
       } catch (error) {
         logger.error('Failed to start web server', { error });
@@ -440,4 +445,3 @@ export function getWebServer(): WebServer {
   }
   return webServerInstance;
 }
-

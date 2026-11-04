@@ -70,7 +70,7 @@ Everything else in the main process is bundled by Vite. The NDI package is marke
 | `grandiose.node not found` during packaging | Run `npm rebuild @stagetimerio/grandiose`, then build again. |
 | npm warns that install scripts aren't covered by allowScripts | Run `npm install-scripts approve @stagetimerio/grandiose` and then `npm rebuild @stagetimerio/grandiose`. |
 | `electron .` behaves like plain Node in a terminal inside VS Code | VS Code sets `ELECTRON_RUN_AS_NODE=1`. Unset it: `env -u ELECTRON_RUN_AS_NODE npm run dev`. |
-| Dev window shows another project's page | Split Control uses port 5174; Vite refuses startup if it is occupied. Stop the old Split Control dev process and restart it. Other projects can keep using 5173. |
+| Dev server reports a busy port | Split Control uses port 5175 and refuses startup if occupied. Stop the process using 5175 or configure that process to use another port. |
 | Build fails on Windows, macOS or Linux | Install the build tools listed above. |
 
 ## CI example (GitHub Actions)

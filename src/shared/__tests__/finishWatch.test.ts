@@ -28,7 +28,8 @@ describe('SOFT finish watch', () => {
     expect(registered.html).not.toContain('data-tick');
     expect(text(registered.html)).toContain('1:20');
     expect(view(data([finish], 153999), context).html).toContain('is-registered');
-    expect(text(view(data([finish], 154000), context).html)).not.toContain('Approaching Runner');
+    expect(view(data([finish], 154000), context).html).toContain('is-leaving');
+    expect(text(view(data([finish], 154500), context).html)).not.toContain('Approaching Runner');
     expect(view(data([finish], 180000), context).html).not.toContain('is-registered');
   });
   it('measures a second radio as cumulative race time and shows that point’s official place', () => {

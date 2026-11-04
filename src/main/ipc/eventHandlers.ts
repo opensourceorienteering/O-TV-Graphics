@@ -599,7 +599,7 @@ export function registerEventHandlers(): void {
     monitors.set(kind, win);
     try {
       if (!app.isPackaged)
-        await win.loadURL(`http://localhost:5174/?monitor=${kind}`);
+        await win.loadURL(`http://localhost:5175/?monitor=${kind}`);
       else
         await win.loadFile(path.join(__dirname, "../../dist/index.html"), {
           search: `monitor=${kind}`,

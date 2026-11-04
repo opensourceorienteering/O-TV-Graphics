@@ -81,13 +81,15 @@ function morphNode(a, b, onChange, keyAttr) {
  * Bring `container`'s content up to `html` in place, animating the change.
  * options.keyAttr  attribute that identifies rows (default data-key)
  * options.prepare  (fragment) => void, e.g. to keep "visible" classes on new rows
+ * options.motion   opt-in viewport-aware row movement and custom enter/move timings
  */
-export function livePatch(container, html, { keyAttr = 'data-key', prepare } = {}) {
+export function livePatch(container, html, { keyAttr = 'data-key', prepare, motion } = {}) {
   const tpl = document.createElement('template');
   tpl.innerHTML = html;
   prepare?.(tpl.content);
   const before = new Map();
-  for (const el of container.querySelectorAll(`[${keyAttr}]`)) before.set(el.getAttribute(keyAttr), el.offsetTop);
+  const scale = motion ? (container.getBoundingClientRect().height / container.offsetHeight || 1) : 1;
+  for (const el of container.querySelectorAll(`[${keyAttr}]`)) before.set(el.getAttribute(keyAttr), motion ? el.getBoundingClientRect().top / scale : el.offsetTop);
   const changed = new Set();
   morphChildren(container, tpl.content, (el) => {
     const cell = el?.closest(FLASH_CELLS);
@@ -97,15 +99,15 @@ export function livePatch(container, html, { keyAttr = 'data-key', prepare } = {
   for (const el of container.querySelectorAll(`[${keyAttr}]`)) {
     if (el.dataset.entering) {
       delete el.dataset.entering;
-      if (hadRows) el.animate([{ opacity: 0, transform: 'translateX(-28px)' }, { opacity: 1, transform: 'none' }], MOTION.enter);
+      if (hadRows || motion) el.animate([{ opacity: 0, transform: 'translateX(-28px)' }, { opacity: 1, transform: 'none' }], motion?.enter || MOTION.enter);
       continue;
     }
     const was = before.get(el.getAttribute(keyAttr));
-    const dy = was === undefined ? 0 : was - el.offsetTop;
+    const dy = was === undefined ? 0 : was - (motion ? el.getBoundingClientRect().top / scale : el.offsetTop);
     if (Math.abs(dy) > 1) {
-      el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], MOTION.move);
+      el.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], motion?.move || MOTION.move);
       // a runner moving up passes over the rows it overtakes
-      if (dy > 0) { el.style.zIndex = '2'; setTimeout(() => { el.style.zIndex = ''; }, MOTION.move.duration); }
+      if (dy > 0) { el.style.zIndex = '2'; setTimeout(() => { el.style.zIndex = ''; }, motion?.move?.duration ?? MOTION.move.duration); }
     }
   }
   for (const cell of changed) {

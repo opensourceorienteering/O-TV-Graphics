@@ -89,14 +89,23 @@ for (const { manifest, folder } of catalogue) {
     if (manifest.v_olgrafik_kind === 'finish-watch') {
       assert(el.shadowRoot.querySelectorAll('.is-approaching').length === 2, 'Prewarning did not show both classes');
       assert(el.shadowRoot.textContent.includes('35:00'), 'Clock must show total race time, not the radio interval');
+      const activeRunner = el.shadowRoot.querySelector('.is-approaching');
+      const activeKey = activeRunner.dataset.key;
       const registered = { ...data, results: data.results.map((r, i) => i ? r : { ...r, statusCode: 0, time: '35:12', finishTimeMs: 2112000, position: 1 }) };
       await el.updateAction({ data: registered });
       assert(el.shadowRoot.querySelector('.is-registered'), 'Finish did not freeze the runner');
+      assert(el.shadowRoot.querySelector('.is-registered .c-time').getAnimations().length > 0, 'Finish registration did not animate');
       assert(el.shadowRoot.querySelector('.is-registered .c-time').textContent === '35:12', 'Wrong official finish time');
       await capture(`${manifest.id}-registered`);
+      await el.updateAction({ data: { ...registered, frozenAt: data.frozenAt + 4000 } });
+      const leavingRunner = el.shadowRoot.querySelector('.is-leaving');
+      assert(leavingRunner, 'Expired runner must animate before removal');
+      assert(leavingRunner.getAnimations().some(animation => animation.playState === 'running'), 'Completed runner must animate out');
+      assert(!activeRunner.getAnimations().some(animation => animation.playState === 'running'), 'Active runner must not animate when another runner expires');
       await el.updateAction({ data: { ...registered, frozenAt: data.frozenAt + 5000 } });
       assert(!el.shadowRoot.querySelector('.is-registered'), 'Completed runner did not leave after the hold');
-      assert(el.shadowRoot.querySelector('.is-approaching'), 'Other approaching runner was removed');
+      assert(el.shadowRoot.querySelector('.is-approaching') === activeRunner, 'Active runner must remain in place when a completed runner is removed');
+      assert(activeRunner.dataset.key === activeKey, 'Active runner identity changed while another runner left');
       await capture(`${manifest.id}-after-hold`);
       await el.updateAction({ data: { ...data, title: '', presentation: { ...data.presentation, language: 'sv' } } });
       assert(el.shadowRoot.textContent.includes('På väg mot Mål'), 'Swedish finish-watch labels did not apply');
@@ -125,10 +134,12 @@ for (const { manifest, folder } of catalogue) {
   }
   results.push(result);
 }
-const normalStartList = results.find(r => r.id === 'sof-start-list')?.geometry;
-const presentations = results.find(r => r.id === 'sof-runner-presentations');
-if (normalStartList && presentations?.geometry && (normalStartList.x !== presentations.geometry.x || normalStartList.y !== presentations.geometry.y || normalStartList.width !== presentations.geometry.width)) {
-  presentations.ok = false;
-  presentations.error = 'Presentation placement/width differs from the normal SOFT start list';
+for (const { manifest } of catalogue.filter(x => x.manifest.v_olgrafik_kind === 'runner-presentations')) {
+  const normal = results.find(r => r.id === `${manifest.v_olgrafik_set}-start-list`)?.geometry;
+  const presentation = results.find(r => r.id === manifest.id);
+  if (normal && presentation?.geometry && (normal.x !== presentation.geometry.x || normal.y !== presentation.geometry.y || normal.width !== presentation.geometry.width)) {
+    presentation.ok = false;
+    presentation.error = 'Presentation placement/width differs from the normal start list';
+  }
 }
 await fetch('/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ total: results.length, failed: results.filter(r => !r.ok).length, results }) });

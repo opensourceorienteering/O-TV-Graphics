@@ -363,3 +363,10 @@
 /* Start lists and results carry the event logo next to the IOF logo: a box tall enough to
    draw it at least 42 px (graphic.js hides smaller logos) */
 .panel--table .hdr-logo { height: 54px; }
+
+/* Runner presentations and Finish watch follow this look’s palette. */
+.gfx {
+  --presentation-focus: var(--text);
+  --presentation-surface: var(--deep);
+  --presentation-on-focus: var(--deep);
+}

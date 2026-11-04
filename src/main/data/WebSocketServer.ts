@@ -6,6 +6,7 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer, Server as HTTPServer } from 'http';
 import { getLogger } from '../utils/logger';
+import { PortInUseError } from '../utils/portAvailability';
 
 const logger = getLogger();
 
@@ -327,23 +328,25 @@ export class WebSocketServer {
   public async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       // Handle server errors (e.g., EADDRINUSE)
-      this.httpServer.on('error', (error: NodeJS.ErrnoException) => {
+      const handleError = (error: NodeJS.ErrnoException) => {
         if (error.code === 'EADDRINUSE') {
           logger.error('WebSocket server port already in use', {
             port: this.port,
             error: error.message
           });
-          reject(new Error(`Port ${this.port} is already in use. Please close any other instances of Split Control or change the wsPort in config.json`));
+          reject(new PortInUseError(this.port));
         } else {
           logger.error('Failed to start WebSocket server', { error });
           reject(error);
         }
-      });
+      };
+      this.httpServer.once('error', handleError);
 
       try {
         // Bind to 0.0.0.0 to allow remote access from other devices on the network
         // This is essential for Web Output to work on remote devices
         this.httpServer.listen(this.port, '0.0.0.0', () => {
+          this.httpServer.removeListener('error', handleError);
           logger.info('WebSocket server started', {
             port: this.port,
             host: '0.0.0.0',
@@ -380,4 +383,3 @@ export class WebSocketServer {
 export function getWebSocketServer(): WebSocketServer | null {
   return wsServerInstance;
 }
-

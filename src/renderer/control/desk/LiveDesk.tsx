@@ -15,6 +15,7 @@ import { call } from '../events/api';
 import { CommandPalette, rememberRecent, typedFields } from './CommandPalette';
 import { MonitorHead, PreviewVideo, ProgramVideo } from './DeskMonitor';
 import { commandForDraft, type PaletteControl, type PaletteData, type PaletteRunner } from './command';
+import { summarizePollingStatus } from './pollingStatus';
 import { DESK_SHORTCUTS, DESK_TEMPLATES, canFreeze, hasBehaviour, hasFeed, isFrozenDraft, sameDraft, type DeskCommandMap, type DeskDraft, type DeskFavorite, type DeskState } from '../../../shared/desk';
 import type { EventStartList, StartListEntry } from '../../../shared/types/event';
 import './desk.css';
@@ -521,6 +522,7 @@ export function LiveDesk() {
   const clock = (() => { try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', ...(tz ? { timeZone: tz } : {}) }).format(now); } catch { return new Date(now).toTimeString().slice(0, 8); } })();
   // Re-tested in the background while Live; polled with the rest of the state
   const lastCheck = dataCheck ?? event?.dataSource?.lastCheck;
+  const pollingSummary = useMemo(() => summarizePollingStatus(polling, now), [polling, now]);
   // While Runner start follows the start list, search uses the follow filter, not the auto-picked class
   const searchClass = hasBehaviour(lookup(selected), 'followNextStarter') && followNext ? nextClass : draft.values.className;
   const classRunners = searchClass ? runners.filter(r => r.className === searchClass) : runners;
@@ -888,8 +890,17 @@ export function LiveDesk() {
 
       <footer className="desk-footer">
         <span>
-          <span className={(polling?.length ? polling.every(p => p.lastPoll && !p.lastError && !p.errorCount && now - p.lastPoll <= Math.max(30000, (p.interval || 10000) * 3)) : lastCheck?.ok) ? 'ok' : 'bad'}>● </span>
-          {polling?.length ? polling.map(p => `${p.className}: ${p.lastError ? `error · ${p.lastError}` : !p.lastPoll ? tr("waiting for first poll") : `${now - p.lastPoll > Math.max(30000, (p.interval || 10000) * 3) ? `${tr('STALE')} · ` : ''}${tr('polled')} ${Math.max(0, Math.floor((now - p.lastPoll) / 1000))} ${tr('s ago')}`} · ${tr('every')} ${(p.interval || 10000) / 1000} s${p.lastUpdate ? ` · ${tr('data changed')} ${Math.max(0, Math.floor((now - p.lastUpdate) / 1000))} ${tr('s ago')}` : ` · ${tr('no changes received')}`}`).join(' | ') : lastCheck ? `${tr('Connection test')} ${lastCheck.ok ? tr("passed") : tr("failed")} · ${lastCheck.message || ''} · ${Math.max(0, Math.round((now - lastCheck.at) / 60000))} ${tr('min ago')} · ${tr('live polling starts when a timing graphic is on air')}` : tr("Timing not tested (Settings → Data)")}
+          <span className={(pollingSummary.length ? pollingSummary.every(p => p.ok) : lastCheck?.ok) ? 'ok' : 'bad'}>● </span>
+          {pollingSummary.length ? pollingSummary.map(p => {
+            const showApiFlavor = p.sourceType === 'liveresults' && p.sourceName === 'Liveresultat';
+            const source = `${p.sourceName}${showApiFlavor && p.apiFlavor === 'rest' ? ' (REST)' : showApiFlavor && p.apiFlavor === 'legacy' ? ' (Legacy)' : ''}`;
+            const status = p.error
+              ? `error · ${p.error}`
+              : p.waiting || !p.lastPoll
+                ? tr("waiting for first poll")
+                : `${p.stale ? `${tr('STALE')} · ` : ''}${tr('polled')} ${Math.max(0, Math.floor((now - p.lastPoll) / 1000))} ${tr('s ago')}`;
+            return `${source} ${status}`;
+          }).join(' | ') : lastCheck ? `${tr('Connection test')} ${lastCheck.ok ? tr("passed") : tr("failed")} · ${lastCheck.message || ''} · ${Math.max(0, Math.round((now - lastCheck.at) / 60000))} ${tr('min ago')} · ${tr('live polling starts when a timing graphic is on air')}` : tr("Timing not tested (Settings → Data)")}
         </span>
         <span>
           <button type="button" onClick={() => setDialog('keys')}>{tr("Keyboard shortcuts")}</button>

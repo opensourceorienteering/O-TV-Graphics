@@ -210,7 +210,7 @@ The [recorded browser report](validation/template-rendering-2026-11-03.json) inc
 geometry and step counts. `npm run test:templates` runs their actual JavaScript, CSS, fonts and
 images in an isolated real Chromium renderer. It covers loading, Show, paging, updates,
 custom logo/identity, empty data, Hide and Dispose; it saves screenshots and a JSON report.
-SOFT focus and normal start-list placement are checked explicitly. See the
+Runner focus and normal start-list placement are checked for every supported look. See the
 [developer guide](TEMPLATE-DEVELOPMENT.md) for commands, output paths and test boundaries.
 
 The connected backend test imports an unknown kind, discovers its declaration, parses its
@@ -223,11 +223,11 @@ control path. Full click-through operator UI automation, physical Companion cont
 capture quality and motion smoothness remain manual checks. Synthetic race data is used; the
 matrix is not a live external timing-provider test or a pixel-baseline comparison.
 
-The SOFT look's [Runner presentations](RUNNER-PRESENTATIONS.md) is the first hand-made
+[Runner presentations](RUNNER-PRESENTATIONS.md) is a shared custom-view
 example: it uses a schema `v_olgrafik_control: "runner-multi-select"` on a string-array field
 for its Live picker, `manualSteps` for operator-controlled advances and `pageKey` for focus
 changes within a visible page.
 
-SOFT’s [Finish watch](FINISH-WATCH.md) uses the optional all-class timing scope and two
+[Finish watch](FINISH-WATCH.md) uses the optional all-class timing scope and two
 control fields. Its prewarning reveals the runner; total race time and placing refer to the
 measuring point. Registered rows hold briefly, then leave.

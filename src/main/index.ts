@@ -7,7 +7,8 @@ import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
 import { initLogger } from './utils/logger';
-import { loadConfig, getConfig } from './utils/config';
+import { loadConfig, getConfig, saveConfig } from './utils/config';
+import { findAvailablePort, PortInUseError } from './utils/portAvailability';
 import { WebSocketServer } from './data/WebSocketServer';
 import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
@@ -62,6 +63,38 @@ let servicesInitialized = false;
 let handlersRegistered = false;
 let windowsCreated = false;
 
+class StartupCancelledError extends Error {}
+
+async function startServiceWithPortChoice(
+  serviceName: string,
+  configuredPort: number,
+  start: (port: number) => Promise<void>,
+  excludedPorts: () => number[] = () => [],
+): Promise<number> {
+  let port = configuredPort;
+  while (true) {
+    try {
+      await start(port);
+      return port;
+    } catch (error) {
+      if (!(error instanceof PortInUseError)) throw error;
+
+      const nextPort = await findAvailablePort(port === 65535 ? 1024 : port + 1, excludedPorts());
+      const { response } = await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Network port already in use',
+        message: `The ${serviceName} port ${port} is already in use.`,
+        detail: `Use port ${nextPort} instead? Split Control will save the new port in Settings. Update any browser sources or integrations that use the old port.`,
+        buttons: [`Use port ${nextPort}`, 'Quit Split Control'],
+        defaultId: 0,
+        cancelId: 1
+      });
+      if (response !== 0) throw new StartupCancelledError();
+      port = nextPort;
+    }
+  }
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling
 // This is only needed for production builds with Squirrel installer
 // Skip in development mode
@@ -95,13 +128,36 @@ async function initializeServices() {
     });
 
     // Initialize WebSocket server for real-time communication
-    wsServer = new WebSocketServer(appConfig.general.wsPort || 5656);
-    await wsServer.start();
+    const wsPort = await startServiceWithPortChoice(
+      'WebSocket',
+      appConfig.general.wsPort || 5656,
+      async port => {
+        const candidate = new WebSocketServer(port);
+        await candidate.start();
+        wsServer = candidate;
+      },
+    );
+    if (wsPort !== appConfig.general.wsPort) {
+      appConfig.general.wsPort = wsPort;
+      await saveConfig(appConfig);
+    }
     // Note: WebSocketServer.start() already logs "WebSocket server started"
 
     // Initialize web server for graphics output
-    webServer = new WebServer(appConfig.general.port || 5657);
-    await webServer.start();
+    const webPort = await startServiceWithPortChoice(
+      'Web output',
+      appConfig.general.port || 5657,
+      async port => {
+        const candidate = new WebServer(port);
+        await candidate.start();
+        webServer = candidate;
+      },
+      () => [wsPort],
+    );
+    if (webPort !== appConfig.general.port) {
+      appConfig.general.port = webPort;
+      await saveConfig(appConfig);
+    }
     // Note: WebServer.start() already logs "Web server started"
 
     // Initialize template manager
@@ -346,7 +402,7 @@ function setupContentSecurityPolicy() {
       // Production also needs localhost:5657 for dynamic ES module imports from web server
       // Allow cdnjs.cloudflare.com for highlight.js in documentation
       isDev
-        ? "script-src 'self' 'unsafe-inline' http://localhost:5174 http://localhost:5657 https://cdnjs.cloudflare.com"
+        ? "script-src 'self' 'unsafe-inline' http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
         : "script-src 'self' http://localhost:5657 https://cdnjs.cloudflare.com",
 
       // Styles: allow self and inline styles (required for React inline styles)
@@ -355,7 +411,7 @@ function setupContentSecurityPolicy() {
 
       // Images: allow self, data URIs, and localhost
       isDev
-        ? "img-src 'self' data: http://localhost:5174 http://localhost:5657"
+        ? "img-src 'self' data: http://localhost:5175 http://localhost:5657"
         : `img-src 'self' data: ${webOrigin}`,
 
       // Fonts: allow self and data URIs
@@ -364,7 +420,7 @@ function setupContentSecurityPolicy() {
       // Connect: allow WebSocket and HTTP connections to localhost
       // Allow cdnjs.cloudflare.com for documentation assets
       isDev
-        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5174 http://localhost:5174 http://localhost:5657 https://cdnjs.cloudflare.com"
+        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5175 http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
         : "connect-src 'self' ws://localhost:5656 http://localhost:5657 https://cdnjs.cloudflare.com",
 
       // Media: allow self
@@ -481,6 +537,11 @@ app.whenReady().then(async () => {
     logger.info('Split Control ready');
 
   } catch (error) {
+    if (error instanceof StartupCancelledError) {
+      logger.info('Startup cancelled after a network port conflict');
+      app.quit();
+      return;
+    }
     logger.error('Failed to start application', { error });
 
     // Show user-friendly error dialog
@@ -560,4 +621,3 @@ process.on('uncaughtException', (error) => {
 process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection', { reason });
 });
-

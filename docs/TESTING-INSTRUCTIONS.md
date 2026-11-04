@@ -17,7 +17,7 @@ The connected Vitest test covers import, disk storage and HTTP controls with sim
 renderer replies. Neither suite clicks through the full operator UI or tests physical output
 hardware. See the developer guide for those boundaries and the manual review checklist.
 
-Development runs on port 5174. If the shell inherits Electron's Node mode, start with
+Development runs on port 5175. If the shell inherits Electron's Node mode, start with
 `env -u ELECTRON_RUN_AS_NODE npm run dev`.
 
 ## LiveResults time-formatting diagnostic
@@ -302,5 +302,4 @@ After testing, please share:
 - [ ] Logs compared with expected values
 - [ ] Identified where data becomes incorrect
 - [ ] Ready to share logs and findings
-
 

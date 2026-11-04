@@ -406,3 +406,24 @@
 .panel--finish-watch .watch-provisional { font-size: .65em; margin-left: 2px; }
 .panel--finish-watch .ftr { display: flex !important; min-height: 44px; justify-content: space-between; gap: 24px; padding: 8px 26px; }
 .panel--finish-watch .watch-note { font-size: 16px; text-transform: none; }
+
+/* Finish watch keeps expired rows briefly so their departure is readable. */
+@keyframes watch-row-leave {
+  to { opacity: 0; transform: translateX(24px); }
+}
+.gfx[data-state="on"] .panel--finish-watch .row.is-leaving {
+  animation: watch-row-leave 240ms ease-in both;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gfx[data-state="on"] .panel--finish-watch .row.is-leaving {
+    animation-name: fade-out;
+  }
+}
+
+/* Runner presentations and Finish watch follow this look’s palette. */
+.gfx {
+  --presentation-focus: var(--yellow);
+  --presentation-surface: var(--blue);
+  --presentation-on-focus: var(--on-yellow);
+}

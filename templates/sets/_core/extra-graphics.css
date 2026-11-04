@@ -1,0 +1,31 @@
+/* Shared behavior and geometry; each look supplies its focus and raised-surface tokens. */
+.panel--presentations .row { isolation: isolate; z-index: 0; transform-origin: center; transition: transform 220ms cubic-bezier(.16,1,.3,1); }
+.panel--presentations .row::before {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: var(--presentation-surface); box-shadow: var(--presentation-shadow, 0 8px 18px #0008);
+  opacity: 0; transition: opacity 200ms ease-out;
+}
+.panel--presentations .row.is-presented { z-index: 3; transform: translateY(-3px) scale(1.015); }
+.panel--presentations .row.is-presented::before { opacity: 1; }
+.panel--presentations .c-name { position: relative; }
+.panel--presentations .presentation-name { transition: opacity 200ms ease; }
+.panel--presentations .presentation-focus-name {
+  position: absolute; inset: 0; display: block; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; color: var(--presentation-focus); opacity: 0; transition: opacity 200ms ease;
+}
+.panel--presentations .is-presented .presentation-name { opacity: 0; }
+.panel--presentations .is-presented .presentation-focus-name { opacity: 1; }
+.panel--finish-watch .c-id { min-width: 100px; padding-inline: 12px; color: var(--muted); }
+.panel--finish-watch .is-approaching .c-time { color: var(--presentation-focus); }
+.panel--finish-watch .is-registered .c-place { background: var(--presentation-focus); color: var(--presentation-on-focus); }
+.panel--finish-watch .watch-provisional { font-size: .65em; margin-left: 2px; }
+.panel--finish-watch .ftr { display: flex !important; min-height: 44px; justify-content: space-between; gap: 24px; padding: 8px 26px; }
+.panel--finish-watch .watch-note { font-size: 16px; text-transform: none; }
+@keyframes watch-row-leave { to { opacity: 0; transform: translateX(24px); } }
+.gfx[data-state="on"] .panel--finish-watch .row.is-leaving { animation: watch-row-leave 240ms ease-in both; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) {
+  .panel--presentations .row, .panel--presentations .row::before,
+  .panel--presentations .presentation-name, .panel--presentations .presentation-focus-name { transition: none; }
+  .panel--presentations .row.is-presented { transform: none; }
+  .gfx[data-state="on"] .panel--finish-watch .row.is-leaving { animation-name: fade-out; }
+}

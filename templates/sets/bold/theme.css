@@ -240,3 +240,10 @@
 .gfx .panel--strap .row { align-items: baseline; min-height: 0; padding-block: 22px; }
 .gfx .panel--strap .row > * { align-self: baseline !important; }
 .gfx .panel--strap .row > .c-place { align-self: stretch !important; margin-block: -22px; }
+
+/* Runner presentations and Finish watch follow this look’s palette. */
+.gfx {
+  --presentation-focus: var(--hot);
+  --presentation-surface: var(--band-2);
+  --presentation-on-focus: var(--on-hot);
+}

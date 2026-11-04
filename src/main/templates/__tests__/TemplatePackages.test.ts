@@ -56,7 +56,7 @@ const setIds = () => manager.getTemplateSets().map((s) => s.id).sort();
 describe('looks as zip files', () => {
   it('starts with only the built-in Standard look', () => {
     expect(setIds()).toEqual(['standard']);
-    expect(manager.getTemplateSets()[0]).toMatchObject({ source: 'built-in', templateCount: 17 });
+    expect(manager.getTemplateSets()[0]).toMatchObject({ source: 'built-in', templateCount: 19 });
   });
 
   it('exports a look as <set>/... with every file of the set', () => {
@@ -99,7 +99,7 @@ describe('looks as zip files', () => {
 
     await importTemplateZip(manager, zip);
     expect(manager.getTemplateSets()).toEqual([
-      expect.objectContaining({ id: 'standard', name: 'Standard (club colours)', source: 'imported', replacesBuiltIn: true, templateCount: 17 }),
+      expect.objectContaining({ id: 'standard', name: 'Standard (club colours)', source: 'imported', replacesBuiltIn: true, templateCount: 19 }),
     ]);
     expect(manager.getTemplateById('standard-results')!.manifestPath.startsWith(path.join(tmp, 'user'))).toBe(true);
 

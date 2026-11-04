@@ -183,6 +183,19 @@ export interface ControlState {
   output?: { web: boolean; ndi: boolean };
   /** Outputs that did not start when the event entered Live */
   outputErrors?: string[];
-  polling?: Array<{ active: boolean; competitionId?: number; className?: string; interval?: number; lastPoll?: number; lastUpdate?: number; errorCount?: number; lastError?: string }>;
+  polling?: Array<{
+    active: boolean;
+    competitionId?: number;
+    className?: string;
+    interval?: number;
+    lastPoll?: number;
+    lastUpdate?: number;
+    errorCount?: number;
+    lastError?: string;
+    sourceId?: string;
+    sourceName?: string;
+    sourceType?: import('./dataSource').DataSourceType;
+    apiFlavor?: 'legacy' | 'rest' | 'backend';
+  }>;
 
 }

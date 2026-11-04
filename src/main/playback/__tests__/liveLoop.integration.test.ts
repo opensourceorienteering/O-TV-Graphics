@@ -92,7 +92,7 @@ describe('live loop (integration)', () => {
     initLiveResultsClient({ baseUrl, api: 'rest', localPollFloorMs: 200, push: false });
     const dataStore = initDataStore();
     source = new LiveResultsDataSource({
-      id: 'fake-rest', name: 'Fake REST', type: 'liveresults', enabled: true,
+      id: 'fake-rest', name: 'Replay', type: 'liveresults', enabled: true,
       config: { baseUrl, api: 'rest', localPollFloorMs: 200, push: false }
     } as any);
     await source.initialize();
@@ -120,6 +120,12 @@ describe('live loop (integration)', () => {
 
     // First poll establishes the baseline; then a runner finishes.
     await vi.waitFor(() => expect(requests.some(r => r.path === '/classresults')).toBe(true), { timeout: 3000 });
+    expect(engine.getLivePollingStatus()[0]).toMatchObject({
+      sourceId: 'fake-rest',
+      sourceName: 'Replay',
+      sourceType: 'liveresults',
+      apiFlavor: 'rest'
+    });
     results = results.map(r => r.name === 'Bertil Bok'
       ? { ...r, place: '2', result: 372000, status: 0, timeplus: 12000, progress: 100, changed: 2 }
       : r);
