@@ -35,9 +35,14 @@ vi.mock('../../data/DataSourceFieldMapper', () => ({
   DataSourceFieldMapper: { fetchAndMapData: (...args: any[]) => fetchAndMapData(...args) }
 }));
 
-const sourceClient = { name: 'rest-client' };
+const sourceClient = { name: 'rest-client', getApiFlavor: () => 'rest' as const };
 vi.mock('../../data/DataSourceRegistry', () => ({
-  getDataSourceRegistry: () => ({ get: () => ({ getClient: () => sourceClient }) })
+  getDataSourceRegistry: () => ({
+    get: () => ({
+      config: { type: 'liveresults', name: 'Test LiveResults' },
+      getClient: () => sourceClient
+    })
+  })
 }));
 
 import { PlaybackEngine } from '../PlaybackEngine';
