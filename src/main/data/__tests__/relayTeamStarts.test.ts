@@ -47,3 +47,39 @@ describe('relay team starts', () => {
     expect((await relayTeamStarts(client({}) as any, 1, 'Mixed-2', leg2)).size).toBe(0);
   });
 });
+
+import { relayLegsOfTeam } from '../DataSourceFieldMapper';
+
+describe('relay legs of a team', () => {
+  // JWOC 2026 Sprint Relay, Czechia 1 (shortened: one radio control per leg)
+  const leg = (n: number, place: string, result: string, timeplus: string, split: number, splitPlace: number, name: string) => ({
+    splitcontrols: [{ code: 1035, name: 'TV1' }],
+    results: [
+      { name, club: 'Czechia 1', place, result, timeplus, status: 0, start: 420000, splits: { 1035: split, '1035_place': splitPlace, '1035_timeplus': 2500 } },
+      { name: 'Other', club: 'France 1', place: '1', result: '1', timeplus: '0', status: 0, start: 420000, splits: {} }
+    ]
+  });
+  const classes = { 'Mixed-1': leg(1, '7', '82500', '2800', 40000, 31, 'Marketa Hanusova'), 'Mixed-2': leg(2, '2', '160400', '700', 102000, 7, 'Vladimir Srb'),
+    'Mixed-3': leg(3, '', '', '', 180000, 2, 'Tomas Urbanek') };
+  const client = {
+    getClasses: vi.fn(async () => ({ data: [{ className: 'Mixed-1' }, { className: 'Mixed-2' }, { className: 'Mixed-3' }, { className: 'Mixed-4' }, { className: 'H21' }] })),
+    getClassResults: vi.fn(async (_c: number, name: string) => {
+      if (!(name in classes)) throw new Error('no class');
+      return { data: (classes as any)[name], hash: '', timestamp: 0, changed: false };
+    })
+  };
+
+  it('follows the selected runner\'s team through every leg', async () => {
+    const legs = await relayLegsOfTeam(client as any, 37049, 'Mixed-3', (classes as any)['Mixed-3'], { runnerName: 'Tomas Urbanek' });
+    expect(legs.map(l => l.leg)).toEqual([1, 2, 3]); // leg 4 has no data yet
+    expect(legs[0].runner).toMatchObject({ name: 'Marketa Hanusova', club: 'Czechia 1', place: 7, result: 82500, timeplus: 2800 });
+    expect(legs[1].runner?.splits).toEqual([{ code: 1035, time: 102000, place: 7, timeplus: 2500 }]);
+    expect(legs[2].runner).toMatchObject({ name: 'Tomas Urbanek', result: 0 });
+    expect(legs[0].controls).toEqual([{ code: 1035, name: 'TV1' }]);
+  });
+
+  it('is empty for individual classes and without a runner', async () => {
+    expect(await relayLegsOfTeam(client as any, 1, 'H21', { results: [] }, { runnerName: 'X' })).toEqual([]);
+    expect(await relayLegsOfTeam(client as any, 1, 'Mixed-2', { results: [] }, {})).toEqual([]);
+  });
+});

@@ -44,3 +44,39 @@ describe('relay running times', () => {
     expect(text(html)).toContain('-0:36');
   });
 });
+
+describe('relay split comparison and leg names', () => {
+  const runner = (name: string, place: number, result: number, timeplus: number, splits: any[]) =>
+    ({ name, club: 'Czechia 1', status: 0, place, result, timeplus, splits });
+  const legs = [
+    { leg: 1, className: 'Mixed-1', controls: [{ code: 1035, name: 'TV1' }], runner: runner('Marketa Hanusova', 7, 82500, 2800, [{ code: 1035, time: 40000, place: 31, timeplus: 2500 }]) },
+    { leg: 2, className: 'Mixed-2', controls: [{ code: 1035, name: 'TV1' }], runner: runner('Vladimir Srb', 2, 160400, 700, [{ code: 1035, time: 102000, place: 7, timeplus: 3400 }]) },
+    { leg: 3, className: 'Mixed-3', controls: [{ code: 1035, name: 'TV1' }, { code: 1040, name: 'TV2' }], runner: runner('Tomas Urbanek', 0, 0, 0, [{ code: 1035, time: 180000, place: 2, timeplus: 100 }]) },
+    { leg: 4, className: 'Mixed-4', controls: [{ code: 1035, name: 'TV1' }], runner: null }
+  ];
+  const rows = (html: string) => [...html.matchAll(/<div class="row[^"]*"[^>]*>(.*?)<\/div>/g)].map(m => text(m[1]));
+  const base = { className: 'Mixed-3', runnerName: 'Tomas Urbanek', runnerClub: 'Czechia 1', relayLegs: legs, results: [] };
+
+  it('lists every leg\'s radio controls and changeovers for the team', () => {
+    const html = views.renderView('runner-splits', { ...base, compare: 'team', maxControls: 10 }, { ...ctx, kind: 'runner-splits' }).html;
+    expect(text(html)).toContain('Czechia 1');
+    expect(rows(html)).toEqual([
+      '1 TV1 31 +0:25', 'Changeover 1 7 24 +0:28', '2 TV1 7 +0:34', 'Changeover 2 2 5 +0:07', '3 TV1 2 +0:01'
+    ]);
+  });
+
+  it('keeps every changeover when rows are short, with places gained since the row above', () => {
+    const html = views.renderView('runner-splits', { ...base, compare: 'team', maxControls: 3 }, { ...ctx, kind: 'runner-splits' }).html;
+    expect(rows(html)).toEqual(['Changeover 1 7 +0:28', 'Changeover 2 2 5 +0:07', '3 TV1 2 +0:01']);
+  });
+
+  it('says the leg in Swedish, and keeps the runner view for individual classes', () => {
+    const sv = views.renderView('runner-splits', { ...base, compare: 'team', presentation: { language: 'sv' } }, { ...ctx, kind: 'runner-splits' }).html;
+    expect(text(sv)).toContain('Växling 1');
+    const solo = views.renderView('runner-splits', { ...base, relayLegs: undefined, compare: 'team' }, { ...ctx, kind: 'runner-splits' }).html;
+    expect(text(solo)).toContain('Mixed · Leg 3');
+    const svSolo = views.renderView('results', { className: 'Mixed-2', results: [], presentation: { language: 'sv' } }, { ...ctx, kind: 'results' }).html;
+    expect(text(svSolo)).toContain('Mixed · Sträcka 2');
+    expect(text(views.renderView('results', { className: 'H21', results: [] }, { ...ctx, kind: 'results' }).html)).toContain('H21');
+  });
+});

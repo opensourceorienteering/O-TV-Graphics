@@ -278,6 +278,12 @@ export class DataSourceFieldMapper {
         }
       }
 
+      // Relays: the selected team on every leg, for graphics that follow a team (split comparison)
+      if (dataSourceConfig.api?.fieldMappings?.some(m => m.apiPath === 'relayLegs')) {
+        const legs = await relayLegsOfTeam(client, competitionId, className, rawClassResults.data, dataSourceValues);
+        if (legs.length) mappedFields.relayLegs = legs;
+      }
+
       // Add additional context fields
       const mappingStartTime = Date.now();
       mappedFields.className = className;
@@ -538,4 +544,87 @@ export async function relayTeamStarts(
     if (team && Number(r.start) > 0 && team > Number(r.start)) starts.delete(String(r.club));
   }
   return starts;
+}
+
+/** One leg of a relay team, as graphics get it (relayLegs) */
+export interface RelayLegOfTeam {
+  leg: number;
+  className: string;
+  /** The leg's radio controls in course order */
+  controls: Array<{ code: number; name: string }>;
+  /** The team's runner on this leg; times and places from the team's start (null: not known yet) */
+  runner: {
+    name: string;
+    club: string;
+    status: number;
+    /** Team time at the end of the leg (hundredths), 0 until then */
+    result: number;
+    place: number;
+    /** Behind the best team at the end of the leg (hundredths) */
+    timeplus: number;
+    /** Team time, place and time behind at each radio control of the leg */
+    splits: Array<{ code: number; time: number; place: number; timeplus: number }>;
+  } | null;
+}
+
+/**
+ * The selected runner's team on every leg of a relay: each leg class ("Mixed-1", "Mixed-2" …)
+ * with the team's runner, places and times from the team's start. Empty for individual classes.
+ */
+export async function relayLegsOfTeam(
+  client: Pick<LiveResultsClient, 'getClassResults' | 'getClasses'>,
+  competitionId: number,
+  className: string,
+  current: { splitcontrols?: any[]; results?: any[] },
+  values: { runnerName?: string; runnerClub?: string }
+): Promise<RelayLegOfTeam[]> {
+  const leg = /^(.*\S)\s*-(\d+)$/.exec(String(className));
+  if (!leg) return [];
+  const base = leg[1];
+  const own = (current.results ?? []).find((r: any) => r.name === values.runnerName);
+  const team = String(values.runnerClub || own?.club || '');
+  if (!team) return [];
+  // the relay's legs, from the class list (fall back to legs 1 … this one)
+  let legNames: string[] = [];
+  try {
+    const classes = (await client.getClasses(competitionId)).data ?? [];
+    legNames = classes.map((c: any) => String(c.className))
+      .filter(n => { const m = /^(.*\S)\s*-(\d+)$/.exec(n); return !!m && m[1] === base; });
+  } catch { /* fall back below */ }
+  if (!legNames.length) legNames = Array.from({ length: Number(leg[2]) }, (_, i) => `${base}-${i + 1}`);
+  const legNo = (n: string) => Number(/-(\d+)$/.exec(n)?.[1] ?? 0);
+  legNames.sort((a, b) => legNo(a) - legNo(b));
+  const out: RelayLegOfTeam[] = [];
+  for (const name of legNames) {
+    let data: { splitcontrols?: any[]; results?: any[] } | undefined = name === className ? current : undefined;
+    if (!data) {
+      try { data = (await client.getClassResults(competitionId, name, { maxAgeMs: 10_000 })).data; }
+      catch { continue; }
+    }
+    const controls = (data.splitcontrols ?? []).map((c: any) =>
+      typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
+    const r = (data.results ?? []).find((x: any) => String(x.club) === team);
+    out.push({
+      leg: legNo(name),
+      className: name,
+      controls,
+      runner: r ? {
+        name: String(r.name ?? ''),
+        club: String(r.club ?? ''),
+        status: Number(r.status) || 0,
+        result: Number(r.status) === 0 ? Number(r.result) || 0 : 0,
+        place: Number(r.place) || 0,
+        timeplus: Number(r.timeplus) || 0,
+        splits: controls
+          .map(c => ({
+            code: c.code,
+            time: Number(r.splits?.[String(c.code)]) || 0,
+            place: Number(r.splits?.[`${c.code}_place`]) || 0,
+            timeplus: Number(r.splits?.[`${c.code}_timeplus`]) || 0
+          }))
+          .filter(s => s.time > 0)
+      } : null
+    });
+  }
+  return out;
 }

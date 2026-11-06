@@ -2,8 +2,8 @@
   "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
   "id": "iof2-runner-splits",
   "version": "1.0.0",
-  "name": "IOF inspired – Runner split comparison",
-  "description": "One runner at every radio control: place, places gained or lost, and time behind the best.",
+  "name": "IOF inspired – Split comparison",
+  "description": "The selected runner at every radio control: place, places gained or lost, and time behind the best. In a relay, Team follows the runner's team through every leg and changeover.",
   "author": {
     "name": "Split Control"
   },
@@ -14,6 +14,20 @@
   "schema": {
     "type": "object",
     "properties": {
+      "compare": {
+        "type": "string",
+        "title": "Compare",
+        "description": "The selected runner, or (relays) their team through every leg",
+        "enum": [
+          "runner",
+          "team"
+        ],
+        "enumNames": [
+          "Selected runner",
+          "Team (all legs)"
+        ],
+        "default": "runner"
+      },
       "maxControls": {
         "type": "number",
         "title": "Controls shown",

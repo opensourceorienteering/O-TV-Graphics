@@ -113,10 +113,14 @@ const KINDS = {
     ])
   },
   'runner-splits': {
-    name: 'Runner split comparison', zone: 'side', stepCount: 1,
-    description: 'One runner at every radio control: place, places gained or lost, and time behind the best.',
-    schema: { maxControls: num('Controls shown', 'Latest radio controls to show', 6) },
-    datasource: datasource([classSelector, runnerSearch(true)])
+    name: 'Split comparison', zone: 'side', stepCount: 1,
+    description: 'The selected runner at every radio control: place, places gained or lost, and time behind the best. In a relay, Team follows the runner\'s team through every leg and changeover.',
+    schema: {
+      compare: { type: 'string', title: 'Compare', description: 'The selected runner, or (relays) their team through every leg',
+        enum: ['runner', 'team'], enumNames: ['Selected runner', 'Team (all legs)'], default: 'runner' },
+      maxControls: num('Controls shown', 'Latest radio controls to show', 6)
+    },
+    datasource: datasource([classSelector, runnerSearch(true)], [mapping('relayLegs', 'relayLegs')])
   },
   'position-history': {
     name: 'Position history', zone: 'main', stepCount: 1,

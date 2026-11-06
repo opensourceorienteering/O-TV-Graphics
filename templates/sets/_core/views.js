@@ -13,10 +13,12 @@ import { eventLabels, weatherCondition, timingPoint, timingPointHtml } from './l
 
 import {
   esc, time, diff, clock, now, isFrozen, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
-  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml, clockStartMs
+  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml, clockStartMs, classLabel, relayLeg
 } from './util.js';
 
 const L = (ctx, key, fallback) => ctx.labels?.[key] ?? fallback;
+/** The class name as shown on air: a relay leg reads "Mixed · Leg 2" */
+const shownClass = (data, ctx) => classLabel(data?.className, L(ctx, 'leg', 'Leg'));
 
 /** Is the shown timing point the finish (no control, or F / finish / 1000)? */
 const atFinish = (data) => { const c = String(data?.controlCode ?? '').trim(); return !c || /^(f|finish|1000)$/i.test(c); };
@@ -129,10 +131,64 @@ const tpHtml = (data, ctx) => timingPointHtml(timingPoint(data, {
 }), esc);
 
 /** Footer text "H21 – Finish": class and control in separate spans for themes */
-const ctlLabel = (data, label) => `<span class="ftr-class">${esc(data.className || '')}</span><span class="ftr-sep"> – </span><span class="ftr-ctrl">${label}</span>`;
+const ctlLabel = (data, label, ctx) => `<span class="ftr-class">${esc(shownClass(data, ctx))}</span><span class="ftr-sep"> – </span><span class="ftr-ctrl">${label}</span>`;
 
 const nameStyle = (ctx, where) => ctx.nameStyle?.[where] ?? 'full';
 const runnerName = (r, data, ctx, where) => nameHtml(r?.name, isRelayClass(data) && ctx.relayNames === 'team' ? 'team' : nameStyle(ctx, where));
+
+/** A radio control's short name on air (TV1, Arena, or C35) */
+const controlShort = (c) => c.short || (c.name && !/^control\s/i.test(c.name) ? c.name : `C${c.code % 1000}`);
+
+/**
+ * Split comparison for a relay team (data.relayLegs, one entry per leg): every radio control of
+ * every leg, then each changeover (the finish after the last leg), with the team's place, places
+ * gained or lost and time behind the best team, all from the team's start.
+ */
+function teamSplits(data, ctx) {
+  const legs = data.relayLegs.filter(l => l && Number.isFinite(Number(l.leg))).slice().sort((a, b) => a.leg - b.leg);
+  const lastLeg = legs.length ? legs[legs.length - 1].leg : 0;
+  const points = [];
+  for (const l of legs) {
+    const r = l.runner;
+    if (!r) continue;
+    const byCode = new Map((r.splits ?? []).map(s => [String(s.code), s]));
+    for (const c of l.controls ?? []) {
+      const s = byCode.get(String(c.code));
+      if (!s || !(s.time > 0)) continue;
+      points.push({ key: `l${l.leg}c${c.code}`, label: `<span class="c-leg">${l.leg}</span>${esc(controlShort(c))}`, place: Number(s.place) || null, time: s.time, timeplus: Number(s.timeplus) || 0 });
+    }
+    const status = statusLabel({ statusCode: r.status });
+    if (r.result > 0 || status) {
+      const end = l.leg === lastLeg ? L(ctx, 'finish', 'Finish') : `${L(ctx, 'changeover', 'Changeover')} ${l.leg}`;
+      points.push({ key: `l${l.leg}end`, leg: true, label: esc(end), place: status ? null : Number(r.place) || null, time: r.result, timeplus: Number(r.timeplus) || 0, status });
+    }
+  }
+  // every changeover stays; the latest radio controls fill the rest
+  const max = int(data.maxControls, 6);
+  const legPoints = points.filter(p => p.leg);
+  const keep = new Set(legPoints.length >= max ? legPoints.slice(-max) : [...legPoints, ...points.filter(p => !p.leg).slice(-(max - legPoints.length))]);
+  // places gained or lost since the row above (rows in between may be left out)
+  let prevPlace = null;
+  const shown = points.filter(p => keep.has(p)).map((p, i) => {
+    const change = prevPlace && p.place ? prevPlace - p.place : 0;
+    prevPlace = p.place ?? prevPlace;
+    const value = p.status || (p.timeplus > 0 ? clock(p.timeplus / 100, { sign: true }) : clock(p.time / 100));
+    return `<div class="row${p.leg ? ' row--leg' : ''}" style="--i:${i}" data-key="${p.key}"><span class="c-label">${p.label}</span>` +
+      `<span class="c-place">${p.place ?? ''}</span>` +
+      `<span class="c-change ${change > 0 ? 'up' : change < 0 ? 'down' : ''}">${change ? Math.abs(change) : ''}</span>` +
+      `<span class="c-time ${p.status ? 'is-status' : p.timeplus > 0 ? 'is-behind' : 'is-best'}">${esc(value)}</span></div>`;
+  }).join('')
+    || emptyRow(L(ctx, 'noSplits', 'No split times yet'));
+  const current = legs.find(l => l.className === data.className)?.runner;
+  const team = current?.club || data.runnerClub || legs.find(l => l.runner)?.runner.club || '';
+  const relay = relayLeg(data.className);
+  const runner = current?.name || data.runnerName || '';
+  return {
+    steps: 1,
+    html: `<div class="panel panel--side panel--splits panel--team-splits">${header(nameHtml(team, 'team'), esc(relay ? relay[0] : shownClass(data, ctx)), data)}` +
+      `<div class="rows">${shown}</div>${footer(runner ? nameHtml(runner, 'family') : esc(L(ctx, 'team', 'Team')), data)}</div>`
+  };
+}
 
 /** Running time against the leader for a runner on the way to the timing point (or '') */
 function virtualCell(r, data, leader) {
@@ -211,12 +267,12 @@ const views = {
     const leaderTime = ranked[0];
     const rows = slice.map((r, i) => runnerRow(r, i, data, ctx, { leader: r === leaderTime })).join('') || emptyRow(L(ctx, 'noResults', 'No results yet'));
     const where = controlLabel(data);
-    const title = esc(data.title || data.className || '');
+    const title = esc(data.title || shownClass(data, ctx));
     const sub = esc(`${L(ctx, 'standingsAt', 'Standings at')} ${where}`);
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
     // IOF, ČO and others: [class] left, the timing point right ("Mellantid 2 Önnestad" / "Mål")
     const head = ctx.timingHeader
-      ? header(esc(data.className || data.title || ''), tpHtml(data, ctx), data, '', 'hdr--timing')
+      ? header(esc(shownClass(data, ctx) || data.title || ''), tpHtml(data, ctx), data, '', 'hdr--timing')
       : header(title, sub, data);
     return {
       steps: pages,
@@ -242,7 +298,7 @@ const views = {
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
     return {
       steps: pages,
-      html: `<div class="panel panel--table panel--startlist${bibs ? '' : ' no-bibs'}">${header(esc(data.className || ''), esc(L(ctx, 'startList', 'Start list')), data)}<div class="rows">${rows}</div>${footer(esc(L(ctx, 'startList', 'Start list')), data, pageInfo)}</div>`
+      html: `<div class="panel panel--table panel--startlist${bibs ? '' : ' no-bibs'}">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'startList', 'Start list')), data)}<div class="rows">${rows}</div>${footer(esc(L(ctx, 'startList', 'Start list')), data, pageInfo)}</div>`
     };
   },
 
@@ -279,13 +335,13 @@ const views = {
     const label = esc(splitLabel(data, ctx, virtualPos >= 0));
     // IOF, ČO and others: footer [class] left, the timing point right; on the way "Mot mellantid 2"
     const foot = ctx.timingHeader
-      ? footer(esc(data.className || ''), data, `<span class="ftr-tp">${virtualPos >= 0 ? `<span class="tp"><span class="tp-full">${label}</span><span class="tp-short">${label}</span></span>` : tpHtml(data, ctx)}</span>`)
-      : footer(ctlLabel(data, label), data);
+      ? footer(esc(shownClass(data, ctx)), data, `<span class="ftr-tp">${virtualPos >= 0 ? `<span class="tp"><span class="tp-full">${label}</span><span class="tp-short">${label}</span></span>` : tpHtml(data, ctx)}</span>`)
+      : footer(ctlLabel(data, label, ctx), data);
     return {
       steps: 1,
       // the view changes with time while the selected runner is on the way (see graphic.js tick)
       key, rekey: virtualPos >= 0,
-      html: `<div class="panel panel--lower">${header(esc(data.className || ''), label, data)}<div class="rows">${html}</div>${foot}</div>`
+      html: `<div class="panel panel--lower">${header(esc(shownClass(data, ctx)), label, data)}<div class="rows">${html}</div>${foot}</div>`
     };
   },
 
@@ -321,12 +377,14 @@ const views = {
     const label = esc(controlLabel(data));
     return {
       steps: 1,
-      html: `<div class="panel panel--lower panel--runner">${header(esc(data.className || ''), label, data)}<div class="rows">${main}${ref}</div>${footer(ctlLabel(data, label), data)}</div>`
+      html: `<div class="panel panel--lower panel--runner">${header(esc(shownClass(data, ctx)), label, data)}<div class="rows">${main}${ref}</div>${footer(ctlLabel(data, label, ctx), data)}</div>`
     };
   },
 
   /** One runner's split-by-split comparison with the best at each radio control */
   'runner-splits'(data, ctx) {
+    // Relays: the runner's team through every leg and changeover
+    if (data.compare === 'team' && Array.isArray(data.relayLegs) && data.relayLegs.some(l => l?.runner)) return teamSplits(data, ctx);
     const list = Array.isArray(data.results) ? data.results : [];
     const r = findRunner(list, data);
     const controls = Array.isArray(data.splitControls) ? data.splitControls : [];
@@ -351,7 +409,7 @@ const views = {
     const name = r?.name || data.runnerName || '';
     return {
       steps: 1,
-      html: `<div class="panel panel--side panel--splits">${header(nameHtml(name, nameStyle(ctx, 'lower')), esc(data.className || ''), data)}<div class="rows">${shown}</div>${footer(nameHtml(name, 'family'), data)}</div>`
+      html: `<div class="panel panel--side panel--splits">${header(nameHtml(name, nameStyle(ctx, 'lower')), esc(shownClass(data, ctx)), data)}<div class="rows">${shown}</div>${footer(nameHtml(name, 'family'), data)}</div>`
     };
   },
 
@@ -422,7 +480,7 @@ const views = {
       : `<div class="rows">${emptyRow(L(ctx, 'noSplits', 'No split times yet'))}</div>`;
     return {
       steps: 1,
-      html: `<div class="panel panel--chart">${header(esc(data.className || ''), esc(L(ctx, 'positionHistory', 'Position history')), data)}<div class="chart-body">${svg}</div>${footer(esc(L(ctx, 'positionHistory', 'Position history')), data)}</div>`
+      html: `<div class="panel panel--chart">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'positionHistory', 'Position history')), data)}<div class="chart-body">${svg}</div>${footer(esc(L(ctx, 'positionHistory', 'Position history')), data)}</div>`
     };
   },
 
@@ -449,7 +507,7 @@ const views = {
     const body = groups.size ? `<div class="podium">${col(2, 1)}${col(1, 0)}${col(3, 2)}</div>` : `<div class="rows">${emptyRow(L(ctx, 'noResults', 'No results yet'))}</div>`;
     return {
       steps: 1,
-      html: `<div class="panel panel--podium">${header(esc(data.title || data.className || ''), esc(L(ctx, 'podium', 'Podium')), data)}${body}${footer(esc(data.title || data.className || ''), data)}</div>`
+      html: `<div class="panel panel--podium">${header(esc(data.title || shownClass(data, ctx)), esc(L(ctx, 'podium', 'Podium')), data)}${body}${footer(esc(data.title || shownClass(data, ctx)), data)}</div>`
     };
   },
 
@@ -478,7 +536,7 @@ const views = {
     return {
       steps: 1,
       key: String(nextKey ?? ''), rekey: true,
-      html: `<div class="panel panel--lower panel--startgroup${bibs ? '' : ' no-bibs'}">${header(title, esc(data.className || ''), data, when)}<div class="rows">${rows}</div>${footer(ctlLabel(data, title), data, when)}</div>`
+      html: `<div class="panel panel--lower panel--startgroup${bibs ? '' : ' no-bibs'}">${header(title, esc(shownClass(data, ctx)), data, when)}<div class="rows">${rows}</div>${footer(ctlLabel(data, title, ctx), data, when)}</div>`
     };
   },
 
@@ -511,7 +569,7 @@ const views = {
       ...extraRows(data.extra).map(([label, value], i) => [`extra-${i}`, label, value])
     ].filter(r => r[2] !== undefined && r[2] !== '' && r[2] !== null);
     const html = rows.map(([k, label, value], i) => `<div class="row row--${k}" style="--i:${i}"><span class="c-label">${esc(label)}</span><span class="c-value">${esc(value)}</span></div>`).join('');
-    const title = esc(data.title || data.className || L(ctx, 'course', 'Course'));
+    const title = esc(data.title || shownClass(data, ctx) || L(ctx, 'course', 'Course'));
     const sub = esc(data.legs || '');
     return {
       steps: 1,
@@ -558,7 +616,7 @@ const views = {
     const r = findRunner(list, data) || {};
     const runner = { ...r, name: r.name || data.runnerName || '', club: r.club || data.runnerClub || '', country: r.country };
     const bib = data.showBib === false ? '' : String(r.bib || data.runnerBib || '');
-    const sub = [data.detail, data.className].filter(Boolean).map(esc).join(' · ');
+    const sub = [data.detail, shownClass(data, ctx)].filter(Boolean).map(esc).join(' · ');
     // Extended athlete presentation (IOF "008_name_bio"): one fact per line under the name
     const bio = String(data.bio ?? '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(0, 4);
     const bioRows = bio.map((line, i) => `<div class="row row--bio" style="--i:${i + 1}"><span class="c-name c-text">${esc(line)}</span></div>`).join('');
@@ -605,7 +663,7 @@ const views = {
       box = `<span class="c-time">${esc(time(r.startTime))}</span>`;
     }
     const sub = atStart
-      ? [data.detail, data.className].filter(Boolean).map(esc).join(' · ') || esc(L(ctx, 'start', 'Start'))
+      ? [data.detail, shownClass(data, ctx)].filter(Boolean).map(esc).join(' · ') || esc(L(ctx, 'start', 'Start'))
       : esc(splitLabel(data, ctx, !through));
     return {
       steps: 1,

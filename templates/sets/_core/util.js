@@ -156,6 +156,16 @@ export function nameHtml(name, style = 'full') {
 
 // --- identity: club, flag, club logo -----------------------------------------------------
 
+/** A relay leg class ("Mixed-2", as Liveresultat, MeOS and MOP name them): [class, leg] or null */
+export const relayLeg = (className) => {
+  const m = /^(.*\S)\s*-(\d+)$/.exec(String(className ?? ''));
+  return m ? [m[1], Number(m[2])] : null;
+};
+/** The class as viewers read it: "Mixed · Leg 2" for a relay leg, otherwise as it is */
+export const classLabel = (className, legWord = 'Leg') => {
+  const leg = relayLeg(className);
+  return leg ? `${leg[0]} · ${legWord} ${leg[1]}` : String(className ?? '');
+};
 export const isRelayClass = (data) => !!data?.isRelay || /-\d+$/.test(String(data?.className ?? ''));
 
 /**

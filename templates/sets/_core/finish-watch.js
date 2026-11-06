@@ -1,4 +1,5 @@
-import { esc, nameHtml, clock, now, parseClock, statusLabel, clockStartMs } from './util.js';
+import { esc, nameHtml, clock, now, parseClock, statusLabel, clockStartMs, classLabel } from './util.js';
+import { eventLabels } from './labels.js';
 const keyOf = r => JSON.stringify([r.className || '', r.name || '', r.club || '', r.bib || '']);
 const splitAt = (runner, code) => (runner.splitTimes || []).find(s => String(s.code) === String(code) && Number(s.time) > 0 && Number(s.status || 0) === 0);
 const isFinish = code => /^(f|finish|1000)$/i.test(String(code));
@@ -66,7 +67,7 @@ export function createFinishWatchView() {
       return `<div class="row${leaving ? ' is-leaving' : ''}${state.measured ? ' is-registered' : ' is-approaching'}" style="--i:${index}" data-key="${esc(id)}">` +
         `<span class="c-place" title="${state.measured ? 'Registered placing' : 'Provisional placing at the measuring point'}">${esc(position)}${state.measured ? '' : '<small class="watch-provisional">*</small>'}</span>` +
         `<span class="c-name">${nameHtml(r.name, ctx.nameStyle?.table || 'full')}</span>` +
-        `<span class="c-id">${esc(className)}</span><span class="c-time">${time}</span></div>`;
+        `<span class="c-id">${esc(classLabel(className, eventLabels(data.presentation?.language).leg))}</span><span class="c-time">${time}</span></div>`;
     }).join('');
     const label = isFinish(measure) ? (sv ? 'Mål' : 'Finish') : `${sv ? 'Kontroll' : 'Control'} ${measure || '—'}`;
     const empty = !valid ? (sv ? 'Välj förvarning och mätpunkt' : 'Choose a prewarning and measuring point') : (sv ? 'Väntar på löpare' : 'Waiting for runners');
@@ -75,7 +76,7 @@ export function createFinishWatchView() {
       s.finishedAt === null && clockStartMs(s.runner) ? Math.floor((at - clockStartMs(s.runner)) / 1000) : 0]));
     return { steps: 1, rekey: true, key,
       html: `<div class="panel panel--lower panel--finish-watch"><header class="hdr"><span class="hdr-mark"></span>` +
-        `<span class="hdr-title">${esc(data.title || (sv ? 'På väg mot ' : 'Approaching ') + label)}</span><span class="hdr-sub">${esc(data.className || (sv ? 'Alla klasser' : 'All classes'))}</span></header>` +
+        `<span class="hdr-title">${esc(data.title || (sv ? 'På väg mot ' : 'Approaching ') + label)}</span><span class="hdr-sub">${esc(data.className ? classLabel(data.className, eventLabels(data.presentation?.language).leg) : (sv ? 'Alla klasser' : 'All classes'))}</span></header>` +
         `<div class="rows">${rows || `<div class="row row--empty"><span class="c-name">${empty}</span></div>`}</div>` +
         `<footer class="ftr"><span class="watch-note">${sv ? '* preliminär placering' : '* provisional place'}</span><span>${visible.length > max ? `${max}/${visible.length} · ` : ''}${esc(label)}</span></footer></div>` };
   };

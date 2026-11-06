@@ -1,4 +1,5 @@
-import { esc, identityHtml, nameHtml, parseClock, time, timeOfDay, int } from './util.js';
+import { esc, identityHtml, nameHtml, parseClock, time, timeOfDay, int, classLabel } from './util.js';
+import { eventLabels } from './labels.js';
 
 /** The picker uses name + club, so bib-less runners and duplicate names stay distinct. */
 export const presentationRunnerKey = (runner) => JSON.stringify([runner.name || '', runner.club || '']);
@@ -40,7 +41,7 @@ export default function runnerPresentations(data, ctx) {
     // The shared lifecycle patches focus steps in place, animating only actual page changes.
     pageKey: `page-${current.page}`,
     html: `<div class="panel panel--table panel--startlist panel--presentations${bibs ? '' : ' no-bibs'}">` +
-      `<header class="hdr"><span class="hdr-mark"></span><span class="hdr-title">${esc(data.className || '')}</span><span class="hdr-sub">${label}</span></header>` +
+      `<header class="hdr"><span class="hdr-mark"></span><span class="hdr-title">${esc(classLabel(data.className, eventLabels(data.presentation?.language, ctx?.labels).leg))}</span><span class="hdr-sub">${label}</span></header>` +
       `<div class="rows">${rows}</div>` +
       (pages > 1 ? `<footer class="ftr"><span class="ftr-mark"></span><span class="ftr-page">${current.page + 1}/${pages}</span></footer>` : '') + '</div>',
   };

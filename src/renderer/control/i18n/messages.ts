@@ -1820,6 +1820,14 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Resultattabell",
     "nb": "Resultattabell"
   },
+  "Split comparison": {
+    "sv": "Mellantidsjämförelse",
+    "nb": "Mellomtidssammenligning"
+  },
+  "Splits": {
+    "sv": "Mellantider",
+    "nb": "Mellomtider"
+  },
   "Runner splits": {
     "sv": "Löparens mellantider",
     "nb": "Løperens mellomtider"

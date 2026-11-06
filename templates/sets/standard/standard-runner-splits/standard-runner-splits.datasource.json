@@ -21,6 +21,14 @@
         "autoPopulated": true,
         "allowOverride": false,
         "showInUI": false
+      },
+      {
+        "templateField": "relayLegs",
+        "apiPath": "relayLegs",
+        "required": false,
+        "autoPopulated": true,
+        "allowOverride": false,
+        "showInUI": false
       }
     ],
     "uiControls": [

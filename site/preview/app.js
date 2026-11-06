@@ -11,7 +11,7 @@ const UPLOADS_KEY = 'split-control-preview-uploads';
 /** Graphic kinds in the order of the Live desk, with the desk's names */
 const KINDS = [
   ['event-title', 'Race title'], ['standings-lower-third', 'Live split'], ['runner-identity', 'Runner identity'],
-  ['runner-start', 'Runner focus'], ['results', 'Results table'], ['runner-splits', 'Runner split comparison'],
+  ['runner-start', 'Runner focus'], ['results', 'Results table'], ['runner-splits', 'Split comparison'],
   ['start-list', 'Start list'], ['start-group', 'Start group'], ['position-history', 'Position history'],
   ['podium', 'Podium / flowers'], ['course-info', 'Course parameters'], ['weather', 'Weather'],
   ['free-text', 'Identity plate'], ['speaker', 'Commentators / speaker'], ['clock', 'Elapsed timer'],
