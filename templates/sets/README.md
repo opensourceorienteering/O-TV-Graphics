@@ -93,6 +93,12 @@ on `.gfx` (from `presentation.logoMode`).
 - Events from before the choice: an uploaded logo means custom; anything else (including the
   retired OK Tyr logo) means the look's own logo.
 
+## Extra graphics
+
+Beyond the 17 standard graphics, `_core/extra-graphics.json` defines graphics that carry their
+own desk declaration (`v_olgrafik_desk`): Runner presentations, Finish watch and Relay team. The
+generator writes them into every look except `iof` and `cz`.
+
 ## Safe area
 
 Graphics' outer edges sit on the SMPTE ST 2046-1 action safe area: 93% of the frame, 68 px from

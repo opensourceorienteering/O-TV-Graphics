@@ -203,6 +203,10 @@ provide representative event, course and weather values. Plan theme previews use
 
 ## Verification
 
+On 2026-11-06, `npm run test:templates` passed all 175 packages (174 graphics across nine looks
+and the output test pattern), including the action safe area check on every element; the
+regression suite passed 583 tests. The record below is from the first full run.
+
 On 2026-11-03, the catalogue has 156 packages: 155 graphics across nine looks and the system
 output test pattern. All 156 passed, with zero missing assets or renderer errors. The full
 regression suite passed 542 tests, and type checking, the production build and site build passed.

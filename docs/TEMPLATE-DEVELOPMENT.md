@@ -5,8 +5,9 @@ for a complete welcome-card example, then use the [command and option tables](ht
 
 A look is a directory in `templates/sets/<look>/` with `set.json`, `set.js`, `theme.css`,
 bundled fonts and one directory per OGraf graphic. Looks may omit graphics or add their own.
-The standard catalogue currently supplies 17 reusable drawings; SOFT also has a hand-made
-Runner presentations graphic. A graphic does not need a new app-side kind to appear in Live.
+The standard catalogue supplies 17 reusable drawings. Every look but IOF and ČO also has the
+extra graphics in `templates/sets/_core/extra-graphics.json`: Runner presentations, Finish watch
+and Relay team. A graphic does not need a new app-side kind to appear in Live.
 
 ## Choose the appropriate extension point
 

@@ -87,15 +87,16 @@ Virtual bibs are found by their number alone: `105` finds V105.
 
 ## Features
 
-- **Nine looks**, each with the same 17 graphics:
+- **Nine looks** with the same graphics (IOF and ČO have the first 17):
   - live split at a radio control, and a runner lower third
   - runner identity, runner focus with a running clock, and a name strap
   - start list and start group (next starters)
   - results with live position changes
-  - runner split comparison and position history chart
+  - split comparison (one runner, or a relay team through every leg) and position history chart
   - podium
   - race title, course facts, weather, identity plate and commentators
   - timer
+  - runner presentations, Finish watch and Relay team
 
   An event uses one look. **Standard ships with the app**; the others are downloads on the
   [Looks page](https://opensourceorienteering.github.io/O-TV-Graphics/looks.html) (or
@@ -150,6 +151,11 @@ Virtual bibs are found by their number alone: `105` finds V105.
   with favourite buttons and Show / Update / Hide, and the
   [EBU OGraf Server API v1](https://github.com/ebu/ograf) at `http://<computer>:5657/ograf/v1`.
   None of these have authentication: only use them on a trusted network.
+- **Relays:** leg names ("Mixed · Leg 2"), running times in the team's time, split
+  comparison and Relay team across every leg, leg times, team-first names, line-ups and
+  changeovers on later legs.
+- **Safe area:** graphics' edges sit on the SMPTE ST 2046-1 action safe area (93%);
+  `npm run test:templates` checks every graphic.
 - **Replay a finished race as if it were live**, to rehearse or train operators. See
   [Replay a race](docs/REPLAY-A-RACE.md).
 - **Standard EBU OGraf v1 graphics.** Third-party OGraf graphics load unchanged, and ours
@@ -292,6 +298,10 @@ rename.
 - [Replay a race](docs/REPLAY-A-RACE.md): rehearse with a finished race played back live
 - [Build & Packaging Guide](docs/BUILD-PACKAGING.md)
 - [Template developer guide](docs/TEMPLATE-DEVELOPMENT.md): declarations, custom views and verification
+- [Graphics declare what the app offers](docs/GRAPHIC-CAPABILITIES.md): building blocks and desk declarations
+- [Runner presentations](docs/RUNNER-PRESENTATIONS.md) and [Finish watch](docs/FINISH-WATCH.md)
+- [Testing instructions](docs/TESTING-INSTRUCTIONS.md)
+- [TraceTrack GPS integration](docs/TRACETRACK-INTEGRATION.md): proposal for GPS graphics
 - [Template sets](templates/sets/README.md)
 - [Companion module](companion/README.md)
 
@@ -299,8 +309,8 @@ rename.
 
 - Manual and CSV data sources for live results (start lists can already be imported from
   CSV).
-- GPS tracking. Tracking providers (Livelox, Loggator and others) each have their own API,
-  and there is no shared standard yet.
+- GPS tracking. The plan is to take it from TraceTrack, our own tracking app; see
+  [TraceTrack GPS integration](docs/TRACETRACK-INTEGRATION.md).
 
 ## Acknowledgments
 

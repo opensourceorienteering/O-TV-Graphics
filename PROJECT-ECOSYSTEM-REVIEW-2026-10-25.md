@@ -5,6 +5,18 @@
 **Scope:** Project freshness, live orienteering timing/data, graphics standards, and broadcast output  
 **Changes made:** None; this document records a review, not implementation work.
 
+## Status on 6 November 2026
+
+The findings below describe the November 2025 baseline. Since then:
+
+| Recommendation | Status |
+|---|---|
+| 1. Electron/Node.js and reproducible NDI builds | **Done:** Electron 44.9.3, Node.js 22+ (CI on 24), the NDI addon rebuilt and verified on install; CI builds macOS (Apple Silicon) and Windows. Not built: Linux and Intel Macs. |
+| 2. OGraf Server API | **Done:** `/ograf/v1`, with tests. |
+| 3. Data sources, IOF XML v3 | **Done:** IOF XML 3.0, MeOS information server, MOP, Liveresultat REST and legacy; `getResults` implemented. Still advertised but not built: `manual` and `csv` source types. |
+| 4. Polling interval | **Done:** Liveresultat push updates, REST every 10 s, MeOS every second. |
+| 5. README/setup guides, local configuration | **Done:** README rewritten, the old NDI setup guide removed, `config.json` no longer tracked. Not done: an NDI throughput benchmark. |
+
 ## Summary
 
 The core direction remains sound: LiveResults, browser-based graphics, and OGraf graphics v1 are still relevant. The most important areas to revisit are the unsupported runtime baseline, the newer OGraf renderer-control standard, breadth of timing-system integration, and out-of-date setup/status documentation.
