@@ -80,3 +80,44 @@ describe('relay split comparison and leg names', () => {
     expect(text(views.renderView('results', { className: 'H21', results: [] }, { ...ctx, kind: 'results' }).html)).toContain('H21');
   });
 });
+
+describe('relay team, team-first names and leg times', () => {
+  const r = (name: string, place: number, result: number, legTime: number, legPlace: number, timeplus = 0) =>
+    ({ name, club: 'Czechia 1', status: 0, place, result, timeplus, legTime, legPlace, legTimeplus: 0, splits: [] });
+  const legs = [
+    { leg: 1, className: 'Mixed-1', controls: [], runner: r('Marketa Hanusova', 7, 82500, 82500, 7) },
+    { leg: 2, className: 'Mixed-2', controls: [], runner: r('Vladimir Srb', 2, 160400, 77900, 1) },
+    { leg: 3, className: 'Mixed-3', controls: [{ code: 1040, name: 'TV2' }],
+      runner: { ...r('Tomas Urbanek', 0, 0, 0, 0), splits: [{ code: 1040, time: 180000, place: 2, timeplus: 700 }] } }
+  ];
+  const rowsOf = (html: string) => [...html.matchAll(/<div class="row[^"]*"[^>]*>(.*?)<\/div>/g)].map(m => text(m[1]));
+
+  it('lists the team\'s runners with places, leg times and leg ranks', () => {
+    const html = views.renderView('relay-team', { className: 'Mixed-3', relayLegs: legs }, { ...ctx, kind: 'relay-team' }).html;
+    expect(text(html)).toContain('Czechia 1');
+    expect(rowsOf(html)).toEqual(['1 Marketa Hanusova 7 13:45 (7)', '2 Vladimir Srb 2 12:59 (1)', '3 Tomas Urbanek 2 TV2']);
+    const done = [...legs.slice(0, 2), { leg: 3, className: 'Mixed-3', controls: [], runner: r('Tomas Urbanek', 2, 238400, 78000, 4, 700) }];
+    expect(rowsOf(views.renderView('relay-team', { className: 'Mixed-3', relayLegs: done }, { ...ctx, kind: 'relay-team' }).html).at(-1)).toBe('Finish 2 +0:07');
+  });
+
+  it('leads with the team when the event asks for it, in relays only', () => {
+    const results = [{ name: 'Leonie Mathis', club: 'Switzerland 1', position: 1, place: 1, time: '52:51', diff: '', statusCode: 0, progress: 100 }];
+    const team = text(views.renderView('results', { className: 'Mixed-4', results, presentation: { relayNames: 'team' } }, { ...ctx, kind: 'results' }).html);
+    expect(team).toMatch(/1 Switzerland 1 Mathis 52:51/);
+    const solo = text(views.renderView('results', { className: 'H21', results, presentation: { relayNames: 'team' } }, { ...ctx, kind: 'results' }).html);
+    expect(solo).toMatch(/1 Leonie Mathis Switzerland 1 52:51/);
+  });
+
+  it('ranks a leg by the runners\' own leg times', () => {
+    // JWOC 2026 leg 4: team time minus the team's time at the changeover
+    const t0 = Date.UTC(2026, 5, 30, 8, 10);
+    const row = (name: string, club: string, place: number, time: string, before: number) =>
+      ({ name, club, position: place, place, time, diff: '', statusCode: 0, progress: 100, teamStartTimeMs: t0, startTimeMs: t0 + before * 1000 });
+    const results = [row('Leonie Mathis', 'Switzerland 1', 1, '52:51', 2377), row('Fanny Delahaye', 'France 1', 2, '53:16', 2386), row('Anni Jantunen', 'Finland 1', 4, '53:29', 2432)];
+    const html = views.renderView('results', { className: 'Mixed-4', controlCode: 'F', results, relayTimes: 'leg' }, { ...ctx, kind: 'results' }).html;
+    expect(rowsOf(html)).toEqual(['1 Anni Jantunen Finland 1 12:57', '2 Leonie Mathis Switzerland 1 +0:17', '3 Fanny Delahaye France 1 +0:33']);
+    expect(text(html)).toContain('Leg times at');
+    // team times stay the default
+    expect(rowsOf(views.renderView('results', { className: 'Mixed-4', controlCode: 'F', results }, { ...ctx, kind: 'results' }).html)[0]).toContain('Leonie Mathis');
+  });
+});

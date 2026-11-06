@@ -30,6 +30,16 @@ describe('relay team starts', () => {
     expect(c.getClassResults).toHaveBeenCalledWith(37049, 'Mixed-1', { maxAgeMs: 60_000 });
   });
 
+  it('works the team start out from the previous leg when leg start times disagree', async () => {
+    // JWOC 2026: legs 1-2 have start times nine hours off legs 3-4 (01:10 against 10:10)
+    const c = client({
+      'Mixed-1': [{ club: 'Czechia 1', start: 420000 }],
+      'Mixed-2': [{ club: 'Czechia 1', start: 502500, result: '160400', status: 0 } as any]
+    });
+    const starts = await relayTeamStarts(c as any, 37049, 'Mixed-3', [{ club: 'Czechia 1', start: 3820400 }]);
+    expect(starts.get('Czechia 1')).toBe(3660000); // 10:10:00, not 01:10:00 from leg 1
+  });
+
   it('uses the source\'s own team start (MeOS, MOP, IOF XML) without fetching leg 1', async () => {
     const c = client({});
     const starts = await relayTeamStarts(c as any, 1, 'Kavle-2', [{ club: 'OK Exempel 1', start: 500000, teamstart: 320000 }]);

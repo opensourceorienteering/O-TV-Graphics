@@ -513,7 +513,10 @@ export class DataSourceFieldMapper {
 /**
  * Relays: when each team started (hundredths since midnight), by team name. Leg results and
  * splits count from the team's start, while a runner's own start is their changeover. MeOS,
- * MOP and IOF XML give it (teamstart); for Liveresultat it is the team's start on leg 1.
+ * MOP and IOF XML give it (teamstart). For Liveresultat it is the runner's changeover minus the
+ * team's time at the end of the previous leg: start times can differ between leg classes (the
+ * JWOC 2026 Sprint Relay has legs 1–2 nine hours off legs 3–4), but agree within one leg. A team
+ * without a previous-leg time (a restart) falls back to its start on leg 1.
  * Empty for individual classes, and when the team's start can't be found.
  */
 export async function relayTeamStarts(
@@ -525,17 +528,32 @@ export async function relayTeamStarts(
   const starts = new Map<string, number>();
   for (const r of rows) if (Number(r.teamstart) > 0 && r.club) starts.set(String(r.club), Number(r.teamstart));
   if (!starts.size) {
-    const leg = /^(.*\S)-(\d+)$/.exec(String(className));
+    const leg = /^(.*\S)\s*-(\d+)$/.exec(String(className));
     if (!leg || Number(leg[2]) < 2) return starts;
+    const teamTimeBefore = new Map<string, number>();
     try {
-      // Leg 1 changes rarely once the race is under way: a minute-old copy is fine
-      const first = await client.getClassResults(competitionId, `${leg[1]}-1`, { maxAgeMs: 60_000 });
-      for (const r of first.data.results ?? []) {
-        const start = Number(r.start);
-        if (r.club && start > 0) starts.set(String(r.club), start);
+      const prev = await client.getClassResults(competitionId, `${leg[1]}-${Number(leg[2]) - 1}`, { maxAgeMs: 30_000 });
+      for (const r of prev.data.results ?? []) {
+        if (r.club && Number(r.status) === 0 && Number(r.result) > 0) teamTimeBefore.set(String(r.club), Number(r.result));
       }
     } catch (error) {
-      logger.debug('No leg 1 class for relay team starts', { className, error: error instanceof Error ? error.message : String(error) });
+      logger.debug('No previous leg for relay team starts', { className, error: error instanceof Error ? error.message : String(error) });
+    }
+    const missing: string[] = [];
+    for (const r of rows) {
+      const club = String(r.club ?? ''), start = Number(r.start), before = teamTimeBefore.get(club);
+      if (!club) continue;
+      if (start > 0 && before) starts.set(club, start - before);
+      else missing.push(club);
+    }
+    if (missing.length) {
+      try {
+        const first = await client.getClassResults(competitionId, `${leg[1]}-1`, { maxAgeMs: 60_000 });
+        for (const r of first.data.results ?? []) {
+          const club = String(r.club ?? '');
+          if (missing.includes(club) && Number(r.start) > 0) starts.set(club, Number(r.start));
+        }
+      } catch { /* no leg 1 either: those teams get no team start */ }
     }
   }
   // a team start after the runner's own start can't be right: leave those out
@@ -562,6 +580,12 @@ export interface RelayLegOfTeam {
     place: number;
     /** Behind the best team at the end of the leg (hundredths) */
     timeplus: number;
+    /** This runner's own time on the leg (hundredths), 0 until known */
+    legTime: number;
+    /** Rank of the leg time among all teams on this leg (0 until known) */
+    legPlace: number;
+    /** Behind the fastest leg time (hundredths) */
+    legTimeplus: number;
     /** Team time, place and time behind at each radio control of the leg */
     splits: Array<{ code: number; time: number; place: number; timeplus: number }>;
   } | null;
@@ -595,15 +619,30 @@ export async function relayLegsOfTeam(
   const legNo = (n: string) => Number(/-(\d+)$/.exec(n)?.[1] ?? 0);
   legNames.sort((a, b) => legNo(a) - legNo(b));
   const out: RelayLegOfTeam[] = [];
+  // every team's time at the end of the previous leg, for leg times (team -> hundredths)
+  let previousEnd = new Map<string, number>();
   for (const name of legNames) {
     let data: { splitcontrols?: any[]; results?: any[] } | undefined = name === className ? current : undefined;
     if (!data) {
       try { data = (await client.getClassResults(competitionId, name, { maxAgeMs: 10_000 })).data; }
-      catch { continue; }
+      catch { previousEnd = new Map(); continue; } // the next leg's times can't be worked out
     }
     const controls = (data.splitcontrols ?? []).map((c: any) =>
       typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
+    // leg times of all teams on this leg: team time now minus at the previous changeover
+    const ends = new Map<string, number>();
+    const legTimes = new Map<string, number>();
+    for (const x of data.results ?? []) {
+      const end = Number(x.status) === 0 ? Number(x.result) || 0 : 0;
+      if (!end) continue;
+      ends.set(String(x.club), end);
+      const before = legNo(name) === 1 ? 0 : previousEnd.get(String(x.club));
+      if (before !== undefined && end > before) legTimes.set(String(x.club), end - before);
+    }
+    previousEnd = ends;
+    const fastest = Math.min(...legTimes.values());
     const r = (data.results ?? []).find((x: any) => String(x.club) === team);
+    const legTime = legTimes.get(team) ?? 0;
     out.push({
       leg: legNo(name),
       className: name,
@@ -615,6 +654,9 @@ export async function relayLegsOfTeam(
         result: Number(r.status) === 0 ? Number(r.result) || 0 : 0,
         place: Number(r.place) || 0,
         timeplus: Number(r.timeplus) || 0,
+        legTime,
+        legPlace: legTime ? 1 + [...legTimes.values()].filter(t => t < legTime).length : 0,
+        legTimeplus: legTime ? legTime - fastest : 0,
         splits: controls
           .map(c => ({
             code: c.code,

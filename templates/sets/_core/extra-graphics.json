@@ -231,5 +231,113 @@
         ]
       }
     }
+  },
+  "relay-team": {
+    "name": "Relay team",
+    "manifest": {
+      "version": "1.0.0",
+      "description": "Relays: the selected runner's team on every leg, with the place after each leg, the runner's leg time and rank on the leg, and the place at the latest radio control on the leg under way.",
+      "author": {
+        "name": "Split Control"
+      },
+      "main": "graphic.js",
+      "supportsRealTime": true,
+      "supportsNonRealTime": false,
+      "stepCount": 1,
+      "schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "renderRequirements": [
+        {
+          "resolution": {
+            "width": {
+              "ideal": 1920
+            },
+            "height": {
+              "ideal": 1080
+            }
+          }
+        }
+      ],
+      "v_olgrafik_kind": "relay-team",
+      "v_olgrafik_zone": "side",
+      "v_olgrafik_desk": {
+        "label": "Relay team",
+        "short": "Relay team",
+        "inputs": [
+          "class",
+          "runner"
+        ],
+        "required": [
+          "class",
+          "runner"
+        ],
+        "fields": [],
+        "feeds": [
+          "timing"
+        ],
+        "behaviours": []
+      }
+    },
+    "datasource": {
+      "version": "1.0",
+      "mode": "api",
+      "api": {
+        "provider": "liveresults",
+        "fieldMappings": [
+          {
+            "templateField": "className",
+            "apiPath": "className",
+            "required": true,
+            "autoPopulated": true,
+            "allowOverride": true,
+            "showInUI": true,
+            "uiLabel": "Class name",
+            "uiHelpText": "Override the class name shown"
+          },
+          {
+            "templateField": "results",
+            "apiPath": "results",
+            "required": true,
+            "autoPopulated": true,
+            "allowOverride": false,
+            "showInUI": false
+          },
+          {
+            "templateField": "relayLegs",
+            "apiPath": "relayLegs",
+            "required": false,
+            "autoPopulated": true,
+            "allowOverride": false,
+            "showInUI": false
+          }
+        ],
+        "uiControls": [
+          {
+            "type": "class-selector",
+            "label": "Class (a relay leg)",
+            "helpText": "Any leg of the relay",
+            "required": true,
+            "storeAs": "className",
+            "compact": true
+          },
+          {
+            "type": "runner-search",
+            "label": "Runner",
+            "helpText": "Any runner of the team",
+            "required": true,
+            "storeAs": "runnerId",
+            "searchBy": "both",
+            "placeholder": "Name or bib...",
+            "populateFields": {
+              "runnerName": "name",
+              "runnerClub": "club",
+              "runnerBib": "bib"
+            }
+          }
+        ]
+      }
+    }
   }
 }

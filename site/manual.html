@@ -331,7 +331,7 @@
           <tr><td>Live split</td><td>The latest runners through a radio control or the finish, live.</td></tr>
           <tr><td>Runner identity</td><td>Name, club or flag, and a line of detail.</td></tr>
           <tr><td>Runner focus</td><td>One runner with a running clock, from the start or at a control.</td></tr>
-          <tr><td>Results table</td><td>Results of a class at the finish or a control, page by page, with position changes.</td></tr>
+          <tr><td>Results table</td><td>Results of a class at the finish or a control, page by page, with position changes. In a relay, <strong>Relay times</strong> can rank a leg by the runners' own leg times.</td></tr>
           <tr><td>Split comparison</td><td>One runner's splits against the best. In a relay, choose <strong>Team (all legs)</strong> to follow the runner's team through every leg and changeover.</td></tr>
           <tr><td>Start list</td><td>A class's start list, page by page.</td></tr>
           <tr><td>Start group</td><td>The next starters; follows the start list automatically.</td></tr>
@@ -342,11 +342,27 @@
           <tr><td>Identity plate</td><td>Free text with an optional title.</td></tr>
           <tr><td>Commentators / speaker</td><td>Names of the commentators.</td></tr>
           <tr><td>Elapsed timer</td><td>A running clock.</td></tr>
+          <tr><td>Relay team</td><td>Relays: a team's runner on every leg, the place after each leg, and each runner's leg time with its rank on the leg. Not in IOF and ČO.</td></tr>
         </tbody>
       </table>
       </div>
       <p>The graphics are standard <a href="https://ograf.ebu.io">EBU OGraf</a> packages, so
         third-party OGraf graphics load too.</p>
+
+      <h3 id="relays">Relays</h3>
+      <p>Timing data gives a relay as one class per leg, such as <strong>Mixed-1</strong>,
+        <strong>Mixed-2</strong>. Choose the leg as the class; on air it reads
+        <strong>Mixed · Leg 2</strong>.</p>
+      <ul>
+        <li>Times and places count from the team's start, as standings do. Running clocks of runners
+          on the way do too, so a runner on leg 3 is compared with the leader in team time.</li>
+        <li><strong>Split comparison → Team (all legs)</strong> and <strong>Relay team</strong>
+          follow the team of the runner you pick, through every leg.</li>
+        <li><strong>Results table → Relay times → Leg time</strong> ranks a leg by each runner's
+          own time on it.</li>
+        <li><strong>Plan → Theme → Relays: names first</strong> chooses whether tables, lower thirds,
+          the start group and the podium lead with the runner or the team.</li>
+      </ul>
 
       <h3 id="looks">Looks: import, export and share</h3>
       <p>A look is the style of every graphic: colours, fonts, layout and motion. Every look has

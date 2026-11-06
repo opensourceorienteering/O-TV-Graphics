@@ -285,6 +285,8 @@ export interface ProjectPresentation {
    *  - 'club' | 'flag' | 'both'
    */
   identity?: 'auto' | 'club' | 'flag' | 'both';
+  /** Relays: lead with the runner (default) or the team in tables, lower thirds and the podium */
+  relayNames?: 'runner' | 'team';
   /** Show downloaded Eventor club logos next to clubs (default true) */
   clubLogos?: boolean;
   /**

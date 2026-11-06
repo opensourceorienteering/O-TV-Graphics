@@ -206,6 +206,16 @@ export function identityHtml(runner, data, { code = true } = {}) {
   return out ? `<span class="id">${out}</span>` : '';
 }
 
+/** Relays with the team first: the team's logo or flag, then the runner (last name) */
+export function teamIdentityHtml(runner, data) {
+  const id = identity(runner, data);
+  let out = '';
+  if (id.logo) out += `<img class="id-logo" src="${esc(id.logo)}" alt="">`;
+  if (runner?.name) out += `<span class="id-club id-runner">${nameHtml(runner.name, 'family')}</span>`;
+  if (id.flag) out += `<img class="id-flag" src="${esc(id.flag)}" alt="${esc(id.nation)}">`;
+  return out ? `<span class="id">${out}</span>` : '';
+}
+
 /** Find the operator's selected runner in results (by bib, then name) */
 export function findRunner(results, data) {
   const list = Array.isArray(results) ? results : [];

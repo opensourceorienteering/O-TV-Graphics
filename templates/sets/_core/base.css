@@ -123,6 +123,9 @@
 /* team splits (relays): the leg number before each control; changeovers in bold */
 .panel--team-splits .c-leg { display: inline-block; min-width: 1.4em; margin-right: .35em; opacity: .6; font-size: .8em; font-variant-numeric: tabular-nums; }
 .panel--team-splits .row--leg .c-label { font-weight: 700; }
+/* relay team: the leg's rank among all teams, best in the look's accent */
+.panel--relay-team .c-rank { margin-left: .2em; font-size: .62em; opacity: .7; font-variant-numeric: tabular-nums; }
+.panel--relay-team .c-rank.is-best { opacity: 1; font-weight: 700; }
 :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; }
 :is(.panel--table, .panel--lower:not(.panel--strap), .panel--splits) > .rows > .row--empty > .c-name { grid-column: 1 / -1; }
 /* identity (flag, club) starts at the same x in every row */

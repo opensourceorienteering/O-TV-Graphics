@@ -1820,6 +1820,22 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Resultattabell",
     "nb": "Resultattabell"
   },
+  "Relays: names first": {
+    "sv": "Stafetter: namn först",
+    "nb": "Stafetter: navn først"
+  },
+  "Runner, then team": {
+    "sv": "Löpare, sedan lag",
+    "nb": "Løper, så lag"
+  },
+  "Team, then runner": {
+    "sv": "Lag, sedan löpare",
+    "nb": "Lag, så løper"
+  },
+  "Results, standings, the start group and the podium in relay classes. Runner graphics always show the runner.": {
+    "sv": "Resultat, ställningar, startgruppen och prispallen i stafettklasser. Löpargrafik visar alltid löparen.",
+    "nb": "Resultater, stillinger, startgruppen og seierspallen i stafettklasser. Løpergrafikk viser alltid løperen."
+  },
   "Split comparison": {
     "sv": "Mellantidsjämförelse",
     "nb": "Mellomtidssammenligning"

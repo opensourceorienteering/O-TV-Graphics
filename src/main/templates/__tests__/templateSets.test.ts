@@ -29,9 +29,9 @@ describe('template set discovery', () => {
   it('finds the nine sets in the repository', () => {
     const sets = manager.getTemplateSets();
     expect(sets.map(s => s.id).sort()).toEqual(['bold', 'brutal', 'contours', 'cz', 'iof', 'iof2', 'signal', 'sof', 'standard']);
-    for (const id of ['signal', 'brutal', 'bold', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(19);
-    expect(sets.find(s => s.id === 'sof')?.templateCount).toBe(19);
-    expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 19 });
+    for (const id of ['signal', 'brutal', 'bold', 'contours', 'iof2']) expect(sets.find(s => s.id === id)?.templateCount).toBe(20);
+    expect(sets.find(s => s.id === 'sof')?.templateCount).toBe(20);
+    expect(sets.find(s => s.id === 'standard')).toMatchObject({ name: 'Standard', templateCount: 20 });
     expect(sets.find(s => s.id === 'iof')).toMatchObject({ name: 'IOF', templateCount: 17 });
     expect(sets.find(s => s.id === 'cz')?.templateCount).toBe(17);
   });
@@ -60,12 +60,12 @@ describe('template set discovery', () => {
         .map(templateGraphicKind)
         .sort();
     const standard = roles('standard');
-    expect(standard).toHaveLength(19);
+    expect(standard).toHaveLength(20);
     expect(standard.every(Boolean)).toBe(true);
-    expect(new Set(standard).size).toBe(19);
+    expect(new Set(standard).size).toBe(20);
     expect(standard).not.toContain('test-pattern');
     for (const id of ['sof', 'iof2', 'contours', 'bold', 'brutal', 'signal']) expect(roles(id), id).toEqual(standard);
-    for (const id of ['iof', 'cz']) expect(roles(id), id).toEqual(standard.filter(role => !['runner-presentations', 'finish-watch'].includes(role)));
+    for (const id of ['iof', 'cz']) expect(roles(id), id).toEqual(standard.filter(role => !['runner-presentations', 'finish-watch', 'relay-team'].includes(role)));
     expect(manager.getTemplateById('sof-runner-presentations')).toMatchObject({ desk: { key: 'runner-presentations', previewData: 'starts', behaviours: ['holdOnAir', 'manualSteps'] }, deskWarnings: [] });
   });
 

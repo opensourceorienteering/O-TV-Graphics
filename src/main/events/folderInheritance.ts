@@ -6,6 +6,7 @@ const look = [
   "language",
   "international",
   "identity",
+  "relayNames",
   "clubLogos",
   "clearClashing",
 ] as const;

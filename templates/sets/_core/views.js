@@ -13,7 +13,7 @@ import { eventLabels, weatherCondition, timingPoint, timingPointHtml } from './l
 
 import {
   esc, time, diff, clock, now, isFrozen, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
-  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml, clockStartMs, classLabel, relayLeg
+  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml, clockStartMs, classLabel, relayLeg, teamIdentityHtml
 } from './util.js';
 
 const L = (ctx, key, fallback) => ctx.labels?.[key] ?? fallback;
@@ -38,8 +38,11 @@ function sharedFamilies(data) {
   dupeCache.set(list, dupes);
   return dupes;
 }
+/** Relays with "Team, then runner": the team leads, the runner goes where the club would */
+const teamFirst = (data, ctx) => isRelayClass(data) && (data?.presentation?.relayNames || ctx?.relayNames) === 'team';
+const idCell = (r, data, ctx, opts) => (teamFirst(data, ctx) ? teamIdentityHtml(r, data) : identityHtml(r, data, opts));
 function lowerName(r, data, ctx) {
-  if (isRelayClass(data) && ctx.relayNames === 'team') return nameHtml(r?.name, 'team');
+  if (teamFirst(data, ctx)) return nameHtml(r?.club, 'team');
   const style = data.nameStyle || nameStyle(ctx, 'lower');
   if (style === 'family') return nameHtml(r?.name, sharedFamilies(data).has(familyOf(r?.name)) ? 'family-initial' : 'family');
   if (style === 'given-initial') return nameHtml(r?.name, 'given-initial');
@@ -134,7 +137,7 @@ const tpHtml = (data, ctx) => timingPointHtml(timingPoint(data, {
 const ctlLabel = (data, label, ctx) => `<span class="ftr-class">${esc(shownClass(data, ctx))}</span><span class="ftr-sep"> – </span><span class="ftr-ctrl">${label}</span>`;
 
 const nameStyle = (ctx, where) => ctx.nameStyle?.[where] ?? 'full';
-const runnerName = (r, data, ctx, where) => nameHtml(r?.name, isRelayClass(data) && ctx.relayNames === 'team' ? 'team' : nameStyle(ctx, where));
+const runnerName = (r, data, ctx, where) => (teamFirst(data, ctx) ? nameHtml(r?.club, 'team') : nameHtml(r?.name, nameStyle(ctx, where)));
 
 /** A radio control's short name on air (TV1, Arena, or C35) */
 const controlShort = (c) => c.short || (c.name && !/^control\s/i.test(c.name) ? c.name : `C${c.code % 1000}`);
@@ -217,7 +220,7 @@ function runnerRow(r, i, data, ctx, { leader, highlight, where = 'table', showDi
     `<span class="c-place">${esc(placeOf(r))}</span>` +
     `<span class="c-name">${where === 'lower' ? lowerName(r, data, ctx) : runnerName(r, data, ctx, where)}</span>` +
     (data.positionChange ? changeCell(r, data) : '') +
-    `<span class="c-id">${identityHtml(r, data)}</span>` +
+    `<span class="c-id">${idCell(r, data, ctx)}</span>` +
     `<span class="c-time">${virtual || esc(showDiff ? resultCell(r, leader) : time(r.time))}</span>` +
     `</div>`;
 }
@@ -229,6 +232,28 @@ function orderedResults(data) {
   // At a radio control only runners through with an OK status are listed; MP, DNF, DNS ... only at the finish
   const other = atFinish(data) ? list.filter(r => !isRanked(r) && statusLabel(r)) : [];
   return { ranked, other, all: [...ranked, ...other] };
+}
+
+/**
+ * Relays: the runners on this leg ranked by their own time on the leg at the timing point
+ * (team time there minus the time the team had used at the changeover), then the rest.
+ */
+function byLegTime(data) {
+  const { ranked, other } = orderedResults(data);
+  const leg = relayLeg(data.className)?.[1] ?? 1;
+  const timed = ranked.map(r => {
+    const offset = r.teamStartTimeMs > 0 && r.startTimeMs > 0 ? r.startTimeMs - r.teamStartTimeMs : leg === 1 ? 0 : NaN;
+    return { r, ms: leaderMs(data, r) - offset };
+  }).filter(x => Number.isFinite(x.ms) && x.ms > 0).sort((a, b) => a.ms - b.ms);
+  const best = timed[0]?.ms ?? 0;
+  const secs = (ms) => Math.floor(ms / 1000);
+  const legRanked = timed.map((x, i) => {
+    const place = i && secs(x.ms) === secs(timed[i - 1].ms) ? undefined : i + 1;
+    return { ...x.r, position: place ?? '=', place: place ?? '=', time: clock(secs(x.ms)), diff: i ? clock(secs(x.ms) - secs(best), { sign: true }) : '', splitTimes: undefined };
+  });
+  // a tie shows the place of the first runner with that time
+  legRanked.forEach((r, i) => { if (r.place === '=') { r.place = legRanked[i - 1].place; r.position = r.place; } });
+  return { ranked: legRanked, other, all: [...legRanked, ...other] };
 }
 
 /** The table at the start: every runner with a start time, in start order, showing the start time */
@@ -261,14 +286,15 @@ const views = {
   /** Full results / standings table at finish or a control, paged */
   results(data, ctx) {
     // At the start no one is ranked yet (all are running): list the starters instead of nothing
-    const { all, ranked } = atStart(data) ? startOrder(data) : orderedResults(data);
+    const legTimes = data.relayTimes === 'leg' && !!relayLeg(data.className) && !atStart(data);
+    const { all, ranked } = atStart(data) ? startOrder(data) : legTimes ? byLegTime(data) : orderedResults(data);
     const per = int(data.rowsPerPage, ctx.rowsPerPage ?? 10);
     const { pages, page, slice } = paginate(all, per, ctx.step);
     const leaderTime = ranked[0];
     const rows = slice.map((r, i) => runnerRow(r, i, data, ctx, { leader: r === leaderTime })).join('') || emptyRow(L(ctx, 'noResults', 'No results yet'));
     const where = controlLabel(data);
     const title = esc(data.title || shownClass(data, ctx));
-    const sub = esc(`${L(ctx, 'standingsAt', 'Standings at')} ${where}`);
+    const sub = esc(`${legTimes ? L(ctx, 'legTimes', 'Leg times at') : L(ctx, 'standingsAt', 'Standings at')} ${where}`);
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
     // IOF, ČO and others: [class] left, the timing point right ("Mellantid 2 Önnestad" / "Mål")
     const head = ctx.timingHeader
@@ -294,7 +320,7 @@ const views = {
       `<span class="c-start">${esc(r.startTimeMs ? timeOfDay(r.startTimeMs, tz) : time(r.startTime))}</span>` +
       (bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : '') +
       `<span class="c-name">${runnerName(r, data, ctx, 'table')}</span>` +
-      `<span class="c-id">${identityHtml(r, data)}</span></div>`).join('') || emptyRow(L(ctx, 'noStarters', 'No start list'));
+      `<span class="c-id">${idCell(r, data, ctx)}</span></div>`).join('') || emptyRow(L(ctx, 'noStarters', 'No start list'));
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
     return {
       steps: pages,
@@ -414,6 +440,54 @@ const views = {
   },
 
   /**
+   * Relay team: the team's runner on every leg, their place after the leg, leg time and rank on
+   * the leg; the leg under way shows the place at the latest radio control. data.relayLegs.
+   */
+  'relay-team'(data, ctx) {
+    const legs = (Array.isArray(data.relayLegs) ? data.relayLegs : []).filter(l => l && Number.isFinite(Number(l.leg))).slice().sort((a, b) => a.leg - b.leg);
+    const last = legs[legs.length - 1];
+    const rows = legs.map((l, i) => {
+      const r = l.runner;
+      const status = r ? statusLabel({ statusCode: r.status }) : '';
+      let place = '', value = '', rank = '', cls = '';
+      if (status) { value = status; cls = ' row--status'; }
+      else if (r?.result > 0) {
+        place = r.place || '';
+        value = r.legTime > 0 ? clock(r.legTime / 100) : clock(r.result / 100);
+        // the leg time's rank among all teams on the leg, in brackets: 12:59 (1)
+        if (r.legPlace) rank = ` <span class="c-rank${r.legPlace === 1 ? ' is-best' : ''}">(${r.legPlace})</span>`;
+      } else if (r?.splits?.length) {
+        // under way: the place at the latest radio control
+        const s = r.splits[r.splits.length - 1];
+        const c = (l.controls ?? []).find(x => String(x.code) === String(s.code));
+        place = s.place || '';
+        value = c ? controlShort(c) : '';
+        cls = ' is-running';
+      }
+      const name = r?.name ? nameHtml(r.name, nameStyle(ctx, 'lower')) : '—';
+      return `<div class="row${cls}${l.className === data.className ? ' row--hl' : ''}" style="--i:${i}" data-key="leg${l.leg}">` +
+        `<span class="c-label"><span class="c-leg">${l.leg}</span>${name}</span>` +
+        `<span class="c-place">${esc(place)}</span><span class="c-change"></span>` +
+        `<span class="c-time${cls.includes('running') ? ' is-behind' : ''}">${esc(value)}${rank}</span></div>`;
+    }).join('');
+    const team = legs.find(l => l.runner)?.runner.club || data.runnerClub || '';
+    const relay = relayLeg(data.className);
+    const done = last?.runner?.result > 0 && !statusLabel({ statusCode: last.runner.status });
+    // the team at the finish: place and total time (or behind the winner)
+    const finishRow = done
+      ? `<div class="row row--leg" style="--i:${legs.length}" data-key="finish"><span class="c-label">${esc(L(ctx, 'finish', 'Finish'))}</span>` +
+        `<span class="c-place">${esc(String(last.runner.place || ''))}</span><span class="c-change"></span>` +
+        `<span class="c-time ${last.runner.timeplus > 0 ? 'is-behind' : 'is-best'}">${esc(last.runner.timeplus > 0 ? clock(last.runner.timeplus / 100, { sign: true }) : clock(last.runner.result / 100))}</span></div>`
+      : '';
+    const foot = esc(L(ctx, 'team', 'Team'));
+    return {
+      steps: 1,
+      html: `<div class="panel panel--side panel--splits panel--team-splits panel--relay-team">${header(nameHtml(team, 'team'), esc(relay ? relay[0] : shownClass(data, ctx)), data)}` +
+        `<div class="rows">${(rows + finishRow) || emptyRow(L(ctx, 'noResults', 'No results yet'))}</div>${footer(foot, data)}</div>`
+    };
+  },
+
+  /**
    * Position history: time behind the leader at every radio control and the finish (SVG chart).
    * The leader at each point runs along the top; the biggest gap at each point is labelled;
    * end labels are pushed apart so they never overlap. Runners: the top N at the finish, or the
@@ -500,7 +574,7 @@ const views = {
       const rs = groups.get(p) ?? [];
       if (!rs.length) return `<div class="pod pod--${p} pod--empty"></div>`;
       return `<div class="pod pod--${p}" style="--i:${i}"><span class="c-place">${p}</span><div class="pod-names">` +
-        rs.map(r => `<div class="row" data-key="${rowKey(r)}"><span class="c-name">${runnerName(r, data, ctx, 'table')}</span><span class="c-id">${identityHtml(r, data)}</span>` +
+        rs.map(r => `<div class="row" data-key="${rowKey(r)}"><span class="c-name">${runnerName(r, data, ctx, 'table')}</span><span class="c-id">${idCell(r, data, ctx)}</span>` +
           (data.showTime ? `<span class="c-time pod-time">${esc(resultCell(r, p === 1))}</span>` : '') + `</div>`).join('') +
         `</div></div>`;
     };
@@ -528,7 +602,7 @@ const views = {
     const max = int(data.rows, 6);
     const bibs = hasBibs(runners);
     const rows = runners.slice(0, max).map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}">${bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : ''}` +
-      `<span class="c-name">${runnerName(r, data, ctx, 'lower')}</span><span class="c-id">${identityHtml(r, data)}</span></div>`).join('')
+      `<span class="c-name">${runnerName(r, data, ctx, 'lower')}</span><span class="c-id">${idCell(r, data, ctx)}</span></div>`).join('')
       || emptyRow(L(ctx, 'noStarters', 'No more starters'));
     const when = Number.isFinite(startMs)
       ? `<span class="hdr-clock" data-tick="countdown" data-t="${startMs}">${esc(clock((now(data) - startMs) / 1000))}</span>` : '';

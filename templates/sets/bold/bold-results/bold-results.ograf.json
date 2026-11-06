@@ -30,6 +30,20 @@
         "title": "Position change",
         "description": "Show places gained ▲ or lost ▼ since the previous split",
         "default": false
+      },
+      "relayTimes": {
+        "type": "string",
+        "title": "Relay times",
+        "description": "Relays: the team's time (standings), or each runner's own time on the leg",
+        "enum": [
+          "team",
+          "leg"
+        ],
+        "enumNames": [
+          "Team time",
+          "Leg time"
+        ],
+        "default": "team"
       }
     }
   },

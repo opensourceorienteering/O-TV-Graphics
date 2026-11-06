@@ -243,6 +243,22 @@ export function ProjectGraphicsSettings({
         </div>
         <p style={{ ...help, marginTop: "-0.4rem" }}>
            {tr("Automatic: national events show the club; international events show the flag, and relays show club and flag.")} </p>
+        <div>
+          <label style={label}>{tr("Relays: names first")}</label>
+          <select
+            className="input"
+            style={{ width: "100%", fontSize: "0.875rem" }}
+            value={p.relayNames || "runner"}
+            onChange={(e) =>
+              setP({ ...p, relayNames: e.target.value === "team" ? "team" : undefined })
+            }
+          >
+            <option value="runner">{tr("Runner, then team")}</option>
+            <option value="team">{tr("Team, then runner")}</option>
+          </select>
+          <p style={help}>
+             {tr("Results, standings, the start group and the podium in relay classes. Runner graphics always show the runner.")} </p>
+        </div>
 
         <div>
           <label style={label} htmlFor="auto-page-duration">

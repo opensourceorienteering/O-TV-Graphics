@@ -1,0 +1,50 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "version": "1.0.0",
+  "description": "Relays: the selected runner's team on every leg, with the place after each leg, the runner's leg time and rank on the leg, and the place at the latest radio control on the leg under way.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {}
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_kind": "relay-team",
+  "v_olgrafik_zone": "side",
+  "v_olgrafik_desk": {
+    "label": "Relay team",
+    "short": "Relay team",
+    "inputs": [
+      "class",
+      "runner"
+    ],
+    "required": [
+      "class",
+      "runner"
+    ],
+    "fields": [],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": []
+  },
+  "id": "sof-relay-team",
+  "name": "Svensk Orientering – Relay team",
+  "v_olgrafik_set": "sof"
+}
