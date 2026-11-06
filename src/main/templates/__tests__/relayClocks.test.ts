@@ -121,3 +121,35 @@ describe('relay team, team-first names and leg times', () => {
     expect(rowsOf(views.renderView('results', { className: 'Mixed-4', controlCode: 'F', results }, { ...ctx, kind: 'results' }).html)[0]).toContain('Leonie Mathis');
   });
 });
+
+describe('relay legs after the first: line-up and changeovers', () => {
+  const t0 = Date.UTC(2026, 5, 30, 8, 10);
+  const nowMs = t0 + 30 * 60_000;
+  const row = (name: string, club: string, bib: string, out?: number) => ({ name, club, bib, statusCode: 9, progress: 0, time: '',
+    teamStartTimeMs: t0, ...(out !== undefined ? { startTimeMs: t0 + out * 1000 } : {}) });
+  const results = [row('Waiting Runner', 'Norway 1', '7'), row('Vladimir Srb', 'Czechia 1', '2', 825), row('Simon Calandry', 'France 1', '1', 797),
+    row('Not Yet', 'Sweden 1', '3', 3600)]; // a start in the future is no changeover yet
+  const rowsOf = (html: string) => [...html.matchAll(/<div class="row[^"]*"[^>]*>(.*?)<\/div>/g)].map(m => text(m[1]));
+  const base = { className: 'Mixed-2', results, frozenAt: nowMs };
+
+  it('lists the line-up: runners out in changeover order with their time, then those waiting', () => {
+    const html = views.renderView('start-list', base, { ...ctx, kind: 'start-list' }).html;
+    expect(text(html)).toContain('Line-up');
+    const rows = rowsOf(html);
+    expect(rows[0]).toMatch(/^\d\d:\d\d:\d\d 1 Simon Calandry/);
+    expect(rows[1]).toMatch(/^\d\d:\d\d:\d\d 2 Vladimir Srb/);
+    expect(rows.slice(2)).toEqual(['— 3 Not Yet Sweden 1', '— 7 Waiting Runner Norway 1']);
+  });
+
+  it('shows the latest changeovers in Start group, newest first', () => {
+    const html = views.renderView('start-group', base, { ...ctx, kind: 'start-group' }).html;
+    expect(rowsOf(html).map(r => r.replace(/^\d+ /, ''))).toEqual(['Vladimir Srb Czechia 1', 'Simon Calandry France 1']);
+    expect(text(html)).toContain('Changeover');
+  });
+
+  it('keeps the start list and start group of leg 1 as they are', () => {
+    const leg1 = { className: 'Mixed-1', frozenAt: t0 - 60_000, results: [{ name: 'Lucie Gaudion', club: 'France 1', bib: '1', startTimeMs: t0 }] };
+    expect(text(views.renderView('start-list', leg1, { ...ctx, kind: 'start-list' }).html)).toContain('Start list');
+    expect(text(views.renderView('start-group', leg1, { ...ctx, kind: 'start-group' }).html)).toContain('Lucie Gaudion');
+  });
+});

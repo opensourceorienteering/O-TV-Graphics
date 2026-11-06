@@ -719,7 +719,10 @@ export function LiveDesk() {
                             <b>{tr("Next starter")}</b> · {new Date(nextUp.startTimeMs!).toLocaleTimeString()} · {startsIn(nextUp.startTimeMs! - now)}
                             {upcoming.length > 1 && <small> · {tr("then")} {upcoming.slice(1, 3).map(r => `${r.name} ${new Date(r.startTimeMs!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`).join(', ')}</small>}
                           </span>
-                        ) : <span>{runners.some(r => r.startTimeMs) ? tr("No more starters") + (nextClass ? ` in ${nextClass}` : '') : tr("The start list has no start times")}</span>
+                        ) : Number(/-(\d+)$/.exec(nextClass || '')?.[1] ?? 0) > 1
+                          // relay legs after the first start at the changeover: there is no next starter to follow
+                          ? <span>{tr("Relay leg: runners start at the changeover. Pick the runner, or show Start group for the latest changeovers.")}</span>
+                          : <span>{runners.some(r => r.startTimeMs) ? tr("No more starters") + (nextClass ? ` in ${nextClass}` : '') : tr("The start list has no start times")}</span>
                       ) : <span>{tr("Manual pick · the draft stays on this runner")}</span>}
                       {followNext
                         ? <small className="d-note">{tr("Follows the start list automatically. Pick a runner to override.")}</small>

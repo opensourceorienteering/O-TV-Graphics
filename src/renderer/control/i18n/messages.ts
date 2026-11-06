@@ -1836,6 +1836,10 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Resultat, ställningar, startgruppen och prispallen i stafettklasser. Löpargrafik visar alltid löparen.",
     "nb": "Resultater, stillinger, startgruppen og seierspallen i stafettklasser. Løpergrafikk viser alltid løperen."
   },
+  "Relay leg: runners start at the changeover. Pick the runner, or show Start group for the latest changeovers.": {
+    "sv": "Stafettsträcka: löparna startar vid växlingen. Välj löparen, eller visa startgruppen för de senaste växlingarna.",
+    "nb": "Stafettetappe: løperne starter ved vekslingen. Velg løperen, eller vis startgruppen for de siste vekslingene."
+  },
   "Split comparison": {
     "sv": "Mellantidsjämförelse",
     "nb": "Mellomtidssammenligning"

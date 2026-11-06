@@ -256,6 +256,43 @@ function byLegTime(data) {
   return { ranked: legRanked, other, all: [...legRanked, ...other] };
 }
 
+/**
+ * Relays after leg 1: when a runner went out (epoch ms), or null while they wait. Their start is
+ * the changeover; a start at or before the team's start (or in the future) is no changeover yet.
+ */
+function changeoverAt(r, data) {
+  const at = Number(r?.startTimeMs);
+  if (!(at > 0) || at > now(data)) return null;
+  if (Number(r.teamStartTimeMs) > 0 && at <= Number(r.teamStartTimeMs)) return null;
+  return at;
+}
+/** A relay leg's line-up: runners out in changeover order, then those still waiting (by bib, name) */
+function lineUpOrder(data) {
+  const list = Array.isArray(data.results) ? data.results : [];
+  const out = list.filter(r => changeoverAt(r, data)).sort((a, b) => changeoverAt(a, data) - changeoverAt(b, data));
+  const waiting = list.filter(r => !changeoverAt(r, data))
+    .sort((a, b) => (Number(a.bib) || 1e9) - (Number(b.bib) || 1e9) || String(a.club ?? '').localeCompare(String(b.club ?? '')));
+  return [...out, ...waiting];
+}
+/** Start group on a relay leg after the first: the latest changeovers, newest first */
+function latestChangeovers(data, ctx) {
+  const list = (Array.isArray(data.results) ? data.results : []).filter(r => changeoverAt(r, data))
+    .sort((a, b) => changeoverAt(b, data) - changeoverAt(a, data));
+  const max = int(data.rows, 6);
+  const shown = list.slice(0, max);
+  const bibs = hasBibs(shown);
+  const rows = shown.map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}">${bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : ''}` +
+    `<span class="c-name">${runnerName(r, data, ctx, 'lower')}</span><span class="c-id">${idCell(r, data, ctx)}</span></div>`).join('')
+    || emptyRow(L(ctx, 'noStarters', 'No more starters'));
+  const latest = shown.length ? changeoverAt(shown[0], data) : NaN;
+  const title = `${esc(L(ctx, 'changeover', 'Changeover'))}${Number.isFinite(latest) ? ' ' + esc(timeOfDay(latest, data.competitionTimeZone)) : ''}`;
+  return {
+    steps: 1,
+    key: shown.map(r => rowKey(r)).join('|'), rekey: true,
+    html: `<div class="panel panel--lower panel--startgroup${bibs ? '' : ' no-bibs'}">${header(title, esc(shownClass(data, ctx)), data)}<div class="rows">${rows}</div>${footer(ctlLabel(data, title, ctx), data)}</div>`
+  };
+}
+
 /** The table at the start: every runner with a start time, in start order, showing the start time */
 const atStart = (data) => /^(s|start)$/i.test(String(data?.controlCode ?? '').trim());
 function startOrder(data) {
@@ -308,7 +345,9 @@ const views = {
 
   /** Start list, paged */
   'start-list'(data, ctx) {
-    const list = (Array.isArray(data.results) ? data.results : []).slice()
+    // relays after leg 1: start times are changeovers, known once a runner is out (line-up)
+    const lineUp = (relayLeg(data.className)?.[1] ?? 1) > 1;
+    const list = lineUp ? lineUpOrder(data) : (Array.isArray(data.results) ? data.results : []).slice()
       .sort((a, b) => (a.startTimeMs ?? parseClock(a.startTime) * 1000) - (b.startTimeMs ?? parseClock(b.startTime) * 1000));
     const per = int(data.rowsPerPage, ctx.rowsPerPage ?? 12);
     const { pages, page, slice } = paginate(list, per, ctx.step);
@@ -316,15 +355,18 @@ const views = {
     // No runner in the list has a bib: leave the bib column out (decided for the whole list,
     // so the layout does not jump between pages)
     const bibs = hasBibs(list);
+    const startCell = (r) => lineUp ? (changeoverAt(r, data) ? timeOfDay(changeoverAt(r, data), tz) : '—')
+      : r.startTimeMs ? timeOfDay(r.startTimeMs, tz) : time(r.startTime);
     const rows = slice.map((r, i) => `<div class="row" style="--i:${i}" data-key="${rowKey(r)}">` +
-      `<span class="c-start">${esc(r.startTimeMs ? timeOfDay(r.startTimeMs, tz) : time(r.startTime))}</span>` +
+      `<span class="c-start">${esc(startCell(r))}</span>` +
       (bibs ? `<span class="c-bib">${esc(r.bib ?? '')}</span>` : '') +
       `<span class="c-name">${runnerName(r, data, ctx, 'table')}</span>` +
       `<span class="c-id">${idCell(r, data, ctx)}</span></div>`).join('') || emptyRow(L(ctx, 'noStarters', 'No start list'));
     const pageInfo = pages > 1 ? `<span class="ftr-page">${page}/${pages}</span>` : '';
+    const listName = lineUp ? L(ctx, 'lineUp', 'Line-up') : L(ctx, 'startList', 'Start list');
     return {
       steps: pages,
-      html: `<div class="panel panel--table panel--startlist${bibs ? '' : ' no-bibs'}">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'startList', 'Start list')), data)}<div class="rows">${rows}</div>${footer(esc(L(ctx, 'startList', 'Start list')), data, pageInfo)}</div>`
+      html: `<div class="panel panel--table panel--startlist${bibs ? '' : ' no-bibs'}">${header(esc(shownClass(data, ctx)), esc(listName), data)}<div class="rows">${rows}</div>${footer(esc(listName), data, pageInfo)}</div>`
     };
   },
 
@@ -587,6 +629,7 @@ const views = {
 
   /** Next starters: the next start minute and who starts in it, with a countdown */
   'start-group'(data, ctx) {
+    if ((relayLeg(data.className)?.[1] ?? 1) > 1) return latestChangeovers(data, ctx);
     const list = (Array.isArray(data.results) ? data.results : []).filter(r => Number.isFinite(r.startTimeMs));
     const t = now(data) - 5000;
     const groups = new Map();
