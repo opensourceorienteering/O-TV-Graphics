@@ -30,8 +30,8 @@
   --display: Anton, "Impact", "Arial Narrow", sans-serif;
   --font: Oswald, "Arial Narrow", sans-serif;
   --fs: 30px;
-  --margin-x: 96px;
-  --margin-y: 90px;
+  --margin-x: var(--safe-x);   /* edges on the action safe area */
+  --margin-y: var(--safe-y);
   --table-top: 210px;
   --table-x: 380px;
   --lower-w: 900px;

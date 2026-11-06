@@ -20,8 +20,8 @@
   --radius: 6px;
   --font: "Albert Sans", sans-serif;
   --fs: 32px;
-  --margin-x: 96px;
-  --margin-y: 96px;
+  --margin-x: var(--safe-x);   /* edges on the action safe area */
+  --margin-y: var(--safe-y);
   --table-top: 196px;  /* below the corner clock */
   --table-x: 480px;
   --lower-w: 640px;
@@ -99,7 +99,8 @@
 .panel--lower .row--leader .c-place, .panel--lower .row--leader .c-time, .panel--lower .row--leader .id-club, .panel--lower .row--leader .id-code,
 .panel--runner .row--hl .c-place, .panel--runner .row--hl .c-time, .panel--runner .row--hl .id-club, .panel--runner .row--hl .id-code { color: var(--on-primary); }
 .panel--lower:not(.panel--runner):not(.panel--strap) .row--hl:not(.row--leader) {
-  transform: scale(1.05); margin: 4px 0; border-radius: var(--radius); z-index: 1;
+  /* grows from its left edge, so it never leaves the safe area on the left */
+  transform: scale(1.05); transform-origin: left center; margin: 4px 0; border-radius: var(--radius); z-index: 1;
 }
 .panel--lower .ftr { border-radius: 0 0 var(--radius) var(--radius); }
 .ftr-sep { margin: 0 .25em; }

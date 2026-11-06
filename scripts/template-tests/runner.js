@@ -17,6 +17,24 @@ const settle = async () => {
   await frames();
 };
 const capture = async name => { await settle(); await fetch(`/capture?name=${encodeURIComponent(name)}`, { method: 'POST' }); };
+// SMPTE ST 2046-1 action safe area (93% of 1920 × 1080): nothing a graphic draws may leave it.
+const SAFE = { left: 67.2, top: 37.8, right: 1852.8, bottom: 1042.2 };
+const assertActionSafe = (el, id) => {
+  // measured in the graphic's own 1920 × 1080 (the stage is scaled to the output size)
+  const stage = el.shadowRoot.querySelector('.stage')?.getBoundingClientRect();
+  if (!stage?.width) return;
+  const k = stage.width / 1920;
+  for (const node of el.shadowRoot.querySelectorAll('.gfx *')) {
+    const style = getComputedStyle(node);
+    if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
+    const box = node.getBoundingClientRect();
+    const r = { left: (box.left - stage.left) / k, top: (box.top - stage.top) / k, right: (box.right - stage.left) / k, bottom: (box.bottom - stage.top) / k,
+      width: box.width / k, height: box.height / k };
+    if (r.width < 1 || r.height < 1) continue;
+    const over = Math.max(SAFE.left - r.left, SAFE.top - r.top, r.right - SAFE.right, r.bottom - SAFE.bottom);
+    assert(over <= 0.5, `${id}: ${node.className || node.tagName} is ${Math.round(over)} px outside the action safe area (${Math.round(r.left)},${Math.round(r.top)}–${Math.round(r.right)},${Math.round(r.bottom)})`);
+  }
+};
 const race = createRace({ firstStart: Date.parse('2026-11-03T10:00:00Z') });
 const timing = race.data(race.end, 'F');
 let sequence = 0;
@@ -65,6 +83,7 @@ for (const { manifest, folder } of catalogue) {
       assert(rect.left >= -1 && rect.top >= -1 && rect.right <= 1921 && rect.bottom <= 1081, `Panel outside 1920×1080: ${JSON.stringify(result.geometry)}`);
       assert(getComputedStyle(el.shadowRoot.querySelector('.gfx')).visibility !== 'hidden', 'Graphic remains hidden after Show');
     }
+    assertActionSafe(el, manifest.id);
     for (const img of el.shadowRoot.querySelectorAll('img')) {
       try { await img.decode(); } catch { throw new Error(`Broken image: ${img.src}`); }
     }

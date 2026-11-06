@@ -93,6 +93,15 @@ on `.gfx` (from `presentation.logoMode`).
 - Events from before the choice: an uploaded logo means custom; anything else (including the
   retired OK Tyr logo) means the look's own logo.
 
+## Safe area
+
+Graphics' outer edges sit on the SMPTE ST 2046-1 action safe area: 93% of the frame, 68 px from
+the sides and 38 px from the top and bottom of 1920 × 1080 (`--safe-x`, `--safe-y` in
+`_core/base.css`). Looks set `--margin-x: var(--safe-x)` and `--margin-y: var(--safe-y)`, and
+edge-anchored graphics (lower thirds, side panels, clock, title card, podium, position history)
+touch it. Nothing a graphic draws may go past it, raised rows and accents included:
+`npm run test:templates` fails if anything does. IOF keeps the IOF TV manual's 100 px margins.
+
 ## Fonts
 
 Production computers are often borrowed or freshly installed, so a look never relies on

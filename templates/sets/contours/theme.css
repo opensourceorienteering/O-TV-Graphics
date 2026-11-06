@@ -37,8 +37,8 @@
 
   --font: "Libre Franklin", Arial, sans-serif;
   --fs: 30px;
-  --margin-x: 100px;
-  --margin-y: 100px;
+  --margin-x: var(--safe-x);   /* edges on the action safe area */
+  --margin-y: var(--safe-y);
   --table-top: 200px;  /* below the corner clock */
   --table-x: 400px;
   --lower-w: 880px;

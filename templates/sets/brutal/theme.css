@@ -32,8 +32,8 @@
   --font: "Space Grotesk", "Segoe UI", sans-serif;
   --mono: "Space Mono", ui-monospace, monospace;
   --fs: 30px;
-  --margin-x: 96px;
-  --margin-y: 96px;
+  --margin-x: var(--safe-x);   /* edges on the action safe area */
+  --margin-y: var(--safe-y);
   --table-top: 204px;
   --table-x: 400px;
   --lower-w: 840px;

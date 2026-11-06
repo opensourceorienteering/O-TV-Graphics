@@ -478,6 +478,11 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
         those three (<code>color-mix()</code>, relative colours), so a change follows everywhere.</p>
       <h3>Rules every look follows</h3>
       <ul>
+        <li><strong>Safe area:</strong> graphics' outer edges sit on the action safe area of SMPTE
+          ST 2046-1 (93% of the frame: 68 px from the sides, 38 px from the top and bottom). Set
+          <code>--margin-x: var(--safe-x)</code> and <code>--margin-y: var(--safe-y)</code>; nothing
+          a graphic draws, a raised row included, may go past it. <code>npm run test:templates</code>
+          checks every graphic. (IOF keeps the 100 px margins of the IOF TV manual.)</li>
         <li>Keep the centre of the picture clear: lower thirds bottom left, side panels bottom right,
           the clock top right.</li>
         <li>Numbers use tabular figures, so running times don't wobble.</li>

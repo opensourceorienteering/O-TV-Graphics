@@ -53,8 +53,8 @@
   --font: "Libre Franklin", Arial, sans-serif;
   --heavy: "Libre Franklin", Arial, sans-serif;
   --fs: 30px;
-  --margin-x: 100px;
-  --margin-y: 100px;
+  --margin-x: var(--safe-x);   /* edges on the action safe area */
+  --margin-y: var(--safe-y);
   --table-top: 196px;   /* under the scorebug */
   --table-x: 380px;     /* large and centred: 1160 px wide */
   --lower-w: 860px;
@@ -195,10 +195,11 @@
 .panel--lower .row--hl .c-place { color: #fff; background: var(--red); box-shadow: none; }
 .panel--lower .row--hl .c-name { font-size: 32px; }
 .panel--lower .row--hl .c-time { font-size: 32px; }
-/* on the way: the white card, raised past the plate's edges */
+/* on the way: the white card, raised past the plate's right edge. Its left edge stays on the
+   plate's, which sits on the action safe line. */
 .panel--lower .row--hl.is-virtual {
-  z-index: 3; min-height: 72px; margin: 10px -30px; padding: 0 30px 0 34px;
-  translate: 0 -6px; scale: 1.01;
+  z-index: 3; min-height: 72px; margin: 10px -30px 10px 0; padding: 0 30px 0 16px;
+  translate: 0 -6px; scale: 1.01; transform-origin: left center;
   background-color: #fff; color: var(--on-band); box-shadow: var(--elev-12);
 }
 .panel--lower .row--hl.is-virtual .c-id { color: #4a5a64; }
