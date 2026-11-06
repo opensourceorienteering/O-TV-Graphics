@@ -212,6 +212,13 @@ export interface OGrafTemplateInfo {
   setId: string;
   /** Screen zone (manifest v_olgrafik_zone): graphics in clashing zones replace each other */
   zone?: GraphicZone;
+  /**
+   * The graphic's Live desk entry: declared in the manifest (v_olgrafik_desk) or the standard
+   * entry of its kind; null when it isn't offered in the desk (src/shared/deskDeclaration.ts)
+   */
+  desk?: import('../desk').DeskTemplate | null;
+  /** Problems with the graphic's desk declaration, shown in Graphics library */
+  deskWarnings?: string[];
 }
 
 export type GraphicZone = 'main' | 'lower' | 'side' | 'corner' | 'full';

@@ -6,6 +6,7 @@
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as path from 'path';
+import { resolveDeskEntry } from '../../shared/deskDeclaration';
 import { OGrafManifest, OGrafTemplateInfo, TemplateSetInfo, GraphicZone, CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
 import { validateAndCastManifest, ValidationError } from './OGrafValidator';
@@ -431,6 +432,9 @@ export class OGrafManager {
 
     // Load datasource configuration (if exists)
     const dataSourceConfig = await this.loadDataSourceConfig(templateDir, manifest.id);
+    // The Live desk entry it declares, or its kind's standard one
+    const desk = resolveDeskEntry(manifest as any);
+    if (desk.warnings.length) logger.warn('Graphic desk declaration has problems', { template: manifest.id, warnings: desk.warnings });
 
     return {
       type: 'ograf',
@@ -442,7 +446,9 @@ export class OGrafManager {
       directoryName, // URL path below templates/
       dataSourceConfig, // Add datasource config (null if not found)
       setId,
-      zone
+      zone,
+      desk: desk.entry,
+      ...(desk.warnings.length ? { deskWarnings: desk.warnings } : {})
     };
   }
 

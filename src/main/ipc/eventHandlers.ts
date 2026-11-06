@@ -21,7 +21,7 @@ import { zonedWallTimeToEpochMs } from "../data/liveTime";
 import { getTemplateManager } from "../templates/OGrafManager";
 import { activateLiveOutputs, deactivateLiveOutputs } from "./outputHandlers";
 import type { StartListEntry } from "../../shared/types/event";
-import { previewDataForKind } from "../../shared/capabilities";
+import { previewDataForKind, type PreviewData } from "../../shared/capabilities";
 
 const logger = getLogger();
 
@@ -137,10 +137,9 @@ function previewResults(entries: StartListEntry[]) {
   });
 }
 
-function hasUsablePreviewData(kind: string, mapped: Record<string, any>) {
+function hasUsablePreviewData(needs: PreviewData | undefined, mapped: Record<string, any>) {
   const results = Array.isArray(mapped.results) ? mapped.results : [];
   if (!results.length) return false;
-  const needs = previewDataForKind(kind);
   if (needs === "splits")
     return (
       Array.isArray(mapped.splitControls) &&
@@ -419,6 +418,8 @@ export function registerEventHandlers(): void {
         );
       if (!template) throw new Error("Choose a graphic from this event’s theme");
       const kind = String((template.manifest as any).v_olgrafik_kind || "");
+      // what the preview needs from real timing data: declared by the graphic, or by its kind
+      const previewNeeds = template.desk?.previewData ?? previewDataForKind(kind);
       const defaults = Object.fromEntries(
         Object.entries((template.manifest.schema as any)?.properties || {})
           .filter(([, v]: any) => v.default !== undefined)
@@ -501,7 +502,7 @@ export function registerEventHandlers(): void {
             },
             project.dataSource.sourceId,
           );
-          const hasRealResults = hasUsablePreviewData(kind, mapped);
+          const hasRealResults = hasUsablePreviewData(previewNeeds, mapped);
           data = { ...data, ...mapped };
           if (hasRealResults) previewSource = "real";
         } catch (error) {
@@ -514,7 +515,7 @@ export function registerEventHandlers(): void {
           });
         }
       }
-      if (previewSource !== "real" && !!previewDataForKind(kind)) {
+      if (previewSource !== "real" && !!previewNeeds) {
         data.results = previewResults(previewEntries);
         data.className = selectedClass;
         data.splitControls = PREVIEW_SPLIT_CONTROLS;

@@ -7,8 +7,8 @@
  * send it to air with an explicit Show.
  */
 
-import type { DeskBehaviour, DeskFeed, DeskParam } from './capabilities';
-export type { DeskBehaviour, DeskFeed, DeskParam } from './capabilities';
+import type { DeskBehaviour, DeskFeed, DeskParam, PreviewData } from './capabilities';
+export type { DeskBehaviour, DeskFeed, DeskParam, PreviewData } from './capabilities';
 
 export interface DeskTemplate {
   /** Stable key (also the default kind in the template set) */
@@ -36,6 +36,8 @@ export interface DeskTemplate {
   behaviours?: DeskBehaviour[];
   /** Shares its rows-per-page setting with this graphic (Settings → Templates) */
   rowsPartner?: string;
+  /** What the Plan theme preview needs from timing data (default: by kind, capabilities.ts) */
+  previewData?: PreviewData;
 }
 
 /** In the default command-number order: the first is 0 (Settings → Controls can reorder) */
