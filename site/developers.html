@@ -597,7 +597,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
       <div class="table-wrap">
       <table>
         <tbody>
-          <tr><td><code>results[]</code></td><td>Runners at the shown timing point: <code>name</code>, <code>club</code>, <code>country</code>, <code>bib</code>, <code>position</code>, <code>time</code>, <code>diff</code>, <code>statusCode</code> (0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ), <code>startTimeMs</code>, <code>splitTimes[]</code></td></tr>
+          <tr><td><code>results[]</code></td><td>Runners at the shown timing point: <code>name</code>, <code>club</code>, <code>country</code>, <code>bib</code>, <code>position</code>, <code>time</code>, <code>diff</code>, <code>statusCode</code> (0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ), <code>startTimeMs</code> (the runner's own start; in a relay the changeover), <code>teamStartTimeMs</code> (relays: the team's start, which times and splits count from; use <code>clockStartMs(r)</code> from <code>_core/util.js</code> for running times), <code>splitTimes[]</code></td></tr>
           <tr><td><code>className</code>, <code>controlCode</code>, <code>splitControls[]</code></td><td>Class, timing point (<code>S</code>, a control code or <code>F</code>) and the class's radio controls</td></tr>
           <tr><td><code>runnerName</code>, <code>runnerClub</code>, <code>runnerBib</code></td><td>The runner in focus (lower thirds, identity, runner focus)</td></tr>
           <tr><td><code>title</code>, <code>series</code>, <code>place</code>, <code>date</code>, <code>text</code>, <code>name</code>…</td><td>Fields the operator fills in</td></tr>

@@ -115,6 +115,9 @@ describe('MeosInfoServerBackend', () => {
     expect(hanna.splits!['1050']).toBe(65000 + 180000);  // 650 s on leg + 30:00 the team used before
     expect(julia.splits!['1050']).toBe(70000 + 175000);
     expect(julia.splits!['1050_place']).toBe(1);
+    // the team's start: the runner's own start is the changeover, 30:00 later
+    expect(hanna.start - hanna.teamstart!).toBe(180000);
+    expect(julia.start - julia.teamstart!).toBe(175000);
     const leg1 = await backend.fetchClassResults(5, 'Kavle-1');
     expect(leg1.results.find(r => r.name === 'Ivar Is')).toMatchObject({ place: '1', result: '175000' });
   });

@@ -16,6 +16,8 @@ export interface ResultRow {
   status: number;        // LiveResults code
   ranked: boolean;       // false for out-of-competition
   start: number;         // hundredths since midnight
+  /** Relays: when the team started (hundredths since midnight); results count from it */
+  teamStart?: number;
   result: number;        // hundredths, 0 = none
   splits: Map<number, number>; // split code -> hundredths
 }
@@ -65,6 +67,7 @@ export function buildClassResult(className: string, controls: LiveResultsSplitCo
       timeplus: finish[i].place ? String(finish[i].timeplus) : '',
       progress,
       start: r.start,
+      ...(r.teamStart ? { teamstart: r.teamStart } : {}),
       bib: r.bib,
       ...(r.country ? { country: r.country } : {}),
       splits

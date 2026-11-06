@@ -62,6 +62,8 @@ describe('IofXmlBackend', () => {
     expect(julia.status).toBe(10);
     expect(julia.splits!['1050']).toBe(70000 + 175000); // 700 s + 29:10 offset
     expect(julia.splits!['1050_place']).toBe(1);        // ahead of Hanna at the radio, from the team's view
+    // the team's start, 29:10 before Julia's changeover
+    expect(julia.start - julia.teamstart!).toBe(175000);
   });
 
   it('re-parses only when the file changes and survives a half-written export', async () => {

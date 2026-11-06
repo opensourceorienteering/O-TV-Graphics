@@ -13,7 +13,7 @@ import { eventLabels, weatherCondition, timingPoint, timingPointHtml } from './l
 
 import {
   esc, time, diff, clock, now, isFrozen, timeOfDay, isRanked, placeOf, statusLabel, resultCell,
-  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml
+  nameHtml, identityHtml, findRunner, controlLabel, int, serverUrl, isRelayClass, parseClock, eventLogoHtml, clockStartMs
 } from './util.js';
 
 const L = (ctx, key, fallback) => ctx.labels?.[key] ?? fallback;
@@ -139,8 +139,9 @@ function virtualCell(r, data, leader) {
   if (!r?.startTimeMs || !leader || r === leader || isRanked(r) || statusLabel(r) || data.virtualTime === false) return '';
   const ms = leaderMs(data, leader);
   if (!Number.isFinite(ms)) return '';
-  const ref = r.startTimeMs + ms;
+  // the runner must be out (their own start, the changeover in a relay); times count from the team's start
   if (r.startTimeMs > now(data)) return '';
+  const ref = clockStartMs(r) + ms;
   return `<span class="c-vs" data-tick="vs" data-t="${ref}">${esc(clock(Math.floor((now(data) - ref) / 1000), { sign: true }))}</span>`;
 }
 
@@ -256,7 +257,7 @@ const views = {
     if (focus && !ranked.includes(focus) && virtualCell(focus, data, leader)) {
       // On the way: slot the runner in where their running time would place them right now,
       // so the row climbs past the runners they are beating
-      const elapsed = now(data) - focus.startTimeMs;
+      const elapsed = now(data) - clockStartMs(focus);
       virtualPos = ranked.filter(r => leaderMs(data, r) <= elapsed).length;
       const list = [...ranked.slice(0, virtualPos), focus, ...ranked.slice(virtualPos)];
       rows = around(list, virtualPos, n);
@@ -267,7 +268,7 @@ const views = {
       rows = [...ranked.slice(0, Math.max(1, n - 1)), focus];
     } else {
       // No runner picked: the leader, then the latest passings at this point, newest first
-      const passedAt = (r) => (r.startTimeMs ?? 0) + leaderMs(data, r);
+      const passedAt = (r) => clockStartMs(r) + leaderMs(data, r);
       const latest = ranked.slice(1).filter(r => r.startTimeMs && Number.isFinite(leaderMs(data, r)))
         .sort((a, b) => passedAt(b) - passedAt(a)).slice(0, Math.max(0, n - 1));
       rows = latest.length ? [ranked[0], ...latest] : ranked.slice(0, n);
@@ -299,11 +300,11 @@ const views = {
       value = esc(resultCell(r, r === leader));
     } else if (r?.startTimeMs && Number.isFinite(leaderMs(data, leader)) && data.virtualTime !== false) {
       // On the way to the control: running time against the leader's time there
-      const ref = r.startTimeMs + leaderMs(data, leader);
+      const ref = clockStartMs(r) + leaderMs(data, leader);
       value = `<span class="c-vs" data-tick="vs" data-t="${ref}">${esc(clock(Math.floor((now(data) - ref) / 1000), { sign: true }))}</span>`;
       cls = ' is-running is-virtual';
     } else if (r?.startTimeMs) {
-      value = `<span data-tick="elapsed" data-t="${r.startTimeMs}">${esc(clock((now(data) - r.startTimeMs) / 1000))}</span>`;
+      value = `<span data-tick="elapsed" data-t="${clockStartMs(r)}">${esc(clock((now(data) - clockStartMs(r)) / 1000))}</span>`;
       cls = ' is-running';
     } else {
       value = '';
@@ -595,8 +596,10 @@ const views = {
     } else if (Number.isFinite(startMs) && data.startTimeOnly) {
       box = `<span class="c-time"><span class="st-at">${esc(timeOfDay(startMs, data.competitionTimeZone))}</span></span>`;
     } else if (Number.isFinite(startMs)) {
+      // count down to the runner's own start, then run from where times count (the team's start in a relay)
       const left = startMs - now(data);
-      box = `<span class="c-time"><span class="st-at" data-tick="run" data-t="${startMs}">${esc(left > 0 ? clock(-Math.ceil(left / 1000)) : clock(-left / 1000))}</span></span>`;
+      const from = clockStartMs(r) || startMs;
+      box = `<span class="c-time"><span class="st-at" data-tick="run" data-t="${startMs}" data-from="${from}">${esc(left > 0 ? clock(-Math.ceil(left / 1000)) : clock((now(data) - from) / 1000))}</span></span>`;
       cls = left > 0 ? ' is-counting' : ` is-running${isFrozen(data) ? ' is-frozen' : ''}`;
     } else if (r.startTime) {
       box = `<span class="c-time">${esc(time(r.startTime))}</span>`;

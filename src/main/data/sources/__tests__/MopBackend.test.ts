@@ -97,6 +97,9 @@ describe('MopBackend (real MeOS MOP dump)', () => {
     for (const r of finished) {
       expect(r.club).toMatch(/^Lag /);           // team name
       expect(Number(r.result)).toBeGreaterThan(0);
+      // results count from the team's start, at or before this runner's changeover
+      expect(r.teamstart).toBeGreaterThan(0);
+      expect(r.teamstart!).toBeLessThanOrEqual(r.start);
     }
   });
 

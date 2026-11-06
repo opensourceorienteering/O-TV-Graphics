@@ -232,6 +232,7 @@ export class MopBackend implements LiveResultsBackend {
         status,
         ranked: Number(m.stat) !== 15,
         start: runnerStart,
+        ...(teamStart ? { teamStart } : {}),
         result: status === 0 && runnerTime > 0 ? runnerTime + offset : 0,
         splits
       });

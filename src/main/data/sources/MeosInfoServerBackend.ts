@@ -346,6 +346,7 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
         status,
         ranked: c.stat !== 15,
         start: runnerStart,
+        ...(teamStart ? { teamStart } : {}),
         result: status === 0 && runnerTime > 0 ? runnerTime + offset : 0,
         splits: this.splitsOf(c, offset)
       });

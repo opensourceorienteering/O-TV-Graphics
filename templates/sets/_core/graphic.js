@@ -242,9 +242,11 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
           el.classList.toggle('is-ahead', d < 0);
           el.classList.toggle('is-behind', d >= 0);
         } else if (mode === 'run') {
-          // Countdown to the start, then the running time from it
+          // Countdown to the start, then the running time from it (or from data-from: a relay
+          // runner counts down to the changeover, then runs in the team's time)
           const left = (ref - t) / 1000;
-          text = left > 0 ? clock(-Math.ceil(left)) : clock(-left);
+          const from = Number(el.dataset.from) || ref;
+          text = left > 0 ? clock(-Math.ceil(left)) : clock((t - from) / 1000);
           el.closest('.row')?.classList.toggle('is-counting', left > 0);
           el.closest('.row')?.classList.toggle('is-running', left <= 0);
         } else if (mode === 'start') {

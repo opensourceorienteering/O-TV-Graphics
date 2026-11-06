@@ -67,6 +67,11 @@ export interface LiveResultsResult {
   timeplus: string;
   progress: number;
   start: number;
+  /**
+   * Relays: hundredths since midnight when the team started. Leg results and splits count from
+   * it (team perspective), while `start` is this runner's own start (the changeover).
+   */
+  teamstart?: number;
   splits?: LiveResultsSplitsObject; // Split times object with dynamic keys
   // REST API extras
   bib?: string;

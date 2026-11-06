@@ -60,6 +60,12 @@ export const now = (data) => {
   const frozen = Number(data?.frozenAt);
   return (Number.isFinite(frozen) && frozen > 0 ? frozen : Date.now()) + (Number(data?.clockOffsetMs) || 0);
 };
+/**
+ * Where a runner's times count from (epoch ms): the team's start in a relay, where leg results
+ * and splits include the earlier legs; otherwise the runner's own start. Running times that are
+ * compared with results use this; "when does the runner start" uses startTimeMs.
+ */
+export const clockStartMs = (r) => (Number(r?.teamStartTimeMs) > 0 ? Number(r.teamStartTimeMs) : Number(r?.startTimeMs) || 0);
 /** The graphic's running clock is stopped by the operator */
 export const isFrozen = (data) => Number(data?.frozenAt) > 0;
 

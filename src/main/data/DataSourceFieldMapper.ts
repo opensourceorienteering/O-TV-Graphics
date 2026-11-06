@@ -219,6 +219,8 @@ export class DataSourceFieldMapper {
       const clock = competition ? competitionClock(competition) : null;
       const rawByRunner = new Map<string, any>();
       for (const raw of rawClassResults.data.results ?? []) rawByRunner.set(`${raw.name}|${raw.club}`, raw);
+      // Relays: leg times count from the team's start, not the runner's changeover
+      const teamStarts = await relayTeamStarts(client, competitionId, className, rawClassResults.data.results ?? []);
       // Radio controls of the class, and every runner's times at them, for split graphics
       const splitControls = (rawClassResults.data.splitcontrols ?? []).map((c: any) =>
         typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
@@ -233,6 +235,8 @@ export class DataSourceFieldMapper {
           const extra: Record<string, any> = { className };
           if (Number(raw?.status) === 0 && Number(raw?.result) > 0) extra.finishTimeMs = Number(raw.result) * 10;
           if (startTimeMs) extra.startTimeMs = startTimeMs;
+          const teamStartCs = teamStarts.get(String(runner.club ?? ''));
+          if (clock && teamStartCs && teamStartCs !== startCs) extra.teamStartTimeMs = startTimeEpochMs(clock, teamStartCs);
           if (raw?.country) extra.country = raw.country;
           const logo = logos?.lookup(runner.club);
           if (logo) extra.clubLogo = logo;
@@ -500,3 +504,38 @@ export class DataSourceFieldMapper {
   }
 }
 
+/**
+ * Relays: when each team started (hundredths since midnight), by team name. Leg results and
+ * splits count from the team's start, while a runner's own start is their changeover. MeOS,
+ * MOP and IOF XML give it (teamstart); for Liveresultat it is the team's start on leg 1.
+ * Empty for individual classes, and when the team's start can't be found.
+ */
+export async function relayTeamStarts(
+  client: Pick<LiveResultsClient, 'getClassResults'>,
+  competitionId: number,
+  className: string,
+  rows: Array<{ club?: string; start?: number | string; teamstart?: number }>
+): Promise<Map<string, number>> {
+  const starts = new Map<string, number>();
+  for (const r of rows) if (Number(r.teamstart) > 0 && r.club) starts.set(String(r.club), Number(r.teamstart));
+  if (!starts.size) {
+    const leg = /^(.*\S)-(\d+)$/.exec(String(className));
+    if (!leg || Number(leg[2]) < 2) return starts;
+    try {
+      // Leg 1 changes rarely once the race is under way: a minute-old copy is fine
+      const first = await client.getClassResults(competitionId, `${leg[1]}-1`, { maxAgeMs: 60_000 });
+      for (const r of first.data.results ?? []) {
+        const start = Number(r.start);
+        if (r.club && start > 0) starts.set(String(r.club), start);
+      }
+    } catch (error) {
+      logger.debug('No leg 1 class for relay team starts', { className, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  // a team start after the runner's own start can't be right: leave those out
+  for (const r of rows) {
+    const team = starts.get(String(r.club ?? ''));
+    if (team && Number(r.start) > 0 && team > Number(r.start)) starts.delete(String(r.club));
+  }
+  return starts;
+}

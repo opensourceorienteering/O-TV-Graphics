@@ -274,6 +274,7 @@ export class IofXmlBackend implements LiveResultsBackend {
             status,
             ranked: text(res.Status) !== 'NotCompeting',
             start: legStart,
+            ...(teamStartCs ? { teamStart: teamStartCs } : {}),
             result: status === 0 ? (overallCs || (legTimeCs ? legTimeCs + offset : 0)) : 0,
             splits
           });
