@@ -617,6 +617,21 @@ export async function refreshStartListFromSource(
   classes?: string[],
 ): Promise<EventStartList> {
   const project = await loadEvent(projectId);
+  const { timeZone, classNames, entries: fresh } = await startListFromSource(project, classes);
+  const list = loadStartList(projectId);
+  return saveStartList(projectId, {
+    ...list,
+    origin: "source",
+    timeZone,
+    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
+  });
+}
+
+/** The start list entries the event's data source has now (all classes, or some) */
+export async function startListFromSource(
+  project: SPXProject,
+  classes?: string[],
+): Promise<{ timeZone?: string; classNames: string[]; entries: StartListEntry[] }> {
   const ds = project.dataSource;
   if (!ds?.sourceId || !ds.competitionId)
     throw new Error("Choose a data source and competition first (Settings → Data)");
@@ -663,13 +678,7 @@ export async function refreshStartListFromSource(
       });
     }
   }
-  const list = loadStartList(projectId);
-  return saveStartList(projectId, {
-    ...list,
-    origin: "source",
-    timeZone: clock?.timeZone,
-    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
-  });
+  return { timeZone: clock?.timeZone, classNames, entries: fresh };
 }
 
 /** Import an IOF XML 3.0 StartList (or ResultList) */
@@ -678,6 +687,22 @@ export async function importStartListIofXml(
   filePath: string,
 ): Promise<EventStartList> {
   const project = await loadEvent(projectId);
+  const { timeZone, classNames, entries: fresh } = await startListFromIofXml(project, filePath);
+  if (!fresh.length) throw new Error("No runners found in the file");
+  const list = loadStartList(projectId);
+  return saveStartList(projectId, {
+    ...list,
+    origin: "iofxml",
+    timeZone,
+    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
+  });
+}
+
+/** The start list entries in an IOF XML 3.0 StartList (or ResultList) */
+export async function startListFromIofXml(
+  project: SPXProject,
+  filePath: string,
+): Promise<{ timeZone: string; classNames: string[]; entries: StartListEntry[] }> {
   const tz = project.info?.timeZone || "Europe/Stockholm";
   const backend = new IofXmlBackend(filePath, {
     competitionId: 1,
@@ -710,14 +735,7 @@ export async function importStartListIofXml(
       });
     }
   }
-  if (!fresh.length) throw new Error("No runners found in the file");
-  const list = loadStartList(projectId);
-  return saveStartList(projectId, {
-    ...list,
-    origin: "iofxml",
-    timeZone: tz,
-    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
-  });
+  return { timeZone: tz, classNames, entries: fresh };
 }
 
 /** Split one CSV/TSV line, honouring quotes */

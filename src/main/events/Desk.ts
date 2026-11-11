@@ -154,7 +154,7 @@ async function automaticFields(project: SPXProject, key: string, typed: Record<s
 }
 
 /** Length, climb and controls of a class from the timing data, when the source has them (IOF XML) */
-async function courseFields(project: SPXProject, className?: string): Promise<Record<string, any>> {
+export async function courseFields(project: SPXProject, className?: string): Promise<Record<string, any>> {
   const ds = project.dataSource;
   if (!className || !ds?.sourceId || !ds.competitionId) return {};
   try {

@@ -77,31 +77,36 @@ export function createDirectorApiRouter(): express.Router {
       const client = clientFor(String(req.query.source));
       const comp = Number(req.query.comp);
       const className = String(req.query.class ?? '');
-      let info: any;
-      try { info = await client.getCompetitionInfo(comp); } catch { info = (await client.getCompetitions()).data.find((c: any) => c.id === comp); }
-      const clock = info ? competitionClock(info) : null;
-      // Start lists change rarely: reuse anything fetched in the last 30 s
-      const result = await client.getClassResults(comp, className, { maxAgeMs: 30_000 });
       const eventId = typeof req.query.event === 'string' ? req.query.event : '';
       const favs = eventId ? new Set(loadStartList(eventId).entries.filter(e => e.favourite).map(e => e.key)) : new Set<string>();
-      const runners = (result.data.results ?? []).map((r: any) => ({
-        name: r.name, club: r.club, bib: r.bib ?? '', status: Number(r.status),
-        favourite: favs.has(entryKey(className, r.name, r.club)),
-        startTimeMs: clock && r.start ? startTimeEpochMs(clock, Number(r.start)) : null
-      }));
-      res.json({
-        className,
-        competitionName: info?.name ?? '',
-        timeZone: clock?.timeZone,
-        clockOffsetMs: await client.getServerClockOffsetMs(),
-        runners
-      });
+      res.json(await directorStarts(client, comp, className, favs));
     } catch (error: any) {
       res.status(error?.status || 500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
 
   return router;
+}
+
+/** Upcoming starters of a class for the director page (start times as epoch ms) */
+export async function directorStarts(client: any, comp: number, className: string, favs: Set<string>) {
+  let info: any;
+  try { info = await client.getCompetitionInfo(comp); } catch { info = (await client.getCompetitions()).data.find((c: any) => c.id === comp); }
+  const clock = info ? competitionClock(info) : null;
+  // Start lists change rarely: reuse anything fetched in the last 30 s
+  const result = await client.getClassResults(comp, className, { maxAgeMs: 30_000 });
+  const runners = (result.data.results ?? []).map((r: any) => ({
+    name: r.name, club: r.club, bib: r.bib ?? '', status: Number(r.status),
+    favourite: favs.has(entryKey(className, r.name, r.club)),
+    startTimeMs: clock && r.start ? startTimeEpochMs(clock, Number(r.start)) : null
+  }));
+  return {
+    className,
+    competitionName: info?.name ?? '',
+    timeZone: clock?.timeZone,
+    clockOffsetMs: await client.getServerClockOffsetMs(),
+    runners
+  };
 }
 
 /** A LAN address for links other devices can open */

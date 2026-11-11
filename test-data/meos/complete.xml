@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MOPComplete xmlns="http://www.melin.nu/mop" nextdifference="2">
+<competition date="2026-10-25" organizer="OK Exempel" homepage="" zerotime="10:00:00">Höstkavlen &amp; Sprint</competition>
+<ctrl id="31">Radio 1</ctrl>
+<ctrl id="45">Radio 2</ctrl>
+<ctrl id="100031">Radio 1 (2)</ctrl>
+<ctrl id="50">Växel</ctrl>
+<cls id="1" ord="10" radio="31,45,100031">H21</cls>
+<cls id="2" ord="20" radio="50;50">Kavle</cls>
+<org id="1" nat="SWE">OK Exempel</org>
+<org id="2">IK "Granen"</org>
+<tm id="7"><base org="1" cls="2" stat="0" st="396000" rt="0" bib="1">OK Exempel 1</base><r>21;22</r></tm>
+<tm id="8"><base org="2" cls="2" stat="0" st="396000" rt="0" bib="2">IK Granen 1</base><r>23;24</r></tm>
+<cmp id="11" card="501"><base org="1" cls="1" stat="1" st="361200" rt="24000" bib="101">Anna Andersson</base><radio>31,3000;45,9005;100031,15000</radio><input it="0" tstat="1"/></cmp>
+<cmp id="12" card="502"><base org="2" cls="1" stat="1" st="360600" rt="23500" bib="102">Bertil Bok</base><radio>31,3100;45,8800;100031,14500</radio><input it="0" tstat="1"/></cmp>
+<cmp id="13" card="503"><base org="1" cls="1" stat="3" st="362400" rt="22000">Cesar Cykel</base><input it="0" tstat="3"/></cmp>
+<cmp id="14" card="504" competing="true"><base org="2" cls="1" stat="0" st="363000" rt="0">Doris Dahl</base><radio>31,2950</radio><input it="0" tstat="0"/></cmp>
+<cmp id="15" card="0"><base org="1" cls="1" stat="20" st="-1" rt="0">Erik Ek</base><input it="0" tstat="20"/></cmp>
+<cmp id="16" card="0"><base org="1" cls="1" stat="99" st="-1" rt="0">Fia Fors</base><input it="0" tstat="99"/></cmp>
+<cmp id="21" card="601"><base org="1" cls="2" stat="1" st="396000" rt="18000">Gustav Gran</base><radio>50,6000</radio></cmp>
+<cmp id="22" card="602"><base org="1" cls="2" stat="0" st="414000" rt="0">Hanna Holm</base><radio>50,6500</radio></cmp>
+<cmp id="23" card="603"><base org="2" cls="2" stat="1" st="396000" rt="17500">Ivar Is</base><radio>50,5800</radio></cmp>
+<cmp id="24" card="604"><base org="2" cls="2" stat="0" st="413500" rt="0">Julia Jul</base><radio>50,7000</radio></cmp>
+</MOPComplete>
