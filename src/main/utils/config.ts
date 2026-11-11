@@ -16,7 +16,7 @@ import { BUILT_IN_DATA_SOURCES, mergeBuiltInDataSources } from '../../shared/bui
  * In production: Use Electron's userData directory
  * In development: Use project root
  */
-function getUserDataDirectory(): string {
+export function getUserDataDirectory(): string {
   // Use app.isPackaged to detect production vs development
   // This is the recommended Electron best practice
   const isProduction = app.isPackaged;

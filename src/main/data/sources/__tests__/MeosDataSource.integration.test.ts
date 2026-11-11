@@ -1,4 +1,4 @@
-/** MeosDataSource over real HTTP against a stand-in for the MeOS information server */
+/** The built-in MeOS plugin over real HTTP against a stand-in for the MeOS information server */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import http from 'http';
@@ -9,7 +9,12 @@ vi.mock('../../../utils/logger', () => {
   return { getLogger: () => l, logger: l };
 });
 
-import { MeosDataSource } from '../MeosDataSource';
+import { PluginDataSource } from '../../timing/PluginDataSource';
+import { meosPlugin } from '../../timing/builtInPlugins';
+
+class MeosDataSource extends PluginDataSource {
+  constructor(config: any) { super(meosPlugin, config); }
+}
 
 const COMPLETE = `<?xml version="1.0"?><MOPComplete xmlns="http://www.melin.nu/mop" nextdifference="1">
 <competition date="2026-10-26" organizer="OK" homepage="" zerotime="10:00:00">Test</competition>

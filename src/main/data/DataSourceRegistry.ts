@@ -59,7 +59,10 @@ export class DataSourceRegistry {
     return Array.from(this.factories.values()).map(entry => ({
       type: entry.type,
       displayName: entry.displayName,
-      description: entry.description
+      description: entry.description,
+      kind: entry.kind ?? 'native',
+      ...(entry.configSchema ? { configSchema: entry.configSchema } : {}),
+      ...(entry.extFields?.length ? { extFields: entry.extFields } : {})
     }));
   }
 

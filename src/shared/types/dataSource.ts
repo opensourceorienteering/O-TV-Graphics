@@ -4,11 +4,16 @@
  */
 
 import { LiveResultsCompetition, LiveResultsClass, LiveResultsResult } from './liveresults';
+import type { ConfigSchema, ExtFieldDecl, PluginManifest } from '../timing-sdk';
 
 /**
- * Data source type identifier
+ * Data source type identifier: a built-in type or the id of a timing plugin
  */
-export type DataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'iofxml' | 'meos' | 'custom';
+export type BuiltInDataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'iofxml' | 'meos' | 'custom';
+export type DataSourceType = BuiltInDataSourceType | (string & {});
+
+/** Where a source type comes from */
+export type DataSourceKind = 'native' | 'builtin' | 'code' | 'sql-profile';
 
 /**
  * Data source configuration
@@ -243,6 +248,12 @@ export interface DataSourceRegistryEntry {
   factory: DataSourceFactory;
   displayName: string;
   description: string;
+  /** native = Liveresultat; the others are timing plugins */
+  kind?: DataSourceKind;
+  /** Settings form for plugin sources */
+  configSchema?: ConfigSchema;
+  /** Fields the source adds on top of the base tags (x.<type>.<key>) */
+  extFields?: ExtFieldDecl[];
 }
 
 /**
@@ -252,6 +263,31 @@ export interface DataSourceTypeInfo {
   type: DataSourceType;
   displayName: string;
   description: string;
+  kind?: DataSourceKind;
+  configSchema?: ConfigSchema;
+  extFields?: ExtFieldDecl[];
+}
+
+/** A loaded timing plugin, for the settings screen */
+export interface TimingPluginInfo {
+  id: string;
+  name: string;
+  description?: string;
+  version: string;
+  sdk: string;
+  kind: 'builtin' | 'code' | 'sql-profile';
+  /** File the plugin was loaded from (not for built-ins) */
+  path?: string;
+  capabilities: NonNullable<PluginManifest['capabilities']>;
+  extFields: ExtFieldDecl[];
+}
+
+export interface TimingPluginList {
+  /** The user's plugins folder (null before it is loaded) */
+  folder: string | null;
+  plugins: TimingPluginInfo[];
+  /** Files in the folder that failed to load, with the reason */
+  failures: { path: string; error: string }[];
 }
 
 /**

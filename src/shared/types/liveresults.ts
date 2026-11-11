@@ -77,6 +77,8 @@ export interface LiveResultsResult {
   bib?: string;
   changed?: number;      // UNIX seconds of last change
   startChanged?: number; // UNIX seconds
+  /** Plugin sources: extra fields, keyed by plugin id (templates read them as x.<plugin>.<key>) */
+  ext?: Record<string, Record<string, unknown>>;
 }
 
 export interface LiveResultsClassResult {
@@ -86,6 +88,8 @@ export interface LiveResultsClassResult {
   hash: string;
   /** Course facts when the source has them (IOF XML ClassResult/Course) */
   course?: ClassCourse;
+  /** Plugin sources: extra class fields, keyed by plugin id */
+  ext?: Record<string, Record<string, unknown>>;
 }
 
 export interface ClassCourse {

@@ -131,3 +131,36 @@ describe('DataSourceFieldMapper live clock data', () => {
     expect(data.controlCode).toBe('Start');
   });
 });
+
+describe('DataSourceFieldMapper timing plugin fields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    source = new (LiveResultsDataSource as any)();
+    client.getCompetitionInfo.mockResolvedValue({ id: 37049, name: 'JWOC 2026, Sprint Relay', organizer: 'SOFT', date: '2026-06-30', timediff: 0 });
+    client.getServerClockOffsetMs.mockResolvedValue(0);
+    client.getClassResults.mockResolvedValue({
+      data: {
+        className: 'Mixed-1', splitcontrols: [],
+        results: [{ name: 'Lucie Gaudion', club: 'France 1', start: 420000, ext: { 'gps-track': { speedKmh: 14.2 } } }],
+        ext: { 'gps-track': { sponsor: 'Acme' } }
+      },
+      hash: 'h', timestamp: 1, changed: true
+    });
+  });
+
+  it("accepts provider 'timing' and exposes x.<plugin>.<key> per runner and per class", async () => {
+    const timing: any = {
+      mode: 'api',
+      api: {
+        provider: 'timing',
+        fieldMappings: [
+          { templateField: 'results', apiPath: 'results' },
+          { templateField: 'sponsor', apiPath: 'x.gps-track.sponsor' }
+        ]
+      }
+    };
+    const data = await DataSourceFieldMapper.fetchAndMapData(timing, 37049, { className: 'Mixed-1' }, {}, 'src');
+    expect(data.results[0].x).toEqual({ 'gps-track': { speedKmh: 14.2 } });
+    expect(data.sponsor).toBe('Acme');
+  });
+});

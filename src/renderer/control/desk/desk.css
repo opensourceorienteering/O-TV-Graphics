@@ -91,6 +91,8 @@
 .desk-nav li button:hover { background: var(--d-raised); }
 .desk-nav li button[aria-selected='true'] { background: var(--d-accent-bg); border-left-color: var(--d-accent); font-weight: 600; }
 .desk-nav li button:disabled { color: var(--d-disabled); cursor: default; background: none; }
+/* Needs fields the event's timing source does not provide: still selectable, visibly dimmed */
+.desk-nav li button.needs-source { opacity: 0.6; font-style: italic; }
 .desk-nav .num { font: 12px var(--d-mono); color: var(--d-muted); min-width: 18px; }
 .desk-nav .onair-dot { margin-left: auto; color: var(--d-air); font-size: 10px; }
 .desk-nav .navfoot { margin-top: auto; border-top: 1px solid var(--d-line); padding-top: 12px; color: var(--d-muted); font-size: 11px; display: grid; gap: 4px; }

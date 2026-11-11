@@ -17,7 +17,7 @@ import { registerTemplateHandlers } from './ipc/templateHandlers';
 import { initLiveResultsClient } from './data/LiveResultsClient';
 import { initDataStore } from './data/DataStore';
 import { registerDataHandlers } from './ipc/dataHandlers';
-import { registerDataSourceHandlers } from './ipc/dataSourceHandlers';
+import { registerDataSourceHandlers, timingPluginsFolder } from './ipc/dataSourceHandlers';
 import { initProjectManager } from './projects/ProjectManager';
 import { initRundownManager } from './projects/RundownManager';
 import { registerProjectHandlers } from './ipc/projectHandlers';
@@ -38,6 +38,7 @@ import { frameCaptureService } from './output/FrameCaptureService';
 import { validateNodeVersionOrExit } from './utils/version-check';
 import { initDataSourceRegistry, getDataSourceRegistry } from './data/DataSourceRegistry';
 import { registerBuiltInDataSources } from './data/sources';
+import { loadTimingPlugins } from './data/timing/TimingPlugins';
 import { claimSingleInstance } from './utils/singleInstance';
 
 const logger = initLogger();
@@ -194,6 +195,8 @@ async function initializeServices() {
     // Initialize data source registry
     initDataSourceRegistry();
     registerBuiltInDataSources();
+    // Timing plugins and SQL profiles from <user data>/timing-plugins (before saved sources are created)
+    loadTimingPlugins(timingPluginsFolder());
 
     // Create data source instances from config
     const registry = getDataSourceRegistry();

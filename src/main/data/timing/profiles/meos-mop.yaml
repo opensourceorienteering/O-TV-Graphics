@@ -1,0 +1,86 @@
+# MeOS Online Protocol (MOP) database
+#
+# The MySQL/MariaDB schema a MOP receiver writes (MeOS "Result online" with
+# "MeOS Online Protocol XML 2.0"). Built into Split Control as the "mysql" source type, and
+# the reference example for writing your own SQL profile (docs/TIMING-PLUGINS.md).
+#
+# MOP conventions (MeOS source, code/oBase.h and the MOP spec):
+#  - Times are tenths of a second; start times count from 00:00:00 of the competition day.
+#  - Relays: mopTeam + mopTeamMember (leg, ord = 0 for the runner of the leg).
+#  - mopClassControl lists a class's radio controls per leg, in order; mopRadio holds each
+#    runner's running time at a control. A repeated control is control + 100000 * repeat.
+
+id: meos-mop
+name: MeOS Online Protocol (MOP) database
+description: Results, radio splits and relay legs from the database a MOP receiver writes
+version: 1.0.0
+sdk: ^1.0
+driver: mysql
+timezone: Europe/Stockholm
+pollMs: 2000
+
+units:
+  time: tenths
+  clock: sinceMidnight
+
+statusMap:
+  1: ok
+  2: okNoTime
+  3: mispunch
+  4: dnf
+  5: dsq
+  6: overtime
+  15: { status: ok, ranked: false }   # out of competition: shown, never ranked
+  20: dns
+  21: cancelled
+  99: notCompeting
+  default: { ifPassings: running, else: notStarted }
+
+transforms:
+  controlId: { visitEncoding: { base: 100000 } }
+
+queries:
+  competitions: |
+    SELECT cid AS id, name, date, organizer AS organiser
+      FROM mopCompetition
+     WHERE id = 1
+     ORDER BY date DESC
+
+  classes: |
+    SELECT c.id, c.name, c.ord AS `order`,
+           (SELECT MAX(m.leg)
+              FROM mopTeam t
+              JOIN mopTeamMember m ON m.cid = t.cid AND m.id = t.id
+             WHERE t.cid = c.cid AND t.cls = c.id) AS legs
+      FROM mopClass c
+     WHERE c.cid = :competitionId
+     ORDER BY c.ord, c.name
+
+  radioControls: |
+    SELECT cc.id AS classId, cc.ctrl AS id, c.name, cc.leg
+      FROM mopClassControl cc
+      LEFT JOIN mopControl c ON c.cid = cc.cid AND c.id = cc.ctrl
+     WHERE cc.cid = :competitionId
+     ORDER BY cc.id, cc.leg, cc.ord
+
+  entries: |
+    SELECT c.id, c.name AS `name.full`, c.bib, c.stat AS status,
+           c.st AS start, c.rt AS time, o.name AS `club.name`
+      FROM mopCompetitor c
+      LEFT JOIN mopOrganization o ON o.cid = c.cid AND o.id = c.org
+     WHERE c.cid = :competitionId AND c.cls = :classId
+
+  relayEntries: |
+    SELECT c.id, c.name AS `name.full`, c.bib, c.stat AS status,
+           c.st AS start, c.rt AS time,
+           t.id AS `team.id`, t.name AS `team.name`, t.bib AS `team.bib`,
+           t.st AS `team.start`, m.leg AS `team.leg`
+      FROM mopTeam t
+      JOIN mopTeamMember m ON m.cid = t.cid AND m.id = t.id AND m.ord = 0
+      JOIN mopCompetitor c ON c.cid = t.cid AND c.id = m.rid
+     WHERE t.cid = :competitionId AND t.cls = :classId
+
+  passings: |
+    SELECT id AS entryId, ctrl AS controlId, rt AS time
+      FROM mopRadio
+     WHERE cid = :competitionId AND id IN (:entryIds)

@@ -17,6 +17,14 @@ const logger = getLogger();
 /**
  * Apply field mappings to transform API data into template fields
  */
+/**
+ * Template sidecars name the timing data 'timing' (any timing source, built in or plugin);
+ * 'liveresults' is the original name and stays accepted.
+ */
+export function isTimingProvider(provider: string | undefined): boolean {
+  return provider === 'timing' || provider === 'liveresults';
+}
+
 export class DataSourceFieldMapper {
   private static optionalSnapshots = new WeakMap<TemplateDataSourceConfig, Map<string, Promise<Record<string, any>>>>();
   /**
@@ -58,7 +66,7 @@ export class DataSourceFieldMapper {
       return {};
     }
 
-    if (dataSourceConfig.api.provider === 'liveresults' && dataSourceConfig.api.classScope === 'optional' && !dataSourceValues.className) {
+    if (isTimingProvider(dataSourceConfig.api.provider) && dataSourceConfig.api.classScope === 'optional' && !dataSourceValues.className) {
       const requests = this.optionalSnapshots.get(dataSourceConfig) ?? new Map();
       this.optionalSnapshots.set(dataSourceConfig, requests);
       const key = JSON.stringify([competitionId, dataSourceId, dataSourceValues, rundownSettings]);
@@ -85,7 +93,7 @@ export class DataSourceFieldMapper {
     }
 
     // Fetch data based on provider
-    if (dataSourceConfig.api.provider === 'liveresults') {
+    if (isTimingProvider(dataSourceConfig.api.provider)) {
       return await this.fetchLiveResultsData(
         dataSourceConfig,
         competitionId,
@@ -153,7 +161,7 @@ export class DataSourceFieldMapper {
       });
 
       // Any source that exposes a LiveResults-compatible client works: Liveresultat (REST/legacy)
-      // or a MeOS MOP database (MySQLDataSource + MopBackend).
+      // or any timing plugin (PluginDataSource: MeOS, MOP database, IOF XML, plugins folder).
       const client: LiveResultsClient | undefined =
         typeof (dataSource as any).getClient === 'function' ? (dataSource as any).getClient() : undefined;
       if (!client) {
@@ -227,6 +235,8 @@ export class DataSourceFieldMapper {
       const logos = getClubLogoService();
       const ografData = {
         ...cachedOgrafData,
+        // Timing plugins: extra class fields, read as x.<plugin>.<key>
+        ...(rawClassResults.data.ext ? { x: rawClassResults.data.ext } : {}),
         competitionName: rundownSettings?.competitionNameOverride || cachedOgrafData.competitionName,
         results: (cachedOgrafData.results ?? []).map(runner => {
           const raw = rawByRunner.get(`${runner.name}|${runner.club}`);
@@ -238,6 +248,8 @@ export class DataSourceFieldMapper {
           const teamStartCs = teamStarts.get(String(runner.club ?? ''));
           if (clock && teamStartCs && teamStartCs !== startCs) extra.teamStartTimeMs = startTimeEpochMs(clock, teamStartCs);
           if (raw?.country) extra.country = raw.country;
+          // Timing plugins: declared extra fields, read as results[].x.<plugin>.<key>
+          if (raw?.ext) extra.x = raw.ext;
           const logo = logos?.lookup(runner.club);
           if (logo) extra.clubLogo = logo;
           if (raw?.splits && splitControls.length) {

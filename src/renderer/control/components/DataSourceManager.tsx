@@ -7,16 +7,21 @@ import { t as tr } from "../i18n";
 import { useState, useEffect } from "react";
 import {
   DataSourceConfig,
-  DataSourceRegistryEntry,
+  DataSourceTypeInfo,
 } from "../../../shared/types/dataSource";
 import { useToast } from "../contexts/ToastContext";
+import { PluginConfigForm } from "./PluginConfigForm";
+import { TimingPluginsPanel } from "./TimingPluginsPanel";
 import "./DataSourceManager.css";
+
+/** Types with a hand-written settings form; every other type uses its plugin's configSchema */
+const HAND_WRITTEN_FORMS = new Set(["liveresults", "meos", "iofxml", "mysql"]);
 
 export function DataSourceManager() {
   const toast = useToast();
   const [dataSources, setDataSources] = useState<DataSourceConfig[]>([]);
   const [availableTypes, setAvailableTypes] = useState<
-    DataSourceRegistryEntry[]
+    DataSourceTypeInfo[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -201,6 +206,15 @@ export function DataSourceManager() {
                        {tr("File:")} {(ds.config as any).filePath || "Not configured"}
                     </span>
                   )}
+                  {!HAND_WRITTEN_FORMS.has(ds.type) && (
+                    <span className="config-detail">
+                      {availableTypes.find((t) => t.type === ds.type)?.displayName ??
+                        `${tr("Plugin not installed:")} ${ds.type}`}
+                      {(ds.config as any).host
+                        ? ` | ${(ds.config as any).host}/${(ds.config as any).database ?? ""}`
+                        : ""}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="data-source-actions">
@@ -237,6 +251,8 @@ export function DataSourceManager() {
         </div>
       )}
 
+      <TimingPluginsPanel onReloaded={loadAvailableTypes} />
+
       {showAddDialog && (
         <DataSourceDialog
           availableTypes={availableTypes}
@@ -264,7 +280,7 @@ export function DataSourceManager() {
 }
 
 interface DataSourceDialogProps {
-  availableTypes: DataSourceRegistryEntry[];
+  availableTypes: DataSourceTypeInfo[];
   editingConfig?: DataSourceConfig;
   onClose: () => void;
   onSave: () => void;
@@ -807,6 +823,25 @@ function DataSourceDialog({
               </div>
             </>
           )}
+          {config.type && !HAND_WRITTEN_FORMS.has(config.type) && (() => {
+            const type = availableTypes.find((t) => t.type === config.type);
+            if (!type?.configSchema) return null;
+            return (
+              <>
+                {type.description && <p className="help-text">{type.description}</p>}
+                <PluginConfigForm
+                  schema={type.configSchema}
+                  value={(config.config as Record<string, unknown>) ?? {}}
+                  onChange={(next) => setConfig({ ...config, config: next })}
+                />
+                {type.kind === "sql-profile" && (
+                  <small className="help-text">
+                    {tr("The password is stored in plain text in config.json. Use a database user that can only read.")}
+                  </small>
+                )}
+              </>
+            );
+          })()}
         </div>
         <div className="modal-footer">
           <button className="studio-button" onClick={onClose} disabled={saving}>

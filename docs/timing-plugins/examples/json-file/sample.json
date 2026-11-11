@@ -1,0 +1,25 @@
+{
+  "competition": { "id": "demo-2026", "name": "Demo Sprint", "date": "2026-06-01", "timezone": "Europe/Stockholm" },
+  "classes": [
+    {
+      "id": "W21", "name": "W21", "kind": "individual",
+      "course": { "lengthM": 3100, "climbM": 45, "controls": 22 },
+      "radioControls": [{ "id": "100", "code": 100, "name": "Bridge" }]
+    }
+  ],
+  "entries": [
+    {
+      "id": "1", "classId": "W21", "name": { "given": "Ada", "family": "Ek", "full": "Ada Ek" },
+      "club": { "name": "OK Demo" }, "bib": "101", "status": "ok",
+      "start": 1780300800000, "time": 912000,
+      "passings": [{ "controlId": "100", "time": 401000 }],
+      "ext": { "heartRate": 182 }
+    },
+    {
+      "id": "2", "classId": "W21", "name": { "given": "Bea", "family": "Ny", "full": "Bea Ny" },
+      "club": { "name": "IK Demo" }, "bib": "102", "status": "running",
+      "start": 1780300860000,
+      "passings": [{ "controlId": "100", "time": 395000 }]
+    }
+  ]
+}

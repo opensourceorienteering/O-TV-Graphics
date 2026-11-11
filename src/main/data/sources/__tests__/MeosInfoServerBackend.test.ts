@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MeosInfoServerBackend } from '../MeosInfoServerBackend';
-import { mopSplitCode } from '../MopBackend';
+import { mopSplitCode } from '../meosCodes';
 import { LiveResultsClient } from '../../LiveResultsClient';
 
 // Zero time 10:00; times in tenths. Control 31 is visited twice on H21 (31, then 100031).
@@ -129,14 +129,14 @@ describe('MeosInfoServerBackend', () => {
     expect(meos.requests.at(-1)).toContain('difference=2');
     const doris = res.results.find(r => r.name === 'Doris Dahl')!;
     expect(doris).toMatchObject({ status: 0, place: '2', result: '239000' });
-    expect((backend as any).competitors.get(12).card).toBe(502);
-    expect((backend as any).competitors.has(16)).toBe(false);
+    expect((backend as any).meos.competitors.get(12).card).toBe(502);
+    expect((backend as any).meos.competitors.has(16)).toBe(false);
   });
 
   it('starts over from zero when MeOS forgets the difference state', async () => {
     await backend.fetchCompetitions();
-    (backend as any).difference = '999';
-    (backend as any).lastSync = 0;
+    (backend as any).meos.difference = '999';
+    (backend as any).meos.lastSync = 0;
     await backend.fetchCompetitions();
     expect(meos.requests.slice(-2)).toEqual([
       'http://192.168.1.10:2009/meos?difference=999',

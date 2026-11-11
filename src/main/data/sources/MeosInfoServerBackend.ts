@@ -16,21 +16,14 @@
  *  - Times are tenths of a second; start times count from 00:00:00. st=-1 means no start time.
  *  - A repeated control's id is control + 100000 * repeat (see mopSplitCode).
  *
- * The data is kept in memory and turned into LiveResults-shaped results with the same rules
- * as the MOP database backend, so templates and the live loop behave identically.
+ * The data is kept in memory and reported as timing SDK facts with the same rules as the MOP
+ * SQL profile; CanonicalBackend turns them into the core's results.
  */
 
 import { XMLParser } from 'fast-xml-parser';
-import type { LiveResultsBackend } from '../LiveResultsClient';
-import type {
-  LiveResultsClass,
-  LiveResultsClassResult,
-  LiveResultsCompetition,
-  LiveResultsCompetitionInfo,
-  LiveResultsSplitControl
-} from '../../../shared/types/liveresults';
-import { buildClassResult, ResultRow } from './resultBuilder';
-import { mopSplitCode, mopStatusToLiveResults } from './MopBackend';
+import type { ClassInfo, Competition, Control, Entry, TimingSource } from '../../../shared/timing-sdk';
+import { CanonicalBackend } from '../timing/CanonicalBackend';
+import { meosClock, meosControl, meosStatus } from './meosCodes';
 
 export interface MeosInfoServerBackendOptions {
   /** Competition id Split Control uses for this MeOS event (default 1) */
@@ -57,7 +50,6 @@ const int = (v: any, fallback = 0): number => {
   const n = parseInt(text(v), 10);
   return Number.isFinite(n) ? n : fallback;
 };
-const tenthsToHundredths = (t: number): number => (t > 0 ? t * 10 : 0);
 
 /** "31,32;33" -> [[31, 32], [33]] */
 function packedIntInt(s: string): number[][] {
@@ -65,10 +57,10 @@ function packedIntInt(s: string): number[][] {
   return s.split(';').map(group => group.split(',').map(v => parseInt(v, 10)).filter(Number.isFinite));
 }
 
-export class MeosInfoServerBackend implements LiveResultsBackend {
-  readonly name = 'meos';
+/** The MeOS information server as a timing source */
+export class MeosInfoServerSource implements TimingSource {
   readonly minPollIntervalMs: number;
-  private readonly competitionId: number;
+  private readonly competitionId: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
   private readonly parser = new XMLParser({
@@ -87,13 +79,13 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
 
   private competition = { name: '', date: '', organizer: '', zeroTime: '' };
   private controls = new Map<number, string>();
-  private classes = new Map<number, MeosClass>();
+  private classMap = new Map<number, MeosClass>();
   private orgs = new Map<number, { name: string; nat: string }>();
   private competitors = new Map<number, MeosCompetitor>();
   private teams = new Map<number, MeosTeam>();
 
   constructor(private readonly url: string, private readonly options: MeosInfoServerBackendOptions = {}) {
-    this.competitionId = options.competitionId ?? 1;
+    this.competitionId = String(options.competitionId ?? 1);
     this.minPollIntervalMs = Math.max(500, options.minPollIntervalMs ?? 1000);
     this.timeoutMs = options.timeoutMs ?? 5000;
     this.fetchImpl = options.fetchImpl ?? fetch;
@@ -106,45 +98,54 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
     return /\/meos$/i.test(base) ? base : `${base}/meos`;
   }
 
-  async fetchCompetitions(): Promise<LiveResultsCompetition[]> {
-    await this.sync();
-    const c = this.competition;
-    return [{ id: this.competitionId, name: c.name || 'MeOS', organizer: c.organizer, date: c.date, timediff: 0 }];
+  async connect(): Promise<void> {
+    try {
+      await this.sync(); // first complete download; fails early if MeOS is not reachable
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new Error(`Could not reach the MeOS information server at ${this.endpoint}: ${reason}. ` +
+        'In MeOS, start Services > Information server and check the port.');
+    }
   }
 
-  async fetchCompetitionInfo(competitionId: number): Promise<LiveResultsCompetitionInfo> {
-    this.assertCompetition(competitionId);
-    await this.sync();
-    const c = this.competition;
-    return { id: competitionId, name: c.name || 'MeOS', organizer: c.organizer, date: c.date, timediff: 0, timezone: this.options.timezone };
+  close(): void {
+    this.hasData = false;
+    this.difference = 'zero';
   }
 
-  async fetchClasses(competitionId: number): Promise<LiveResultsClass[]> {
+  async competitions(): Promise<Competition[]> {
+    await this.sync();
+    const c = this.competition;
+    return [{ id: this.competitionId, name: c.name || 'MeOS', organiser: c.organizer, date: c.date, timezone: this.options.timezone }];
+  }
+
+  async classes(competitionId: string): Promise<ClassInfo[]> {
     this.assertCompetition(competitionId);
     await this.sync();
     const legsByClass = this.relayLegCounts();
-    const out: LiveResultsClass[] = [];
-    const sorted = [...this.classes].sort((a, b) => a[1].ord - b[1].ord || a[1].name.localeCompare(b[1].name));
-    for (const [id, cls] of sorted) {
+    const sorted = [...this.classMap].sort((a, b) => a[1].ord - b[1].ord || a[1].name.localeCompare(b[1].name));
+    return sorted.map(([id, cls]) => {
       const legs = legsByClass.get(id);
-      if (legs) for (let leg = 1; leg <= legs; leg++) out.push({ className: `${cls.name}-${leg}` });
-      else out.push({ className: cls.name });
-    }
-    return out;
+      const radioControls: Control[] = [];
+      if (legs) {
+        for (let leg = 1; leg <= legs; leg++) {
+          const radio = cls.radio[leg - 1] ?? cls.radio[0] ?? [];
+          for (const ctrl of radio) radioControls.push(meosControl(ctrl, this.controls.get(ctrl), leg));
+        }
+      } else {
+        for (const ctrl of cls.radio[0] ?? []) radioControls.push(meosControl(ctrl, this.controls.get(ctrl)));
+      }
+      return legs
+        ? { id: String(id), name: cls.name, kind: 'relay' as const, legs, radioControls }
+        : { id: String(id), name: cls.name, kind: 'individual' as const, radioControls };
+    });
   }
 
-  async fetchClassResults(competitionId: number, className: string): Promise<LiveResultsClassResult> {
+  async entries(competitionId: string, classId: string): Promise<Entry[]> {
     this.assertCompetition(competitionId);
     await this.sync();
-    const { classId, leg } = this.resolveClass(className);
-    const cls = this.classes.get(classId)!;
-    const radio = cls.radio[(leg ?? 1) - 1] ?? cls.radio[0] ?? [];
-    const controls: LiveResultsSplitControl[] = radio.map(id => ({
-      code: mopSplitCode(id),
-      name: this.controls.get(id) || `Control ${id % 100000}`
-    }));
-    const rows = leg ? this.relayLegRows(classId, leg) : this.individualRows(classId);
-    return buildClassResult(className, controls, rows);
+    const id = Number(classId);
+    return this.relayLegCounts().has(id) ? this.relayEntries(id) : this.individualEntries(id);
   }
 
   // --- sync ------------------------------------------------------------------------------
@@ -197,7 +198,7 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
     const node = typeof root === 'object' ? root : {};
     if (complete !== undefined) {
       this.controls.clear();
-      this.classes.clear();
+      this.classMap.clear();
       this.orgs.clear();
       this.competitors.clear();
       this.teams.clear();
@@ -220,8 +221,8 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
     }
     for (const e of node.cls ?? []) {
       const id = int(e['@_id']);
-      if (e['@_delete'] === 'true') this.classes.delete(id);
-      else this.classes.set(id, { name: text(e), ord: int(e['@_ord']), radio: packedIntInt(text(e['@_radio'])) });
+      if (e['@_delete'] === 'true') this.classMap.delete(id);
+      else this.classMap.set(id, { name: text(e), ord: int(e['@_ord']), radio: packedIntInt(text(e['@_radio'])) });
     }
     for (const e of node.org ?? []) {
       const id = int(e['@_id']);
@@ -266,9 +267,9 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
     };
   }
 
-  // --- results ---------------------------------------------------------------------------
+  // --- entries ---------------------------------------------------------------------------
 
-  private assertCompetition(competitionId: number) {
+  private assertCompetition(competitionId: string) {
     if (competitionId !== this.competitionId) {
       throw new Error(`Unknown competition ${competitionId} (this MeOS source is ${this.competitionId})`);
     }
@@ -282,75 +283,80 @@ export class MeosInfoServerBackend implements LiveResultsBackend {
     return counts;
   }
 
-  private resolveClass(className: string): { classId: number; leg?: number } {
-    const byName = (name: string) => [...this.classes].find(([, c]) => c.name === name)?.[0];
-    const exact = byName(className);
-    if (exact !== undefined && !this.relayLegCounts().has(exact)) return { classId: exact };
-    const m = /^(.*)-(\d+)$/.exec(className);
-    if (m) {
-      const base = byName(m[1]);
-      if (base !== undefined) return { classId: base, leg: Number(m[2]) };
-    }
-    if (exact !== undefined) return { classId: exact };
-    throw new Error(`MeOS class not found: ${className}`);
+  private passingsOf(c: MeosCompetitor): Entry['passings'] {
+    return [...c.radio].map(([ctrl, rt]) => ({ controlId: String(ctrl), time: rt * 100 }));
   }
 
-  private splitsOf(c: MeosCompetitor, offset = 0): Map<number, number> {
-    const splits = new Map<number, number>();
-    for (const [ctrl, rt] of c.radio) splits.set(mopSplitCode(ctrl), tenthsToHundredths(rt) + offset);
-    return splits;
-  }
-
-  private individualRows(classId: number): ResultRow[] {
-    const rows: ResultRow[] = [];
+  private individualEntries(classId: number): Entry[] {
+    const clock = meosClock(this.competition.date, this.options.timezone);
+    const out: Entry[] = [];
     for (const [id, c] of this.competitors) {
       if (c.cls !== classId) continue;
-      const status = mopStatusToLiveResults(c.stat, c.radio.size > 0);
-      if (status === null) continue;
-      rows.push({
-        key: `r${id}`,
-        name: c.name,
-        club: this.orgs.get(c.org)?.name ?? '',
+      const s = meosStatus(c.stat, c.radio.size > 0);
+      const org = this.orgs.get(c.org);
+      out.push({
+        id: String(id),
+        classId: String(classId),
+        name: { full: c.name },
+        club: { name: org?.name ?? '' },
         bib: c.bib || undefined,
-        country: c.nat || this.orgs.get(c.org)?.nat || undefined,
-        status,
-        ranked: c.stat !== 15,
-        start: tenthsToHundredths(c.st),
-        result: status === 0 ? tenthsToHundredths(c.rt) : 0,
-        splits: this.splitsOf(c)
+        country: c.nat || org?.nat || undefined,
+        status: s.status,
+        ranked: s.ranked,
+        start: clock(c.st),
+        time: c.rt > 0 ? c.rt * 100 : undefined,
+        passings: this.passingsOf(c)
       });
     }
-    return rows;
+    return out;
   }
 
-  /** Leg L of a relay class, timed from the team's start (team perspective) */
-  private relayLegRows(classId: number, leg: number): ResultRow[] {
-    const rows: ResultRow[] = [];
+  /** Every leg of a relay class; the core times them from the team's start */
+  private relayEntries(classId: number): Entry[] {
+    const clock = meosClock(this.competition.date, this.options.timezone);
+    const out: Entry[] = [];
     for (const [teamId, t] of this.teams) {
       if (t.cls !== classId) continue;
-      const runnerId = t.legs[leg - 1]?.[0];
-      const c = runnerId ? this.competitors.get(runnerId) : undefined;
-      if (!c) continue;
-      const status = mopStatusToLiveResults(c.stat, c.radio.size > 0);
-      if (status === null) continue;
-      const teamStart = tenthsToHundredths(t.st);
-      const runnerStart = tenthsToHundredths(c.st) || teamStart;
-      const offset = teamStart ? Math.max(0, runnerStart - teamStart) : 0;
-      const runnerTime = tenthsToHundredths(c.rt);
-      rows.push({
-        key: `t${teamId}`,
-        name: c.name,
-        club: t.name,
-        bib: c.bib || t.bib || undefined,
-        country: t.nat || this.orgs.get(t.org)?.nat || c.nat || undefined,
-        status,
-        ranked: c.stat !== 15,
-        start: runnerStart,
-        ...(teamStart ? { teamStart } : {}),
-        result: status === 0 && runnerTime > 0 ? runnerTime + offset : 0,
-        splits: this.splitsOf(c, offset)
+      t.legs.forEach((runners, i) => {
+        const runnerId = runners[0];
+        const c = runnerId ? this.competitors.get(runnerId) : undefined;
+        if (!c) return;
+        const s = meosStatus(c.stat, c.radio.size > 0);
+        out.push({
+          id: String(runnerId),
+          classId: String(classId),
+          name: { full: c.name },
+          bib: c.bib || undefined,
+          country: t.nat || this.orgs.get(t.org)?.nat || c.nat || undefined,
+          status: s.status,
+          ranked: s.ranked,
+          start: clock(c.st),
+          time: c.rt > 0 ? c.rt * 100 : undefined,
+          passings: this.passingsOf(c),
+          team: { id: String(teamId), name: t.name, bib: t.bib || undefined, start: clock(t.st), leg: i + 1 }
+        });
       });
     }
-    return rows;
+    return out;
+  }
+}
+
+/** MeOS information server -> the core's backend */
+export class MeosInfoServerBackend extends CanonicalBackend {
+  readonly meos: MeosInfoServerSource;
+
+  constructor(url: string, options: MeosInfoServerBackendOptions = {}) {
+    const source = new MeosInfoServerSource(url, options);
+    super(source, 'meos', { minPollIntervalMs: source.minPollIntervalMs });
+    this.meos = source;
+  }
+
+  get endpoint(): string {
+    return this.meos.endpoint;
+  }
+
+  /** Apply a MOPComplete or MOPDiff document */
+  apply(xml: string): void {
+    this.meos.apply(xml);
   }
 }

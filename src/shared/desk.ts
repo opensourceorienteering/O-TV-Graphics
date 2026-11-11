@@ -38,6 +38,11 @@ export interface DeskTemplate {
   rowsPartner?: string;
   /** Real timing data needed for the theme preview */
   previewData?: PreviewData;
+  /**
+   * Fields a timing plugin must provide, e.g. "results[].x.sportident-center.speedKmh" or
+   * "x.my-plugin.sponsor". The desk marks the graphic when the event's source lacks one.
+   */
+  sourceFields?: string[];
 }
 
 /** In the default command-number order: the first is 0 (Settings → Controls can reorder) */

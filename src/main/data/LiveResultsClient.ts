@@ -67,6 +67,11 @@ export interface LiveResultsBackend {
   fetchClasses(competitionId: number): Promise<LiveResultsClass[]>;
   fetchClassResults(competitionId: number, className: string): Promise<LiveResultsClassResult>;
   fetchLastPassings?(competitionId: number, count: number): Promise<LiveResultsPassing[]>;
+  /**
+   * Push backends: the client registers here and refetches as soon as the backend reports a
+   * change (a class, or every class of the competition when className is left out).
+   */
+  onChange?(listener: (competitionId: number, className?: string) => void): void;
 }
 
 export interface LiveResultsClientOptions {
@@ -226,6 +231,7 @@ export class LiveResultsClient {
     };
 
     this.pollingTimers = new Map();
+    this.backend?.onChange?.((competitionId, className) => this.backendChanged(competitionId, className));
 
     logger.info('LiveResults API client initialized', {
       baseUrl: this.options.baseUrl,
@@ -870,6 +876,18 @@ export class LiveResultsClient {
     }
 
     return pollId;
+  }
+
+  /** A push backend reported a change: refetch the matching polls now (relay legs included) */
+  private backendChanged(competitionId: number, className?: string): void {
+    const prefix = `${competitionId}_`;
+    for (const [pollId, trigger] of this.pollTriggers) {
+      if (!pollId.startsWith(prefix)) continue;
+      const polled = pollId.slice(prefix.length);
+      if (className === undefined || polled === className || polled.startsWith(`${className}-`) || polled === 'passings') {
+        trigger(Date.now());
+      }
+    }
   }
 
   /** Is the push channel for this competition connected? (diagnostics) */

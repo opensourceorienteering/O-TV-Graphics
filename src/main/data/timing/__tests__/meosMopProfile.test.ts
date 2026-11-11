@@ -1,16 +1,22 @@
 /**
- * MopBackend against the real MeOS MOP dump in templates/SMGraphics-example/backup.sql
- * (competition 3 = "Exempel (Individuell)", 2 = "Exempel (Stafett)"), loaded into
- * Node's built-in SQLite. The backend's SQL is plain enough to run unchanged.
+ * The built-in meos-mop SQL profile against the real MeOS MOP dump in
+ * templates/SMGraphics-example/backup.sql (competition 3 = "Exempel (Individuell)",
+ * 2 = "Exempel (Stafett)"), loaded into Node's built-in SQLite. The profile's SQL is plain
+ * enough to run unchanged. These are the assertions the hand-written MopBackend passed.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { DatabaseSync } from 'node:sqlite';
-import { MopBackend, mopStatusToLiveResults, mopSplitCode } from '../MopBackend';
+import { mopStatusToLiveResults, mopSplitCode } from '../../sources/meosCodes';
+import { CanonicalBackend } from '../CanonicalBackend';
+import { parseSqlProfile } from '../sql/SqlProfile';
+import { SqlProfileSource } from '../sql/SqlProfileSource';
+import { bindNamed } from '../sql/sqlText';
 
 const DUMP = path.resolve(__dirname, '../../../../../templates/SMGraphics-example/backup.sql');
+const PROFILE = path.resolve(__dirname, '../profiles/meos-mop.yaml');
 
 function loadDump(): DatabaseSync {
   // Git on Windows may check the dump out with CRLF line endings; the patterns below expect \n
@@ -28,14 +34,19 @@ function loadDump(): DatabaseSync {
   return db;
 }
 
-describe('MopBackend (real MeOS MOP dump)', () => {
-  let backend: MopBackend;
+describe('meos-mop SQL profile (real MeOS MOP dump)', () => {
+  let backend: CanonicalBackend;
 
   beforeAll(() => {
     const db = loadDump();
-    backend = new MopBackend(async (q, params = []) => db.prepare(q).all(...(params as any[])) as any[], {
-      timezone: 'Europe/Stockholm'
-    });
+    const profile = parseSqlProfile(fs.readFileSync(PROFILE, 'utf8'), 'meos-mop.yaml');
+    const runner = {
+      query: async (sql: string, params: Record<string, unknown> = {}) => {
+        const bound = bindNamed(sql, params);
+        return db.prepare(bound.sql).all(...(bound.values as any[])) as Record<string, unknown>[];
+      }
+    };
+    backend = new CanonicalBackend(new SqlProfileSource(profile, runner, { timezone: 'Europe/Stockholm' }), 'meos-mop');
   });
 
   it('maps MeOS statuses to LiveResults codes', () => {
@@ -104,6 +115,6 @@ describe('MopBackend (real MeOS MOP dump)', () => {
   });
 
   it('fails clearly for an unknown class', async () => {
-    await expect(backend.fetchClassResults(3, 'Nope')).rejects.toThrow('MOP class not found');
+    await expect(backend.fetchClassResults(3, 'Nope')).rejects.toThrow('Class not found');
   });
 });

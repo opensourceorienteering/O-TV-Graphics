@@ -48,6 +48,7 @@
     "socket.io-client": "^4.8.4",
     "uuid": "^14.0.3",
     "winston": "^3.19.0",
+    "yaml": "^2.9.1",
     "zustand": "^5.0.16"
   },
   "devDependencies": {

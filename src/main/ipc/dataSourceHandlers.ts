@@ -3,11 +3,13 @@
  * Handles data source management operations
  */
 
-import { ipcMain } from 'electron';
+import path from 'path';
+import { ipcMain, shell } from 'electron';
 import { getLogger } from '../utils/logger';
 import { getDataSourceRegistry } from '../data/DataSourceRegistry';
 import { DataSourceConfig } from '../../shared/types/dataSource';
-import { getConfig, saveConfig } from '../utils/config';
+import { getConfig, getUserDataDirectory, saveConfig } from '../utils/config';
+import { listTimingPlugins, loadTimingPlugins } from '../data/timing/TimingPlugins';
 import {
   BUILT_IN_DATA_SOURCE_IDS,
   getBuiltInDataSource,
@@ -19,7 +21,30 @@ const logger = getLogger();
 /**
  * Register data source IPC handlers
  */
+/** The user's timing plugins folder: <user data>/timing-plugins */
+export function timingPluginsFolder(): string {
+  return path.join(getUserDataDirectory(), 'timing-plugins');
+}
+
 export function registerDataSourceHandlers(): void {
+  /** Loaded timing plugins, the plugins folder and files that failed to load */
+  ipcMain.handle('timingPlugins:list', async () => ({ success: true, data: listTimingPlugins() }));
+
+  /** Load the plugins folder again (after adding or changing a plugin) */
+  ipcMain.handle('timingPlugins:reload', async () => {
+    try {
+      return { success: true, data: loadTimingPlugins(timingPluginsFolder()) };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ipcMain.handle('timingPlugins:openFolder', async () => {
+    const folder = listTimingPlugins().folder ?? timingPluginsFolder();
+    const error = await shell.openPath(folder);
+    return error ? { success: false, error } : { success: true, data: folder };
+  });
+
   /**
    * Get all registered data source types
    */

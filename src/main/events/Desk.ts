@@ -65,9 +65,19 @@ function missingGraphic(project: SPXProject, label: string): Error {
     : `The "${setId}" look is not installed. Import it in Graphics library, or choose another look in Plan → Theme.`);
 }
 
+/** Timing plugin fields the event's source provides (results[].x.<plugin>.<key>, x.<plugin>.<key>) */
+export function providedSourceFields(project: SPXProject): Set<string> {
+  const registry = getDataSourceRegistry();
+  const sourceId = project.dataSource?.sourceId;
+  const type = sourceId ? registry.get(sourceId)?.config.type : undefined;
+  const info = type ? registry.getRegisteredTypeInfo().find(t => t.type === type) : undefined;
+  return new Set((info?.extFields ?? []).map(f => (f.on === 'entry' ? `results[].x.${type}.${f.key}` : `x.${type}.${f.key}`)));
+}
+
 /** Which desk templates the event's set provides */
 export async function deskTemplates(projectId: string) {
   const project = await loadEvent(projectId);
+  const provided = providedSourceFields(project);
   const remembered = new Set([...Object.values(loadDeskCommands()), ...Object.keys(loadDeskFavorites(projectId))]);
   const missing = [...remembered].map(key => ({ key, kind: key, label: key, short: key, params: [], required: [], live: false } as DeskTemplate));
   return orderDeskTemplates([...new Map([...missing, ...DESK_TEMPLATES, ...deskDefinitions(project)].map(t => [t.key, t])).values()], project.settings?.templateOrder).map(def => {
@@ -80,6 +90,7 @@ export async function deskTemplates(projectId: string) {
       fieldDefaults: fieldDefaults(def, settings),
       templateId: t?.manifest.id ?? null,
       available: !!t,
+      missingSourceFields: (def.sourceFields ?? []).filter(f => !provided.has(f)),
       schema: (t?.manifest.schema as any)?.properties ?? {},
       requiredFields: ((t?.manifest.schema as any)?.required ?? []) as string[],
       multiStep: t ? isMultiStep(t.manifest) : false

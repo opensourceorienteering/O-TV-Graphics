@@ -20,6 +20,8 @@ export interface ResultRow {
   teamStart?: number;
   result: number;        // hundredths, 0 = none
   splits: Map<number, number>; // split code -> hundredths
+  /** Plugin sources: extra fields keyed by plugin id */
+  ext?: Record<string, Record<string, unknown>>;
 }
 
 /** Places "1", "=" for ties and "" for unranked, plus time behind, like LiveResults */
@@ -70,7 +72,8 @@ export function buildClassResult(className: string, controls: LiveResultsSplitCo
       ...(r.teamStart ? { teamstart: r.teamStart } : {}),
       bib: r.bib,
       ...(r.country ? { country: r.country } : {}),
-      splits
+      splits,
+      ...(r.ext ? { ext: r.ext } : {})
     };
   });
 
