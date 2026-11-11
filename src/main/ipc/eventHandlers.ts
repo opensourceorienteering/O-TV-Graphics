@@ -502,6 +502,7 @@ export function registerEventHandlers(): void {
               raceLocation: project.info?.location,
             },
             project.dataSource.sourceId,
+            project.additionalSources,
           );
           const hasRealResults = hasUsablePreviewData(needs, mapped);
           data = { ...data, ...mapped };

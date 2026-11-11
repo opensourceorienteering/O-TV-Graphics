@@ -174,6 +174,7 @@ export async function syncPages(project: SPXProject): Promise<void> {
       : ds === undefined
         ? r.dataSource
         : undefined;
+    r.additionalSources = project.additionalSources?.length ? project.additionalSources : undefined;
     r.settings = {
       ...(r.settings || {}),
       competitionNameOverride: project.name,

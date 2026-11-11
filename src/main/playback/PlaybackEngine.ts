@@ -9,6 +9,8 @@ import { getTemplateManager } from '../templates/OGrafManager';
 import { getRundownManager } from '../projects/RundownManager';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
 import { getDefaultTimingHub } from '../data/timing/defaultHub';
+import { usableAdditionalSources } from '../data/timing/additionalSources';
+import { getDataSourceRegistry } from '../data/DataSourceRegistry';
 import { WebSocketServer, SocketRoom } from '../data/WebSocketServer';
 import { getDataStore } from '../data/DataStore';
 import type { OGrafResultsData } from '../data/ResultsTransformer';
@@ -68,7 +70,9 @@ export class PlaybackEngine {
     sourceId?: string;
     sourceName: string;
     sourceType: import('../../shared/types/dataSource').DataSourceType;
-    apiFlavor: 'legacy' | 'rest' | 'backend';
+    apiFlavor: string;
+    /** 'additional': a source that only adds its own fields (GPS …) next to the timing source */
+    role: 'timing' | 'additional';
   }> = new Map();
   // Coalescing of live updates per competition/class: one run at a time, at most one queued
   private liveUpdateRunning: Set<string> = new Set();
@@ -157,8 +161,8 @@ export class PlaybackEngine {
 
     // Listen for LiveResults updates from DataStore
     const dataStore = getDataStore();
-    dataStore.on('results:updated', (competitionId: number, className: string, ografData: OGrafResultsData) => {
-      this.handleLiveResultsUpdate(competitionId, className, ografData).catch(error => {
+    dataStore.on('results:updated', (competitionId: number, className: string, ografData: OGrafResultsData, source?: string) => {
+      this.handleLiveResultsUpdate(competitionId, className, ografData, source).catch(error => {
         logger.error('Error in handleLiveResultsUpdate callback', {
           competitionId,
           className,
@@ -276,7 +280,7 @@ export class PlaybackEngine {
    * polls never leak and follow class/competition changes on air.
    */
   async syncPolling(): Promise<void> {
-    const desired = new Map<string, { competitionId: number; className: string; sourceId?: string }>();
+    const desired = new Map<string, { competitionId: number; className: string; sourceId?: string; role: 'timing' | 'additional' }>();
     const rundownManager = getRundownManager();
     const templates = getTemplateManager().getAllTemplates();
 
@@ -290,7 +294,21 @@ export class PlaybackEngine {
         const binding = this.resolveLiveBinding(rundown, item, template);
         if (!binding) continue;
         const classes = binding.className ? [binding.className] : await timingClasses(await this.getSourceClient(binding.sourceId), binding.competitionId);
-        for (const className of classes) desired.set(`${binding.sourceId ?? ''}|${binding.competitionId}|${className}`, { ...binding, className });
+        for (const className of classes) desired.set(`${binding.sourceId ?? ''}|${binding.competitionId}|${className}`, { ...binding, className, role: 'timing' });
+        // Additional sources (GPS …): the same class when they have it, otherwise all their classes
+        for (const a of usableAdditionalSources(binding.sourceId, rundown.additionalSources)) {
+          try {
+            const competitionId = a.competitionId ?? (await a.hub.getCompetitions()).data[0]?.id;
+            if (competitionId === undefined) continue;
+            const theirs = (await a.hub.getClasses(competitionId)).data.map(c => c.className);
+            const wanted = binding.className && theirs.includes(binding.className) ? [binding.className] : theirs;
+            for (const className of wanted) {
+              desired.set(`${a.sourceId}|${competitionId}|${className}`, { competitionId, className, sourceId: a.sourceId, role: 'additional' });
+            }
+          } catch (error) {
+            logger.warn('syncPolling: additional source unavailable', { sourceId: a.sourceId, error: error instanceof Error ? error.message : String(error) });
+          }
+        }
       } catch (error) {
         logger.warn('syncPolling: could not inspect graphic', {
           graphicId: graphic.id,
@@ -324,7 +342,8 @@ export class PlaybackEngine {
         sourceId: binding.sourceId,
         sourceName: source?.config.name || (sourceType === 'liveresults' ? 'Liveresultat' : sourceType),
         sourceType,
-        apiFlavor
+        apiFlavor,
+        role: binding.role
       });
       logger.info('Started live polling', {
         competitionId: binding.competitionId,
@@ -337,16 +356,17 @@ export class PlaybackEngine {
   getLivePollingStatus() {
     return getDataStore().getPollingStatus().flatMap(status => {
       if (!status.active) return [];
-      const poll = [...this.livePolls.entries()].find(([key, p]) =>
-        key === `${p.sourceId ?? ''}|${p.competitionId}|${p.className}` &&
+      const poll = [...this.livePolls.values()].find(p =>
+        (p.client ?? getDefaultTimingHub()).label === status.source &&
         p.competitionId === status.competitionId && p.className === status.className
-      )?.[1];
+      );
       return poll ? [{
         ...status,
         sourceId: poll.sourceId,
         sourceName: poll.sourceName,
         sourceType: poll.sourceType,
-        apiFlavor: poll.apiFlavor
+        apiFlavor: poll.apiFlavor,
+        role: poll.role
       }] : [];
     });
   }
@@ -359,9 +379,10 @@ export class PlaybackEngine {
   private async handleLiveResultsUpdate(
     competitionId: number,
     className: string,
-    _ografData: OGrafResultsData
+    _ografData: OGrafResultsData,
+    source?: string
   ): Promise<void> {
-    const key = `${competitionId}|${className}`;
+    const key = `${source ?? ''}|${competitionId}|${className}`;
     if (this.liveUpdateRunning.has(key)) {
       this.liveUpdatePending.add(key);
       return;
@@ -370,7 +391,7 @@ export class PlaybackEngine {
     try {
       do {
         this.liveUpdatePending.delete(key);
-        await this.applyLiveResultsUpdate(competitionId, className);
+        await this.applyLiveResultsUpdate(competitionId, className, source);
       } while (this.liveUpdatePending.has(key));
     } finally {
       this.liveUpdateRunning.delete(key);
@@ -378,10 +399,34 @@ export class PlaybackEngine {
   }
 
   /**
+   * Does a graphic follow this change? Its timing source's class, or any of its additional
+   * sources (their fields can change for any of the graphic's runners).
+   */
+  private followsSource(
+    binding: { competitionId: number; className: string; sourceId?: string },
+    rundown: { additionalSources?: import('../../shared/types/event').AdditionalSource[] },
+    competitionId: number,
+    className: string,
+    source?: string
+  ): boolean {
+    const timingLabel = (() => {
+      const hub = binding.sourceId ? (getDataSourceRegistry().get(binding.sourceId) as any)?.getClient?.() : undefined;
+      if (hub) return hub.label;
+      try { return getDefaultTimingHub().label; } catch { return undefined; }
+    })();
+    if ((source === undefined || source === timingLabel) && binding.competitionId === competitionId && (!binding.className || binding.className === className)) {
+      return true;
+    }
+    if (source === undefined) return false;
+    return usableAdditionalSources(binding.sourceId, rundown.additionalSources)
+      .some(a => a.hub.label === source && (a.competitionId === undefined || a.competitionId === competitionId));
+  }
+
+  /**
    * Push fresh data to every active graphic that follows this competition/class.
    * On a fetch error the graphic keeps its last good data instead of being blanked.
    */
-  private async applyLiveResultsUpdate(competitionId: number, className: string): Promise<void> {
+  private async applyLiveResultsUpdate(competitionId: number, className: string, source?: string): Promise<void> {
     let updatedCount = 0;
     const rundownManager = getRundownManager();
     const templates = getTemplateManager().getAllTemplates();
@@ -394,7 +439,7 @@ export class PlaybackEngine {
         if (!item) continue;
         const template = templates.find(t => t.manifest.id === item.templateId);
         const binding = this.resolveLiveBinding(rundown, item, template);
-        if (!binding || binding.competitionId !== competitionId || (binding.className && binding.className !== className)) continue;
+        if (!binding || !this.followsSource(binding, rundown, competitionId, className, source)) continue;
         if (!template?.dataSourceConfig) {
           logger.warn('Template has no dataSourceConfig; cannot auto-update', { graphicId, templateId: item.templateId });
           continue;
@@ -407,7 +452,8 @@ export class PlaybackEngine {
             binding.competitionId,
             binding.dataSourceValues,
             rundown.settings,
-            binding.sourceId
+            binding.sourceId,
+            rundown.additionalSources
           );
         } catch (error) {
           logger.warn('Live update skipped: fetch failed, keeping last good data on air', {
@@ -472,7 +518,8 @@ export class PlaybackEngine {
         rundown.dataSource?.competitionId || item.liveResultsData.competitionId || 0,
         item.liveResultsData.dataSourceValues,
         rundown.settings,
-        rundown.dataSource?.sourceId
+        rundown.dataSource?.sourceId,
+        rundown.additionalSources
       ).then(mapped => ({ ...(item.fields || {}), ...mapped }));
     }
     data = await this.decorateData(projectId, rundown, data);
@@ -714,7 +761,8 @@ export class PlaybackEngine {
             rundown.dataSource?.competitionId || 0,
             item.liveResultsData.dataSourceValues,
             rundown.settings,
-            rundown.dataSource?.sourceId
+            rundown.dataSource?.sourceId,
+            rundown.additionalSources
           );
 
           const fetchDuration = Date.now() - fetchStartTime;

@@ -36,7 +36,7 @@ vi.mock('../../templates/OGrafManager', () => ({
   getTemplateManager: () => ({ getAllTemplates: () => templates })
 }));
 
-const rundown = {
+const rundown: any = {
   id: 'r1', projectId: 'p1', settings: {},
   dataSource: { sourceId: 'replay', competitionId: 33124 },
   items: [
@@ -59,6 +59,8 @@ import { initDefaultTimingHub } from '../../data/timing/defaultHub';
 import { DataSourceFieldMapper } from '../../data/DataSourceFieldMapper';
 import { PlaybackEngine } from '../PlaybackEngine';
 import { baseTagProblems } from '../../../shared/baseTags';
+import { registerTimingPlugin } from '../../data/timing/TimingPlugins';
+import type { Entry, PluginContext, TimingPlugin } from '../../../shared/timing-sdk';
 
 /** Start the replay; resolves with its address once it listens */
 function replay(args: string[]): Promise<{ proc: ChildProcess; url: string }> {
@@ -243,5 +245,101 @@ describe('Liveresultat replay after the race', () => {
       }
     }
     expect(compared).toBeGreaterThan(800);
+  }, 60_000);
+});
+
+describe('Liveresultat replay with a GPS source next to it, end to end', () => {
+  let run: { proc: ChildProcess; url: string };
+  let engine: any;
+  let gpsCtx: PluginContext | undefined;
+  let speed = 10;
+  const updates: { id: string; data: any; at: number }[] = [];
+  // The tracker knows runners by bib; its class names are its own ("Tracked")
+  const gpsEntries = (): Entry[] => RACE.results[CLASS].results.filter((r: any) => r.bib).map((r: any, i: number) => ({
+    id: `g${i}`, classId: 'tracked', name: { full: r.name.toUpperCase() }, bib: String(r.bib), status: 'running', passings: [],
+    ext: { speedKmh: speed + i / 10 }
+  }));
+  const gps: TimingPlugin = {
+    manifest: { id: 'gps-track', name: 'GPS', version: '1.0.0', sdk: '^1.0', capabilities: { push: true, minPollMs: 60_000 },
+      extFields: [{ key: 'speedKmh', on: 'entry', type: 'number', label: 'Speed' }] },
+    create: (_config, ctx) => {
+      gpsCtx = ctx;
+      return {
+        connect: async () => undefined,
+        close: () => undefined,
+        competitions: async () => [{ id: '9', name: 'Tracking', date: '2025-05-09' }],
+        classes: async () => [{ id: 'tracked', name: 'Tracked', kind: 'individual', radioControls: [] }],
+        entries: async () => gpsEntries()
+      };
+    }
+  };
+
+  beforeAll(async () => {
+    run = await replay(['--speed', '1', '--from', '20:00']);
+    initDataStore();
+    getDataSourceRegistry().clear();
+    registerBuiltInDataSources();
+    registerTimingPlugin(gps, { kind: 'code', path: 'test' });
+    initDefaultTimingHub({ baseUrl: run.url });
+    await getDataSourceRegistry().create({ id: 'replay', name: 'Replay', type: 'liveresults', enabled: true,
+      config: { baseUrl: run.url, api: 'rest', localPollFloorMs: 200, push: false } });
+    await getDataSourceRegistry().create({ id: 'gps', name: 'GPS', type: 'gps-track', enabled: true, config: {} });
+    rundown.additionalSources = [{ sourceId: 'gps' }];
+    engine = new PlaybackEngine();
+    engine.setWebSocketServer({ setResponseCallback() {}, setNewClientCallback() {} });
+    engine.sendCommand = vi.fn(async (command: string, payload: any) => {
+      if (command === 'update') updates.push({ id: payload.id, data: payload.data, at: Date.now() });
+      return { success: true };
+    });
+  }, 20_000);
+
+  afterAll(async () => {
+    engine?.activeGraphics.clear();
+    await engine?.syncPolling();
+    delete rundown.additionalSources;
+    getDataSourceRegistry().destroyAll();
+    run?.proc.kill();
+  });
+
+  it('adds the GPS fields to the timing results and follows GPS changes on air, nothing else', async () => {
+    engine.activeGraphics.set('p1-r1-finish', {
+      id: 'p1-r1-finish', projectId: 'p1', rundownId: 'r1', itemId: 'finish', templateId: 'results-list',
+      isPlaying: true, manifest: templates[0].manifest, templateDirectoryName: 'results-list', data: {}, currentStep: 1
+    });
+    await engine.syncPolling();
+    // One poll for the timing source's class, one for the tracker's class
+    expect([...engine.livePolls.values()].map((p: any) => [p.sourceId, p.role]).sort()).toEqual([['gps', 'additional'], ['replay', 'timing']]);
+
+    const finishUpdates = () => updates.filter(u => u.id === 'p1-r1-finish');
+    await vi.waitFor(() => expect(finishUpdates().length).toBeGreaterThan(0), { timeout: 10_000 });
+    await vi.waitFor(() => expect(engine.getLivePollingStatus().some((p: any) => p.role === 'additional')).toBe(true), { timeout: 5000 });
+    const first = finishUpdates().at(-1)!.data;
+    expect(baseTagProblems(first)).toEqual([]);
+    const recorded = new Map(RACE.results[CLASS].results.map((r: any) => [`${r.name}|${r.club}`, r]));
+    for (const r of first.results) {
+      const rec: any = recorded.get(`${r.name}|${r.club}`);
+      // the timing source alone decides places, times and statuses
+      expect(r.statusCode).toBe(rec.status);
+      if (rec.status === 0) expect(r.finishTimeMs).toBe(rec.result * 10);
+      // matched by bib, though the tracker spells names in capitals and has its own classes
+      if (rec.bib) expect(r.x?.['gps-track']?.speedKmh).toBeGreaterThanOrEqual(10);
+      else expect(r.x?.['gps-track']).toBeUndefined();
+    }
+
+    // The tracker reports new speeds and says so: the graphic follows within moments, although
+    // the race data has not changed and both sources' poll intervals are much longer
+    const count = finishUpdates().length;
+    speed = 20;
+    const t0 = Date.now();
+    gpsCtx!.changed('9');
+    await vi.waitFor(() => {
+      expect(finishUpdates().length).toBeGreaterThan(count);
+      const r = finishUpdates().at(-1)!.data.results.find((x: any) => x.x?.['gps-track']);
+      expect(r.x['gps-track'].speedKmh).toBeGreaterThanOrEqual(20);
+    }, { timeout: 5000, interval: 50 });
+    expect(Date.now() - t0).toBeLessThan(5000);
+    const after = finishUpdates().at(-1)!.data;
+    const strip = (d: any) => d.results.map((r: any) => ({ ...r, x: undefined }));
+    expect(strip(after)).toEqual(strip(first)); // nothing but the GPS fields changed
   }, 60_000);
 });

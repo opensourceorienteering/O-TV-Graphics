@@ -23,6 +23,7 @@ import type {
 import { ProjectGraphicsSettings } from "../components/ProjectGraphicsSettings";
 import { DataSourceManager } from "../components/DataSourceManager";
 import { CompetitionSelector } from "../components/CompetitionSelector";
+import { AdditionalSources } from "./AdditionalSources";
 import { EventOutput } from "./EventOutput";
 import { EventTemplates } from "./EventTemplates";
 
@@ -626,6 +627,14 @@ export function EventPlan() {
                     : tr("Not tested yet")}
                 </span>
               </div>
+              {event.dataSource?.sourceId && (
+                <AdditionalSources
+                  timingSourceId={event.dataSource.sourceId}
+                  value={event.additionalSources ?? []}
+                  sources={sources}
+                  onChange={(next) => void run(() => save({ additionalSources: next }))}
+                />
+              )}
               <details
                 onToggle={(e) => {
                   if (!(e.target as HTMLDetailsElement).open)

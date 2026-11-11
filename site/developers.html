@@ -629,7 +629,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td><code>splitControls[].name</code></td><td>string</td><td>The control's name (Plan → Radio controls can rename it).</td><td>always</td></tr>
           <tr><td><code>clockOffsetMs</code></td><td>number (ms)</td><td>Timing source clock minus this computer's clock. Running time now = <code>Date.now() + clockOffsetMs - startTimeMs</code>.</td><td>always</td></tr>
           <tr><td><code>dataTimestamp</code></td><td>number (epoch ms)</td><td>When this data was put together.</td><td>always</td></tr>
-          <tr><td><code>x</code></td><td>object</td><td>Fields timing plugins add for the class and competition: <code>x.&lt;plugin&gt;.&lt;key&gt;</code> (docs/TIMING-PLUGINS.md).</td><td>when the source's plugin declares class or competition fields</td></tr>
+          <tr><td><code>x</code></td><td>object</td><td>Fields timing plugins add for the class and competition, from the timing source or an additional source: map <code>x.&lt;plugin&gt;.&lt;key&gt;</code> to a field in <code>.datasource.json</code> (docs/TIMING-PLUGINS.md).</td><td>when mapped</td></tr>
         </tbody>
       </table>
       </div>
@@ -659,7 +659,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td><code>results[].finishTimeMs</code></td><td>number (ms)</td><td>The result as a duration (relays: from the team's start).</td><td>finished with status OK</td></tr>
           <tr><td><code>results[].clubLogo</code></td><td>string</td><td>Address of the club's logo (bundled or Plan → Theme).</td><td>when there is a logo for the club</td></tr>
           <tr><td><code>results[].splitTimes</code></td><td>array</td><td>Times at the radio controls (see below).</td><td>when the class has radio controls</td></tr>
-          <tr><td><code>results[].x</code></td><td>object</td><td>Fields timing plugins add for the runner: <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code>.</td><td>when the source's plugin declares runner fields</td></tr>
+          <tr><td><code>results[].x</code></td><td>object</td><td>Fields timing plugins add for the runner, from the timing source or an event's additional sources (GPS …): <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code>.</td><td>when a source's plugin declares runner fields</td></tr>
         </tbody>
       </table>
       </div>
@@ -775,7 +775,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
         <tbody>
           <tr><td>A MySQL/MariaDB timing database</td><td>An <strong>SQL profile</strong>: a YAML file of queries, no code. The app keeps the database driver and the safety rules (read only).</td></tr>
           <tr><td>Anything else (an API, a file format, a push connection)</td><td>A small <strong>code plugin</strong>: <code>manifest</code> + <code>create(config, ctx)</code> answering competitions, classes and entries.</td></tr>
-          <tr><td>Extra data, such as GPS speed or heart rate</td><td>Declare <code>extFields</code>; graphics read them as <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code> and list them in <code>sourceFields</code>.</td></tr>
+          <tr><td>Extra data, such as GPS speed or heart rate</td><td>Declare <code>extFields</code>; graphics read them as <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code> and list them in <code>sourceFields</code>. Such a source can be an event's <strong>additional source</strong> next to its timing source: it only adds its own fields, matched to the timing source's runners, and never changes places, times or runners.</td></tr>
         </tbody>
       </table>
       </div>

@@ -19,6 +19,7 @@ import { getTemplateManager } from '../templates/OGrafManager';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
 import { getDataSourceRegistry } from '../data/DataSourceRegistry';
+import { usableAdditionalSources } from '../data/timing/additionalSources';
 import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
@@ -65,13 +66,26 @@ function missingGraphic(project: SPXProject, label: string): Error {
     : `The "${setId}" look is not installed. Import it in Graphics library, or choose another look in Plan → Theme.`);
 }
 
-/** Timing plugin fields the event's source provides (results[].x.<plugin>.<key>, x.<plugin>.<key>) */
+/**
+ * Timing plugin fields the event's sources provide (results[].x.<plugin>.<key>, x.<plugin>.<key>):
+ * the timing source's and every additional source's (GPS …)
+ */
 export function providedSourceFields(project: SPXProject): Set<string> {
   const registry = getDataSourceRegistry();
-  const sourceId = project.dataSource?.sourceId;
-  const type = sourceId ? registry.get(sourceId)?.config.type : undefined;
-  const info = type ? registry.getRegisteredTypeInfo().find(t => t.type === type) : undefined;
-  return new Set((info?.extFields ?? []).map(f => (f.on === 'entry' ? `results[].x.${type}.${f.key}` : `x.${type}.${f.key}`)));
+  const types = registry.getRegisteredTypeInfo();
+  const out = new Set<string>();
+  const add = (sourceId?: string) => {
+    const ds = sourceId ? registry.get(sourceId) : undefined;
+    const type = ds?.config.type;
+    // fields are under the plugin's id, the same as the source type
+    const plugin: string | undefined = (ds as any)?.getClient?.()?.pluginId ?? type;
+    for (const f of types.find(t => t.type === type)?.extFields ?? []) {
+      out.add(f.on === 'entry' ? `results[].x.${plugin}.${f.key}` : `x.${plugin}.${f.key}`);
+    }
+  };
+  add(project.dataSource?.sourceId);
+  for (const a of usableAdditionalSources(project.dataSource?.sourceId, project.additionalSources)) add(a.sourceId);
+  return out;
 }
 
 /** Which desk templates the event's set provides */
@@ -367,7 +381,7 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
     data = {
       ...data,
       ...(await DataSourceFieldMapper.fetchAndMapData(
-        template.dataSourceConfig, rundown.dataSource?.competitionId || 0, values, rundown.settings, rundown.dataSource?.sourceId
+        template.dataSourceConfig, rundown.dataSource?.competitionId || 0, values, rundown.settings, rundown.dataSource?.sourceId, rundown.additionalSources
       ))
     };
   }

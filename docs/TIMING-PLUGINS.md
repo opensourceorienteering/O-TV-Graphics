@@ -119,9 +119,40 @@ overwrite a base tag:
   `{ "templateField": "sponsor", "apiPath": "x.my-plugin.sponsor" }`
   (a class field wins over a competition field with the same key)
 
+An event can take extra fields from more sources than its timing source: see
+[Additional sources](#additional-sources-gps-and-other-extra-data).
+
 A graphic that needs extra fields lists them in its desk declaration
 ([GRAPHIC-CAPABILITIES.md](GRAPHIC-CAPABILITIES.md)) as `sourceFields`. The Live desk then marks
 the graphic, and says which fields are missing, when the event's source does not provide them.
+
+## Additional sources (GPS and other extra data)
+
+An event has one **timing source**, and can have **additional sources** next to it (**Plan →
+Choose event data → Additional sources**). An additional source is any data source whose plugin
+declares `extFields`: a GPS tracker, heart rate belts, a split-time radio system with extra data.
+
+They never interfere with the timing source, or with each other:
+
+- **Only their own fields.** The timing source alone decides who is in a class and every base tag
+  (places, times, statuses, start times …). An additional source adds just the fields its plugin
+  declares, under its own namespace: `results[].x.<plugin>.<key>` per runner, and
+  `x.<plugin>.<key>` for the class (map that in `.datasource.json`). Anything else it reports
+  (runners, times, places) is ignored.
+- **One namespace per plugin.** Two sources of the same plugin on one event, or an additional
+  source of the timing source's own plugin, would write to the same fields: the second one is
+  left out (with a warning in the log), and the settings screen does not offer it.
+- **Runners are matched** to the timing source's runners by bib, then by name and club, then by
+  name when it is unique in both. The additional source can use its own class names: when it has
+  the class shown, only that class is read; otherwise all its classes.
+- **A failing source never holds a graphic up.** Each additional source has a few seconds; after
+  that the graphic gets the timing data with the source's last good fields (or none), and the
+  timing data is never blanked.
+- **Live updates.** Additional sources are polled next to the timing source, and push sources
+  (`ctx.changed()`) update the graphics on air at once. A change in one source never refetches
+  another source's data more than its own poll does.
+
+The Live desk counts additional sources' fields when it checks a graphic's `sourceFields`.
 
 ## SQL profiles
 

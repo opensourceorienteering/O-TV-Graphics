@@ -78,7 +78,7 @@ export const BASE_TAGS: readonly BaseTag[] = [
   { path: 'splitControls[].name', type: S, group: 'timing', description: 'The control\'s name (Plan → Radio controls can rename it).' },
   { path: 'clockOffsetMs', type: N, group: 'timing', unit: 'ms', description: 'Timing source clock minus this computer\'s clock. Running time now = `Date.now() + clockOffsetMs - startTimeMs`.' },
   { path: 'dataTimestamp', type: N, group: 'timing', unit: 'epoch ms', description: 'When this data was put together.' },
-  { path: 'x', type: ['object'], group: 'timing', description: 'Fields timing plugins add for the class and competition: `x.<plugin>.<key>` (docs/TIMING-PLUGINS.md).', when: 'when the source\'s plugin declares class or competition fields' },
+  { path: 'x', type: ['object'], group: 'timing', description: 'Fields timing plugins add for the class and competition, from the timing source or an additional source: map `x.<plugin>.<key>` to a field in `.datasource.json` (docs/TIMING-PLUGINS.md).', when: 'when mapped' },
 
   // --- runners -------------------------------------------------------------------------------
   { path: 'results', type: ['array'], group: 'runner', description: 'The runners (see the list below).', when: 'when the class has runners' },
@@ -101,7 +101,7 @@ export const BASE_TAGS: readonly BaseTag[] = [
   { path: 'results[].finishTimeMs', type: N, group: 'runner', unit: 'ms', description: 'The result as a duration (relays: from the team\'s start).', when: 'finished with status OK' },
   { path: 'results[].clubLogo', type: S, group: 'runner', description: 'Address of the club\'s logo (bundled or Plan → Theme).', when: 'when there is a logo for the club' },
   { path: 'results[].splitTimes', type: ['array'], group: 'runner', description: 'Times at the radio controls (see below).', when: 'when the class has radio controls' },
-  { path: 'results[].x', type: ['object'], group: 'runner', description: 'Fields timing plugins add for the runner: `results[].x.<plugin>.<key>`.', when: 'when the source\'s plugin declares runner fields' },
+  { path: 'results[].x', type: ['object'], group: 'runner', description: 'Fields timing plugins add for the runner, from the timing source or an event\'s additional sources (GPS …): `results[].x.<plugin>.<key>`.', when: 'when a source\'s plugin declares runner fields' },
 
   // --- split times ---------------------------------------------------------------------------
   { path: 'results[].splitTimes[].code', type: N, group: 'split', description: 'The control (as in `splitControls`).' },

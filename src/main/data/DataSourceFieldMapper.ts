@@ -13,6 +13,8 @@ import { getDataStore } from './DataStore';
 import { getDataSourceRegistry } from './DataSourceRegistry';
 import { competitionClock, CompetitionClock, startTimeEpochMs } from './liveTime';
 import { getClubLogoService } from './ClubLogoService';
+import { supplementsFor } from './timing/additionalSources';
+import type { AdditionalSource } from '../../shared/types/event';
 
 const logger = getLogger();
 
@@ -40,7 +42,9 @@ export class DataSourceFieldMapper {
       competitionNameOverride?: string;
       raceLocation?: string;
     },
-    dataSourceId?: string
+    dataSourceId?: string,
+    /** Sources that only add their own fields (GPS …), see timing/additionalSources.ts */
+    additionalSources?: AdditionalSource[]
   ): Promise<Record<string, any>> {
     logger.debug('Fetching and mapping data', {
       mode: dataSourceConfig.mode,
@@ -71,7 +75,7 @@ export class DataSourceFieldMapper {
     if (isTimingProvider(dataSourceConfig.api.provider) && dataSourceConfig.api.classScope === 'optional' && !dataSourceValues.className) {
       const requests = this.optionalSnapshots.get(dataSourceConfig) ?? new Map();
       this.optionalSnapshots.set(dataSourceConfig, requests);
-      const key = JSON.stringify([competitionId, dataSourceId, dataSourceValues, rundownSettings]);
+      const key = JSON.stringify([competitionId, dataSourceId, dataSourceValues, rundownSettings, additionalSources ?? []]);
       const pending = requests.get(key);
       if (pending) return pending;
       const request = (async () => {
@@ -80,7 +84,7 @@ export class DataSourceFieldMapper {
         if (!client) throw new Error('Choose a timing source for this event');
         const classes = await timingClasses(client, competitionId);
         const mapped = await mapTimingClasses(classes, className => this.fetchAndMapData(
-          dataSourceConfig, competitionId, { ...dataSourceValues, className }, rundownSettings, dataSourceId
+          dataSourceConfig, competitionId, { ...dataSourceValues, className }, rundownSettings, dataSourceId, additionalSources
         ));
         // A failed class aborts the update, preserving the graphic's last complete snapshot.
         return {
@@ -101,7 +105,8 @@ export class DataSourceFieldMapper {
         competitionId,
         dataSourceValues,
         rundownSettings,
-        dataSourceId
+        dataSourceId,
+        additionalSources
       );
     }
 
@@ -120,7 +125,8 @@ export class DataSourceFieldMapper {
       competitionNameOverride?: string;
       raceLocation?: string;
     },
-    dataSourceId?: string
+    dataSourceId?: string,
+    additionalSources?: AdditionalSource[]
   ): Promise<Record<string, any>> {
     const totalStartTime = Date.now();
     try {
@@ -216,10 +222,14 @@ export class DataSourceFieldMapper {
       // Radio controls of the class, and every runner's times at them, for split graphics
       const splitControls = classResults.controls.map(c => ({ code: c.key, name: c.name }));
       const logos = getClubLogoService();
+      // Additional sources (GPS …): only their own fields, under their own plugin, never base tags
+      const supplements = additionalSources?.length ? await supplementsFor(dataSourceId, additionalSources, className) : [];
+      const classX: Record<string, any> = { ...(classResults.ext ?? {}) };
+      for (const s of supplements) if (s.classExt && !classX[s.pluginId]) classX[s.pluginId] = s.classExt;
       const ografData = {
         ...cachedOgrafData,
         // Timing plugins: extra class fields, read as x.<plugin>.<key>
-        ...(classResults.ext ? { x: classResults.ext } : {}),
+        ...(Object.keys(classX).length ? { x: classX } : {}),
         competitionName: rundownSettings?.competitionNameOverride || cachedOgrafData.competitionName,
         results: (cachedOgrafData.results ?? []).map(runner => {
           const row = rowByRunner.get(`${runner.name}|${runner.club}`);
@@ -232,7 +242,12 @@ export class DataSourceFieldMapper {
           if (clock && teamStartCs && teamStartCs !== startCs) extra.teamStartTimeMs = startTimeEpochMs(clock, teamStartCs);
           if (row?.country) extra.country = row.country;
           // Timing plugins: declared extra fields, read as results[].x.<plugin>.<key>
-          if (row?.ext) extra.x = row.ext;
+          const x: Record<string, any> = { ...(row?.ext ?? {}) };
+          for (const s of supplements) {
+            const fields = s.runner({ name: runner.name, club: runner.club, bib: row?.bib });
+            if (fields && !x[s.pluginId]) x[s.pluginId] = fields;
+          }
+          if (Object.keys(x).length) extra.x = x;
           const logo = logos?.lookup(runner.club);
           if (logo) extra.clubLogo = logo;
           if (row && splitControls.length) {

@@ -175,6 +175,9 @@ export interface SPXRundown {
    * Data source configuration for this rundown
    * Stored at rundown level per requirements
    */
+  /** Sources that only add their own fields next to the timing source (copied from the event) */
+  additionalSources?: import('./event').AdditionalSource[];
+
   dataSource?: {
     sourceId: string;           // Reference to configured data source
     baseUrl: string;            // LiveResults API base URL
@@ -242,6 +245,8 @@ export interface SPXProject {
   info?: import('./event').EventInfo;
   /** Event-level data source; written to every page (rundown) of the event */
   dataSource?: import('./event').EventDataSource;
+  /** Sources that only add their own fields next to the timing source (GPS …) */
+  additionalSources?: import('./event').AdditionalSource[];
   /** 'done' once the event is over (shown greyed in the overview) */
   status?: import('./event').EventStatus;
   /** Outputs turned on automatically in Live (unset: the app's output settings) */

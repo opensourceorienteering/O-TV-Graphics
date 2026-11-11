@@ -29,7 +29,7 @@ Every graphic with the timing feed (a `.datasource.json` with `provider: "timing
 | `splitControls[].name` | string | The control's name (Plan → Radio controls can rename it). | always |
 | `clockOffsetMs` | number (ms) | Timing source clock minus this computer's clock. Running time now = `Date.now() + clockOffsetMs - startTimeMs`. | always |
 | `dataTimestamp` | number (epoch ms) | When this data was put together. | always |
-| `x` | object | Fields timing plugins add for the class and competition: `x.<plugin>.<key>` (docs/TIMING-PLUGINS.md). | when the source's plugin declares class or competition fields |
+| `x` | object | Fields timing plugins add for the class and competition, from the timing source or an additional source: map `x.<plugin>.<key>` to a field in `.datasource.json` (docs/TIMING-PLUGINS.md). | when mapped |
 
 ## Runners: `results[]`
 
@@ -57,7 +57,7 @@ The runners of the class at the chosen timing point, in display order. Placed ru
 | `results[].finishTimeMs` | number (ms) | The result as a duration (relays: from the team's start). | finished with status OK |
 | `results[].clubLogo` | string | Address of the club's logo (bundled or Plan → Theme). | when there is a logo for the club |
 | `results[].splitTimes` | array | Times at the radio controls (see below). | when the class has radio controls |
-| `results[].x` | object | Fields timing plugins add for the runner: `results[].x.<plugin>.<key>`. | when the source's plugin declares runner fields |
+| `results[].x` | object | Fields timing plugins add for the runner, from the timing source or an event's additional sources (GPS …): `results[].x.<plugin>.<key>`. | when a source's plugin declares runner fields |
 
 ## Split times: `results[].splitTimes[]`
 

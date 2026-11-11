@@ -52,6 +52,17 @@ export interface EventDataSource {
   lastCheck?: { ok: boolean; at: number; message?: string; classes?: number };
 }
 
+/**
+ * A source that adds fields next to the event's timing source (GPS, heart rate …). It never
+ * changes who is in a class, places, times or statuses: only its own declared fields reach
+ * graphics, under results[].x.<plugin> and x.<plugin>, matched to the timing source's runners.
+ */
+export interface AdditionalSource {
+  sourceId: string;
+  /** The source's competition (default: its first) */
+  competitionId?: number;
+}
+
 export type EventStatus = 'planning' | 'done';
 
 /**
@@ -195,7 +206,10 @@ export interface ControlState {
     sourceId?: string;
     sourceName?: string;
     sourceType?: import('./dataSource').DataSourceType;
-    apiFlavor?: 'legacy' | 'rest' | 'backend';
+    /** Liveresultat: 'rest' or 'legacy'; other sources 'backend' */
+    apiFlavor?: string;
+    /** 'additional': a source that only adds its own fields (GPS …) next to the timing source */
+    role?: 'timing' | 'additional';
   }>;
 
 }

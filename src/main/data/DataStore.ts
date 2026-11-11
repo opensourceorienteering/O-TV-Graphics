@@ -11,6 +11,13 @@ import type { ClassRef, ClassResults, CompetitionInfo } from './timing/model';
 
 const logger = getLogger();
 
+/** Polls, caches and events are per source, so two sources with the same competition id and
+ *  class name (a GPS source next to IOF XML, both "1"/"H21") never mix */
+function sourceOf(client?: TimingHub): string {
+  if (client) return client.label;
+  try { return getDefaultTimingHub().label; } catch { return 'default'; }
+}
+
 /** The competition's date and zone, for start times of day (undefined when unknown) */
 async function clockFor(client: TimingHub, competitionId: number): Promise<CompetitionInfo | undefined> {
   try {
@@ -23,12 +30,15 @@ async function clockFor(client: TimingHub, competitionId: number): Promise<Compe
 export interface DataStoreEvents {
   'competitions:updated': (competitions: CompetitionInfo[]) => void;
   'classes:updated': (competitionId: number, classes: ClassRef[]) => void;
-  'results:updated': (competitionId: number, className: string, data: OGrafResultsData) => void;
+  /** source: the hub label of the data source that changed */
+  'results:updated': (competitionId: number, className: string, data: OGrafResultsData, source: string) => void;
   'error': (error: Error) => void;
 }
 
 export interface PollingStatus {
   active: boolean;
+  /** Which data source (its hub's label): polls of different sources never share a status */
+  source?: string;
   competitionId?: number;
   className?: string;
   interval?: number;
@@ -182,11 +192,12 @@ export class DataStore extends EventEmitter {
         clock: await clockFor(client, competitionId)
       });
 
-      const key = `${competitionId}_${className}`;
-      
+      const source = sourceOf(client);
+      const key = `${source}|${competitionId}_${className}`;
+
       if (response.changed) {
         this.results.set(key, ografData);
-        this.emit('results:updated', competitionId, className, ografData);
+        this.emit('results:updated', competitionId, className, ografData, source);
         this.broadcast('results:updated', {
           competitionId,
           className,
@@ -231,8 +242,8 @@ export class DataStore extends EventEmitter {
 
     // Include controlCode in cache key to differentiate between finish and split results
     const cacheKey = options?.controlCode
-      ? `${competitionId}_${className}_${options.controlCode}`
-      : `${competitionId}_${className}`;
+      ? `${sourceOf(client)}|${competitionId}_${className}_${options.controlCode}`
+      : `${sourceOf(client)}|${competitionId}_${className}`;
 
     // Standings from the hub (cached there)
     const rawData = await client.getClassResults(competitionId, className, { maxAgeMs: options?.maxAgeMs });
@@ -316,7 +327,8 @@ export class DataStore extends EventEmitter {
   ): string {
     // Use provided client or fall back to singleton (for backward compatibility)
     const liveResultsClient = client || getDefaultTimingHub();
-    const key = `${competitionId}_${className}`;
+    const source = sourceOf(liveResultsClient);
+    const key = `${source}|${competitionId}_${className}`;
 
     logger.info('Starting polling for results', { competitionId, className, interval });
 
@@ -356,7 +368,7 @@ export class DataStore extends EventEmitter {
           }
 
           // Emit events
-          this.emit('results:updated', competitionId, className, ografData);
+          this.emit('results:updated', competitionId, className, ografData, source);
 
           // Use debounced broadcast to prevent excessive WebSocket updates
           this.debouncedBroadcast(key, 'results:updated', {
@@ -401,6 +413,7 @@ export class DataStore extends EventEmitter {
     // Track polling status
     this.pollingStatus.set(key, {
       active: true,
+      source,
       competitionId,
       className,
       interval,
@@ -417,9 +430,9 @@ export class DataStore extends EventEmitter {
   stopPolling(competitionId: number, className: string, client?: any): void {
     // Use provided client or fall back to singleton (for backward compatibility)
     const liveResultsClient = client || getDefaultTimingHub();
-    const key = `${competitionId}_${className}`;
+    const key = `${sourceOf(liveResultsClient)}|${competitionId}_${className}`;
 
-    liveResultsClient.stopPolling(key);
+    liveResultsClient.stopPolling(`${competitionId}_${className}`);
 
     const status = this.pollingStatus.get(key);
     if (status) {
@@ -460,9 +473,8 @@ export class DataStore extends EventEmitter {
   /**
    * Get cached results for a class
    */
-  getResults(competitionId: number, className: string): OGrafResultsData | undefined {
-    const key = `${competitionId}_${className}`;
-    return this.results.get(key);
+  getResults(competitionId: number, className: string, client?: TimingHub): OGrafResultsData | undefined {
+    return this.results.get(`${sourceOf(client)}|${competitionId}_${className}`);
   }
 
   /**
@@ -470,9 +482,7 @@ export class DataStore extends EventEmitter {
    */
   getPollingStatus(competitionId?: number, className?: string): PollingStatus[] {
     if (competitionId !== undefined && className) {
-      const key = `${competitionId}_${className}`;
-      const status = this.pollingStatus.get(key);
-      return status ? [status] : [];
+      return [...this.pollingStatus.values()].filter(st => st.competitionId === competitionId && st.className === className);
     }
 
     return Array.from(this.pollingStatus.values());
@@ -496,14 +506,17 @@ export class DataStore extends EventEmitter {
    * Clear transformed data cache
    */
   clearTransformedCache(competitionId?: number, className?: string): void {
+    // Keys are "<source>|<competition>_<class>[_<control>]", for every source
+    const part = (k: string) => k.slice(k.indexOf('|') + 1);
     if (competitionId && className) {
-      const key = `${competitionId}_${className}`;
-      this.transformedResults.delete(key);
+      for (const k of [...this.transformedResults.keys()]) {
+        if (part(k) === `${competitionId}_${className}` || part(k).startsWith(`${competitionId}_${className}_`)) this.transformedResults.delete(k);
+      }
       logger.info('Cleared transformed cache', { competitionId, className });
     } else if (competitionId) {
       // Clear all for competition
       const keys = Array.from(this.transformedResults.keys())
-        .filter(k => k.startsWith(`${competitionId}_`));
+        .filter(k => part(k).startsWith(`${competitionId}_`));
       keys.forEach(k => this.transformedResults.delete(k));
       logger.info('Cleared transformed cache for competition', { competitionId, count: keys.length });
     } else {

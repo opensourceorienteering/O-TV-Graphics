@@ -132,7 +132,7 @@ describe('PlaybackEngine live updates', () => {
       fetchAndMapData.mockResolvedValueOnce({ results: [{ name: 'new' }] });
       await engine.handleLiveResultsUpdate(37049, 'Mixed-1', { results: [] });
       expect(fetchAndMapData).toHaveBeenCalledWith(
-        template.dataSourceConfig, 37049, { className: 'Mixed-1' }, {}, 'liveresults-default'
+        template.dataSourceConfig, 37049, { className: 'Mixed-1' }, {}, 'liveresults-default', undefined
       );
       expect(engine.sendCommand).toHaveBeenCalledWith('update', {
         id: 'p1-r1-i1',
