@@ -1,12 +1,15 @@
 /**
- * MeosInfoServerBackend against MOP XML in the exact shape MeOS's information server writes
+ * MeosInfoServerSource against MOP XML in the exact shape MeOS's information server writes
  * (code/infoserver.cpp serializers, code/restserver.cpp difference()).
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MeosInfoServerBackend } from '../MeosInfoServerBackend';
+import { MeosInfoServerSource } from '../MeosInfoServerSource';
 import { mopSplitCode } from '../meosCodes';
-import { LiveResultsClient } from '../../LiveResultsClient';
+import { TimingHub } from '../../timing/TimingHub';
+import { wallClockCs } from '../../timing/model';
+
+const row = (rows: any[], name: string) => rows.find(r => r.name === name)!;
 
 // Zero time 10:00; times in tenths. Control 31 is visited twice on H21 (31, then 100031).
 const COMPLETE = `<?xml version="1.0" encoding="UTF-8"?>
@@ -56,88 +59,90 @@ function fakeMeos(responses: Record<string, string>) {
   return { requests, fetchImpl };
 }
 
-describe('MeosInfoServerBackend', () => {
+describe('MeosInfoServerSource', () => {
   let meos: ReturnType<typeof fakeMeos>;
-  let backend: MeosInfoServerBackend;
+  let source: MeosInfoServerSource;
+  let hub: TimingHub;
 
   beforeEach(() => {
     meos = fakeMeos({ zero: COMPLETE, 2: DIFF_2, 3: EMPTY_3 });
-    backend = new MeosInfoServerBackend('192.168.1.10:2009', {
+    source = new MeosInfoServerSource('192.168.1.10:2009', {
       competitionId: 5, timezone: 'Europe/Stockholm', minPollIntervalMs: 500, fetchImpl: meos.fetchImpl
     });
+    hub = new TimingHub(source, { pluginId: 'meos', minPollMs: 500 });
   });
 
   it('normalises the server address', () => {
-    expect(backend.endpoint).toBe('http://192.168.1.10:2009/meos');
-    expect(new MeosInfoServerBackend('http://meos.local:2009/meos/').endpoint).toBe('http://meos.local:2009/meos');
+    expect(source.endpoint).toBe('http://192.168.1.10:2009/meos');
+    expect(new MeosInfoServerSource('http://meos.local:2009/meos/').endpoint).toBe('http://meos.local:2009/meos');
   });
 
-  it('decodes MeOS repeated-control ids into LiveResults split codes', () => {
+  it('decodes MeOS repeated-control ids into control keys', () => {
     expect(mopSplitCode(31)).toBe(1031);
     expect(mopSplitCode(100031)).toBe(2031);
     expect(mopSplitCode(200031)).toBe(3031);
   });
 
   it('reads the competition and lists classes with relay legs', async () => {
-    expect(await backend.fetchCompetitions()).toEqual([
-      { id: 5, name: 'Höstkavlen & Sprint', organizer: 'OK Exempel', date: '2026-10-25', timediff: 0 }
+    expect((await hub.getCompetitions()).data).toEqual([
+      { id: 5, sourceId: '5', name: 'Höstkavlen & Sprint', organiser: 'OK Exempel', date: '2026-10-25', timezone: 'Europe/Stockholm', timediffHours: 0 }
     ]);
-    expect((await backend.fetchCompetitionInfo(5)).timezone).toBe('Europe/Stockholm');
-    expect((await backend.fetchClasses(5)).map(c => c.className)).toEqual(['H21', 'Kavle-1', 'Kavle-2']);
-    await expect(backend.fetchClasses(6)).rejects.toThrow('Unknown competition');
-    expect(meos.requests).toEqual(['http://192.168.1.10:2009/meos?difference=zero']); // one download serves all three calls
+    expect((await hub.getCompetitionInfo(5)).timezone).toBe('Europe/Stockholm');
+    expect((await hub.getClasses(5)).data.map(c => c.className)).toEqual(['H21', 'Kavle-1', 'Kavle-2']);
+    await expect(hub.getClasses(6)).rejects.toThrow('Unknown competition');
+    expect(meos.requests).toEqual(['http://192.168.1.10:2009/meos?difference=zero']); // one download serves all calls
   });
 
-  it('builds individual results: hundredths, places, repeated controls, statuses', async () => {
-    const res = await backend.fetchClassResults(5, 'H21');
-    expect(res.splitcontrols).toEqual([
-      { code: 1031, name: 'Radio 1' },
-      { code: 1045, name: 'Radio 2' },
-      { code: 2031, name: 'Radio 1 (2)' }
+  it('builds individual results: times, places, repeated controls, statuses', async () => {
+    const res = (await hub.getClassResults(5, 'H21')).data;
+    expect(res.controls).toEqual([
+      { key: 1031, id: '31', code: 31, name: 'Radio 1' },
+      { key: 1045, id: '45', code: 45, name: 'Radio 2' },
+      { key: 2031, id: '100031', code: 31, name: 'Radio 1 (2)' }
     ]);
-    const by = (n: string) => res.results.find(r => r.name === n)!;
-    expect(res.results.map(r => r.name)).not.toContain('Fia Fors'); // not competing
-    expect(by('Bertil Bok')).toMatchObject({ place: '1', result: '235000', timeplus: '0', status: 0, club: 'IK "Granen"' });
-    expect(by('Bertil Bok').start).toBe(3606000); // 10:01:00 in hundredths since midnight
-    expect(by('Anna Andersson')).toMatchObject({ place: '2', timeplus: '5000', bib: '101' });
-    expect(by('Anna Andersson').splits!['2031']).toBe(150000);
-    expect(by('Anna Andersson').splits!['1031_place']).toBe(2); // Doris 295 s, Anna 300 s, Bertil 310 s
-    expect(by('Cesar Cykel')).toMatchObject({ status: 3, place: '' });
-    expect(by('Doris Dahl')).toMatchObject({ status: 10 });  // unknown status with a radio punch = running
-    expect(by('Erik Ek')).toMatchObject({ status: 1, start: 0 }); // DNS, st=-1
+    expect(res.rows.map(r => r.name)).not.toContain('Fia Fors'); // not competing
+    expect(row(res.rows, 'Bertil Bok')).toMatchObject({ place: 1, time: 2_350_000, behind: 0, statusCode: 0, club: 'IK "Granen"' });
+    expect(wallClockCs(await hub.getCompetitionInfo(5), row(res.rows, 'Bertil Bok').start)).toBe(3606000); // 10:01:00
+    expect(row(res.rows, 'Anna Andersson')).toMatchObject({ place: 2, behind: 50_000, bib: '101' });
+    expect(row(res.rows, 'Anna Andersson').splits[2031].time).toBe(1_500_000);
+    expect(row(res.rows, 'Anna Andersson').splits[1031].place).toBe(2); // Doris 295 s, Anna 300 s, Bertil 310 s
+    expect(row(res.rows, 'Cesar Cykel')).toMatchObject({ statusCode: 3 });
+    expect(row(res.rows, 'Cesar Cykel').place).toBeUndefined();
+    expect(row(res.rows, 'Doris Dahl')).toMatchObject({ statusCode: 10 }); // unknown status with a radio punch = running
+    expect(row(res.rows, 'Erik Ek')).toMatchObject({ statusCode: 1 }); // DNS, st=-1
+    expect(row(res.rows, 'Erik Ek').start).toBeUndefined();
   });
 
   it('builds relay legs with team-perspective times', async () => {
-    const leg2 = await backend.fetchClassResults(5, 'Kavle-2');
-    const hanna = leg2.results.find(r => r.name === 'Hanna Holm')!;
-    const julia = leg2.results.find(r => r.name === 'Julia Jul')!;
-    expect(hanna).toMatchObject({ club: 'OK Exempel 1', status: 10 });
-    expect(hanna.splits!['1050']).toBe(65000 + 180000);  // 650 s on leg + 30:00 the team used before
-    expect(julia.splits!['1050']).toBe(70000 + 175000);
-    expect(julia.splits!['1050_place']).toBe(1);
+    const leg2 = (await hub.getClassResults(5, 'Kavle-2')).data;
+    const hanna = row(leg2.rows, 'Hanna Holm');
+    const julia = row(leg2.rows, 'Julia Jul');
+    expect(hanna).toMatchObject({ club: 'OK Exempel 1', statusCode: 10 });
+    expect(hanna.splits[1050].time).toBe(650_000 + 1_800_000); // 650 s on leg + 30:00 the team used before
+    expect(julia.splits[1050].time).toBe(700_000 + 1_750_000);
+    expect(julia.splits[1050].place).toBe(1);
     // the team's start: the runner's own start is the changeover, 30:00 later
-    expect(hanna.start - hanna.teamstart!).toBe(180000);
-    expect(julia.start - julia.teamstart!).toBe(175000);
-    const leg1 = await backend.fetchClassResults(5, 'Kavle-1');
-    expect(leg1.results.find(r => r.name === 'Ivar Is')).toMatchObject({ place: '1', result: '175000' });
+    expect(hanna.start - hanna.teamStart).toBe(1_800_000);
+    expect(julia.start - julia.teamStart).toBe(1_750_000);
+    const leg1 = (await hub.getClassResults(5, 'Kavle-1')).data;
+    expect(row(leg1.rows, 'Ivar Is')).toMatchObject({ place: 1, time: 1_750_000 });
   });
 
   it('applies diffs: updates, deletions, omitted card', async () => {
-    await backend.fetchClassResults(5, 'H21');
+    await hub.getClassResults(5, 'H21');
     await new Promise(r => setTimeout(r, 300)); // past the reuse window (half the poll interval)
-    const res = await backend.fetchClassResults(5, 'H21');
+    const res = (await hub.getClassResults(5, 'H21')).data;
     expect(meos.requests.at(-1)).toContain('difference=2');
-    const doris = res.results.find(r => r.name === 'Doris Dahl')!;
-    expect(doris).toMatchObject({ status: 0, place: '2', result: '239000' });
-    expect((backend as any).meos.competitors.get(12).card).toBe(502);
-    expect((backend as any).meos.competitors.has(16)).toBe(false);
+    expect(row(res.rows, 'Doris Dahl')).toMatchObject({ statusCode: 0, place: 2, time: 2_390_000 });
+    expect((source as any).competitors.get(12).card).toBe(502);
+    expect((source as any).competitors.has(16)).toBe(false);
   });
 
   it('starts over from zero when MeOS forgets the difference state', async () => {
-    await backend.fetchCompetitions();
-    (backend as any).meos.difference = '999';
-    (backend as any).meos.lastSync = 0;
-    await backend.fetchCompetitions();
+    await source.competitions();
+    (source as any).difference = '999';
+    (source as any).lastSync = 0;
+    await source.competitions();
     expect(meos.requests.slice(-2)).toEqual([
       'http://192.168.1.10:2009/meos?difference=999',
       'http://192.168.1.10:2009/meos?difference=zero'
@@ -145,21 +150,21 @@ describe('MeosInfoServerBackend', () => {
   });
 
   it('reports unreachable servers and non-MOP answers clearly', async () => {
-    const down = new MeosInfoServerBackend('localhost:2009', {
+    const down = new MeosInfoServerSource('localhost:2009', {
       fetchImpl: (async () => { throw new Error('connect ECONNREFUSED'); }) as unknown as typeof fetch
     });
-    await expect(down.fetchCompetitions()).rejects.toThrow('ECONNREFUSED');
-    expect(() => backend.apply('<html>hello</html>')).toThrow('Not a MeOS MOP document');
+    await expect(down.competitions()).rejects.toThrow('ECONNREFUSED');
+    await expect(down.connect()).rejects.toThrow(/Information server/);
+    expect(() => source.apply('<html>hello</html>')).toThrow('Not a MeOS MOP document');
   });
 
-  it('drives LiveResultsClient change detection', async () => {
-    const client = new LiveResultsClient({ baseUrl: backend.endpoint, backend, cacheInterval: 500 });
-    expect((await client.getClassResults(5, 'H21')).changed).toBe(true);
+  it('drives the hub\'s change detection', async () => {
+    expect((await hub.getClassResults(5, 'H21')).changed).toBe(true);
     await new Promise(r => setTimeout(r, 300));
-    const second = await client.getClassResults(5, 'H21'); // diff 2: Doris finished
+    const second = await hub.getClassResults(5, 'H21'); // diff 2: Doris finished
     expect(second.changed).toBe(true);
     await new Promise(r => setTimeout(r, 300));
-    expect((await client.getClassResults(5, 'H21')).changed).toBe(false); // empty diff
-    client.destroy();
+    expect((await hub.getClassResults(5, 'H21')).changed).toBe(false); // empty diff
+    hub.destroy();
   });
 });

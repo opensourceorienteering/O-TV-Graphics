@@ -5,6 +5,9 @@
 import { ipcMain } from 'electron';
 import { getLogger } from '../utils/logger';
 import { getDataStore } from '../data/DataStore';
+import { getDefaultTimingHub } from '../data/timing/defaultHub';
+import { ResultsTransformer } from '../data/ResultsTransformer';
+import { wallClockCs, type CompetitionInfo } from '../data/timing/model';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
 
@@ -150,183 +153,60 @@ export function registerDataHandlers(): void {
   });
 
   /**
-   * Get all runners for a competition (across all classes or for a specific class)
-   * Used by runner search components
+   * Runners of a class, or of every class (runner search). Uses the application-wide hub.
    */
   ipcMain.handle('data:getRunners', async (_event, params: { competitionId: number; className?: string }) => {
     try {
-      logger.debug('IPC: data:getRunners', params);
-
-      const { getLiveResultsClient } = await import('../data/LiveResultsClient');
-      const client = getLiveResultsClient();
-
-      // If className is specified, get runners from that class only
-      if (params.className) {
-        const result = await client.getClassResults(params.competitionId, params.className);
-
-        const runners = (result.data.results || []).map((runner, index) => {
-          // Convert start time from centiseconds to formatted string
-          let startTime: string | undefined;
-          if (runner.start !== undefined && runner.start !== null) {
-            const startTimeSeconds = runner.start / 100;
-            const hours = Math.floor(startTimeSeconds / 3600);
-            const minutes = Math.floor((startTimeSeconds % 3600) / 60);
-            const seconds = Math.floor(startTimeSeconds % 60);
-
-            if (hours > 0) {
-              startTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-              startTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-          }
-
-          return {
-            id: `${params.competitionId}_${params.className}_${index}`,
-            name: runner.name,
-            bib: runner.place || '', // Note: LiveResults API doesn't provide bib numbers, using place as fallback
-            club: runner.club || '',
-            className: params.className,
-            startTime
-          };
-        });
-
-        return { success: true, data: runners };
-      }
-
-      // Otherwise, get runners from all classes
-      const classesResult = await client.getClasses(params.competitionId);
-      const allRunners: Array<{
-        id: string;
-        name: string;
-        bib: string;
-        club: string;
-        className: string;
-        startTime?: string;
-      }> = [];
-
-      // Fetch runners from each class
-      for (const classObj of classesResult.data) {
+      const client = getDefaultTimingHub();
+      let info: CompetitionInfo | undefined;
+      try { info = await client.getCompetitionInfo(params.competitionId); } catch { info = undefined; }
+      const classNames = params.className
+        ? [params.className]
+        : (await client.getClasses(params.competitionId)).data.map(c => c.className);
+      const runners: Array<{ id: string; name: string; bib: string; club: string; className: string; startTime?: string }> = [];
+      for (const className of classNames) {
         try {
-          const result = await client.getClassResults(params.competitionId, classObj.className);
-
-          const runners = (result.data.results || []).map((runner, index) => {
-            // Convert start time from centiseconds to formatted string
-            let startTime: string | undefined;
-            if (runner.start !== undefined && runner.start !== null) {
-              const startTimeSeconds = runner.start / 100;
-              const hours = Math.floor(startTimeSeconds / 3600);
-              const minutes = Math.floor((startTimeSeconds % 3600) / 60);
-              const seconds = Math.floor(startTimeSeconds % 60);
-
-              if (hours > 0) {
-                startTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-              } else {
-                startTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-              }
-            }
-
-            return {
-              id: `${params.competitionId}_${classObj.className}_${index}`,
-              name: runner.name,
-              bib: runner.place || '', // Note: LiveResults API doesn't provide bib numbers, using place as fallback
-              club: runner.club || '',
-              className: classObj.className,
-              startTime
-            };
+          const result = await client.getClassResults(params.competitionId, className);
+          result.data.rows.forEach((row, index) => {
+            const cs = info ? wallClockCs(info, row.start) : 0;
+            runners.push({
+              id: `${params.competitionId}_${className}_${index}`,
+              name: row.name,
+              bib: row.bib ?? '',
+              club: row.club || '',
+              className,
+              ...(cs ? { startTime: ResultsTransformer.formatTime(cs / 100) } : {})
+            });
           });
-
-          allRunners.push(...runners);
         } catch (error) {
-          logger.warn('Failed to fetch runners for class', {
-            competitionId: params.competitionId,
-            className: classObj.className,
-            error: (error as Error).message
-          });
+          if (params.className) throw error;
+          logger.warn('Failed to fetch runners for class', { competitionId: params.competitionId, className, error: (error as Error).message });
         }
       }
-
-      return { success: true, data: allRunners };
+      return { success: true, data: runners };
     } catch (error) {
-      logger.error('IPC error: data:getRunners', {
-        params,
-        error: (error as Error).message
-      });
-      return {
-        success: false,
-        error: (error as Error).message
-      };
+      logger.error('IPC error: data:getRunners', { params, error: (error as Error).message });
+      return { success: false, error: (error as Error).message };
     }
   });
 
   /**
-   * Get raw class results (including splitcontrols array)
-   * Used by ControlPointSelector to fetch available split controls
+   * A class's standings and radio controls (ClassResults). Uses the application-wide hub.
    */
   ipcMain.handle('data:getClassResults', async (_event, params: { competitionId: number; className: string }) => {
     try {
-      logger.debug('IPC: data:getClassResults START', {
-        competitionId: params?.competitionId,
-        className: params?.className,
-        paramsType: typeof params
-      });
-
       if (!params || !params.competitionId || !params.className) {
-        logger.error('IPC: data:getClassResults - Invalid parameters', { params });
-        return {
-          success: false,
-          error: 'Missing required parameters: competitionId and className'
-        };
+        return { success: false, error: 'Missing required parameters: competitionId and className' };
       }
-
-      const { getLiveResultsClient } = await import('../data/LiveResultsClient');
-      const client = getLiveResultsClient();
-
-      logger.debug('IPC: data:getClassResults - Client obtained, fetching results...');
-      const result = await client.getClassResults(params.competitionId, params.className);
-
-      logger.debug('IPC: data:getClassResults - Result received', {
-        hasData: !!result?.data,
-        dataType: typeof result?.data,
-        hasSplitControls: !!result?.data?.splitcontrols,
-        splitControlsType: typeof result?.data?.splitcontrols,
-        splitControlsIsArray: Array.isArray(result?.data?.splitcontrols)
-      });
-
-      if (!result || !result.data) {
-        logger.error('IPC: data:getClassResults - No data in result', { result });
-        return {
-          success: false,
-          error: 'No data returned from API'
-        };
-      }
-
-      // Validate and log splitcontrols data
-      const splitControls = result.data.splitcontrols || [];
-      if (Array.isArray(splitControls) && splitControls.length > 0) {
-        logger.debug('IPC: data:getClassResults - Split controls sample', {
-          count: splitControls.length,
-          firstItemType: typeof splitControls[0],
-          firstItem: splitControls[0],
-          allTypes: splitControls.map((sc: any) => typeof sc)
-        });
-      }
-
-      const response = { success: true, data: result.data };
-      logger.debug('IPC: data:getClassResults SUCCESS', {
-        splitControlsCount: splitControls.length
-      });
-      return response;
+      const result = await getDefaultTimingHub().getClassResults(params.competitionId, params.className);
+      return { success: true, data: result.data };
     } catch (error) {
       logger.error('IPC error: data:getClassResults', {
         competitionId: params?.competitionId,
         className: params?.className,
-        error: (error as Error).message,
-        stack: (error as Error).stack
-      });
-      return {
-        success: false,
         error: (error as Error).message
-      };
+      });
+      return { success: false, error: (error as Error).message };
     }
   });
 

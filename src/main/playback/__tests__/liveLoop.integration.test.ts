@@ -1,6 +1,6 @@
 /**
  * End-to-end live loop against a local fake of the Liveresultat REST API:
- *   LiveResultsClient (ETag polling) -> DataStore (change detection) -> PlaybackEngine
+ *   Liveresultat plugin + TimingHub (ETag polling) -> DataStore (change detection) -> PlaybackEngine
  *   -> DataSourceFieldMapper (+ live clock fields) -> 'update' command to the renderer.
  * Only the rundown/template managers and the source registry are stubbed.
  */
@@ -42,9 +42,12 @@ vi.mock('../../data/DataSourceRegistry', () => ({
   getDataSourceRegistry: () => ({ get: () => source, getAll: () => [source] })
 }));
 
-import { initLiveResultsClient } from '../../data/LiveResultsClient';
+import { initDefaultTimingHub } from '../../data/timing/defaultHub';
 import { initDataStore } from '../../data/DataStore';
-import { LiveResultsDataSource } from '../../data/sources/LiveResultsDataSource';
+import { PluginDataSource } from '../../data/timing/PluginDataSource';
+import { liveresultatPlugin } from '../../data/timing/builtInPlugins';
+
+const LiveResultsDataSource = function (config: any) { return new PluginDataSource(liveresultatPlugin, config); } as unknown as new (config: any) => PluginDataSource;
 import { PlaybackEngine } from '../PlaybackEngine';
 
 // --- fake REST API ---------------------------------------------------------
@@ -89,7 +92,7 @@ describe('live loop (integration)', () => {
     await new Promise<void>(r => server.listen(0, '127.0.0.1', r));
     baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-    initLiveResultsClient({ baseUrl, api: 'rest', localPollFloorMs: 200, push: false });
+    initDefaultTimingHub({ baseUrl, api: 'rest', localPollFloorMs: 200, push: false });
     const dataStore = initDataStore();
     source = new LiveResultsDataSource({
       id: 'fake-rest', name: 'Replay', type: 'liveresults', enabled: true,

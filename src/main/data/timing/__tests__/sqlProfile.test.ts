@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { assertReadOnlySelect, bindNamed, namedParameters } from '../sql/sqlText';
 import { parseSqlProfile, profileManifest } from '../sql/SqlProfile';
 import { createSqlProfileSource, SqlProfileSource } from '../sql/SqlProfileSource';
-import { CanonicalBackend, numericCompetitionId } from '../CanonicalBackend';
+import { TimingHub, numericCompetitionId } from '../TimingHub';
 
 describe('SQL safety', () => {
   it('accepts single read-only SELECT / WITH queries', () => {
@@ -123,10 +123,10 @@ describe('SQL profiles', () => {
     expect(cid).toMatchObject({ status: 'running', time: undefined });
 
     // End to end through the core
-    const backend = new CanonicalBackend(source, 'club-db');
-    const res = await backend.fetchClassResults(numericCompetitionId('spring'), 'H21');
-    expect(res.results.map(r => [r.name, r.place, r.result])).toEqual([['Ada Ek', '1', '180000'], ['Cid Ra', '', ''], ['Bea Ny', '', '170000']]); // ranked, running, then the rest
-    expect(res.results[0]).toMatchObject({ start: 3600000, splits: { '1100': 60000 }, ext: { 'club-db': { speedKmh: 11 } } });
+    const hub = new TimingHub(source, { pluginId: 'club-db' });
+    const res = (await hub.getClassResults(numericCompetitionId('spring'), 'H21')).data;
+    expect(res.rows.map(r => [r.name, r.place, r.time])).toEqual([['Ada Ek', 1, 1_800_000], ['Cid Ra', undefined, undefined], ['Bea Ny', undefined, 1_700_000]]); // ranked, running, then the rest
+    expect(res.rows[0]).toMatchObject({ start: Date.UTC(2026, 5, 1, 8, 0, 0), splits: { 1100: { time: 600_000, place: 1 } }, ext: { 'club-db': { speedKmh: 11 } } });
 
     const passings = await source.passings('spring', 5);
     expect(passings).toEqual([{ entryId: '1', classId: '10', controlId: '100', at: Date.UTC(2026, 5, 1, 8, 10, 0) }]);

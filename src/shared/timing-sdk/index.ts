@@ -9,7 +9,9 @@
  * Rules for plugins:
  *  - Instants are epoch milliseconds (UTC). Durations are milliseconds.
  *  - Ids are strings and must be stable between calls (saved events refer to them).
- *  - Report what the source knows; leave out what it does not. Never compute places.
+ *  - Report what the source knows; leave out what it does not. Never compute places yourself.
+ *    A source that publishes its own official standings (an official results service) passes
+ *    them as `standing`; Split Control then shows those instead of working them out.
  *  - Anything that is not in the model goes in `ext`, declared in the manifest's extFields.
  */
 
@@ -32,10 +34,11 @@ export type EntryStatus =
   | 'overtime'
   | 'dns'
   | 'cancelled'
+  | 'movedUp'      // moved up to another class or heat
   | 'notCompeting'; // left out of every list
 
 export const ENTRY_STATUSES: readonly EntryStatus[] = [
-  'notStarted', 'running', 'ok', 'okNoTime', 'mispunch', 'dnf', 'dsq', 'overtime', 'dns', 'cancelled', 'notCompeting'
+  'notStarted', 'running', 'ok', 'okNoTime', 'mispunch', 'dnf', 'dsq', 'overtime', 'dns', 'cancelled', 'movedUp', 'notCompeting'
 ];
 
 export type Ext = Record<string, unknown>;
@@ -49,7 +52,26 @@ export interface Competition {
   timezone?: string;
   organiser?: string;
   location?: string;
+  /**
+   * For sources that give a clock shift instead of a zone: hours added to the time zone's
+   * local time (Liveresultat's legacy "timediff"). Leave out when `timezone` is right.
+   */
+  clockShiftHours?: number;
   ext?: Ext;
+}
+
+/**
+ * A standing the source itself publishes (place, tie, time behind). Optional: only for
+ * sources whose own published standings must be shown as they are. When any entry of a class
+ * has one, Split Control keeps the source's order and standings for that class.
+ */
+export interface Standing {
+  /** Place; leave out when the runner is not placed */
+  place?: number;
+  /** Shares the place of the runner before (shown as "=") */
+  tied?: boolean;
+  /** Behind the leader */
+  behind?: Duration;
 }
 
 export interface Control {
@@ -85,6 +107,10 @@ export interface Passing {
   at?: Ms;
   /** ... or the runner's own running time at the control */
   time?: Duration;
+  /** Relays: the team's total time at the control, when the source gives that instead */
+  teamTime?: Duration;
+  /** The source's own standing at the control; `status` = the runner's status there */
+  standing?: Standing & { status?: EntryStatus };
 }
 
 export interface Entry {
@@ -115,6 +141,8 @@ export interface Entry {
     time?: Duration;
   };
   changedAt?: Ms;
+  /** The source's own published result standing (see Standing); progress in percent */
+  standing?: Standing & { progress?: number };
   ext?: Ext;
 }
 
@@ -214,8 +242,23 @@ export interface TimingSource {
   classes(competitionId: string): Promise<ClassInfo[]>;
   /** Every entry in the class; for relays every runner of every leg */
   entries(competitionId: string, classId: string): Promise<Entry[]>;
+  /** One competition, when that is cheaper than the whole list */
+  competition?(competitionId: string): Promise<Competition>;
+  /**
+   * Radio controls and course facts a source only sends together with the entries.
+   * Called right after entries() for the same class; replaces those fields of classes().
+   */
+  classDetails?(competitionId: string, classId: string): Promise<Partial<Pick<ClassInfo, 'radioControls' | 'course'>>>;
   /** Latest passings, newest first (capabilities.passings) */
   passings?(competitionId: string, limit: number): Promise<LatestPassing[]>;
+  /** Push sources: the classes Split Control polls now, to subscribe to (replaces the last call) */
+  watch?(competitionId: string, classIds: string[]): void;
+  /** Fastest useful poll interval now, when it depends on the connection (ms) */
+  minPollMs?(): number;
+  /** Source clock minus this computer's clock (ms), for running clocks */
+  clockOffsetMs?(): Promise<number>;
+  /** For the operator's status display: which API is in use, whether push is connected */
+  describe?(competitionId?: string): { api?: string; pushConnected?: boolean };
 }
 
 export interface TimingPlugin {

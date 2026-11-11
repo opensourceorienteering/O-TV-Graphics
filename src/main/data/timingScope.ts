@@ -1,7 +1,8 @@
+import type { TimingHub } from './timing/TimingHub';
 const classCache = new WeakMap<object, Map<number, { expires: number; request: Promise<string[]> }>>();
 
 /** Class scope shared by mapping, radio selectors and live polling. */
-export async function timingClasses(client: any, competitionId: number, selected?: string): Promise<string[]> {
+export async function timingClasses(client: Pick<TimingHub, 'getClasses'> | null | undefined, competitionId: number, selected?: string): Promise<string[]> {
   if (selected) return [selected];
   if (!client?.getClasses) throw new Error('The timing source cannot list classes');
   const cache = classCache.get(client) ?? new Map();
@@ -24,15 +25,15 @@ export async function mapTimingClasses<T>(classes: string[], fetch: (name: strin
 
 /** Radio controls of a class (or of every class), as the timing source names them */
 export async function timingControls(
-  client: any,
+  client: TimingHub,
   competitionId: number,
   className?: string,
 ): Promise<{ className: string; code: number; sourceName: string }[]> {
   const classes = await timingClasses(client, competitionId, className);
-  const snapshots = await mapTimingClasses<any>(classes, name => client.getClassResults(competitionId, name, { maxAgeMs: 30_000 }));
-  return snapshots.flatMap((res, index) => (res.data.splitcontrols ?? []).map((c: any) => ({
+  const snapshots = await mapTimingClasses(classes, name => client.getClassResults(competitionId, name, { maxAgeMs: 30_000 }));
+  return snapshots.flatMap((res, index) => res.data.controls.map(c => ({
     className: classes[index],
-    code: typeof c === "object" ? c.code : c,
-    sourceName: typeof c === "object" ? c.name : `Control ${c}`,
+    code: c.key,
+    sourceName: c.name,
   })));
 }

@@ -6,10 +6,12 @@ import { timingClasses, mapTimingClasses } from './timingScope';
 
 import { getLogger } from '../utils/logger';
 import { TemplateDataSourceConfig } from '../../shared/types/template-datasource';
-import { LiveResultsClient } from './LiveResultsClient';
+import type { TimingHub } from './timing/TimingHub';
+import type { ClassResults, CompetitionInfo, ResultRow } from './timing/model';
+import { wallClockCs } from './timing/model';
 import { getDataStore } from './DataStore';
 import { getDataSourceRegistry } from './DataSourceRegistry';
-import { competitionClock, startTimeEpochMs } from './liveTime';
+import { competitionClock, CompetitionClock, startTimeEpochMs } from './liveTime';
 import { getClubLogoService } from './ClubLogoService';
 
 const logger = getLogger();
@@ -160,108 +162,92 @@ export class DataSourceFieldMapper {
         dataSourceType: dataSource.config.type
       });
 
-      // Any source that exposes a LiveResults-compatible client works: Liveresultat (REST/legacy)
-      // or any timing plugin (PluginDataSource: MeOS, MOP database, IOF XML, plugins folder).
-      const client: LiveResultsClient | undefined =
+      // Every data source has a timing hub: Liveresultat, MeOS, MOP, IOF XML, plugins
+      const client: TimingHub | undefined =
         typeof (dataSource as any).getClient === 'function' ? (dataSource as any).getClient() : undefined;
       if (!client) {
         throw new Error(`Data source '${dataSourceId}' cannot feed templates (type: ${dataSource.config.type})`);
       }
-      logger.debug('Using LiveResults client from data source', {
-        dataSourceId,
-        baseUrl: dataSource.config.config.baseUrl
-      });
 
       // Get className from dataSourceValues (set by class-selector UI control)
       const className = dataSourceValues.className;
       if (!className) {
-        logger.warn('No className in dataSourceValues - cannot fetch LiveResults data');
+        logger.warn('No className in dataSourceValues - cannot fetch timing data');
         return {};
       }
 
-      logger.debug('Fetching LiveResults class results', { competitionId, className });
-
-      // Get competition info for context (date + timezone are needed for live clocks).
-      // getCompetitionInfo is one small cached request; the full competition list is a fallback.
-      const competitionsStartTime = Date.now();
-      let competition: { name?: string; date?: string; timediff?: number; timezone?: string } | undefined;
+      // Competition info for context (date + time zone are needed for live clocks)
+      let competition: CompetitionInfo | undefined;
       try {
         competition = await client.getCompetitionInfo(competitionId);
       } catch (error) {
-        logger.warn('getCompetitionInfo failed, falling back to competition list', {
+        logger.warn('Competition info failed', {
           competitionId,
           error: error instanceof Error ? error.message : String(error)
         });
-        const competitionsResponse = await client.getCompetitions();
-        competition = competitionsResponse.data.find(c => c.id === competitionId);
       }
       const clockOffsetMs = await client.getServerClockOffsetMs();
-      logger.debug('Fetched competition info', { durationMs: Date.now() - competitionsStartTime });
 
-      // Get raw class results for splitcontrols data
-      const classResultsStartTime = Date.now();
       // A poll that just detected a change fetched this class moments ago: reuse it
-      const rawClassResults = await client.getClassResults(competitionId, className, { maxAgeMs: 2000 });
-      logger.debug('Fetched class results', { durationMs: Date.now() - classResultsStartTime });
+      const classResults = (await client.getClassResults(competitionId, className, { maxAgeMs: 2000 })).data;
 
       // Get controlCode from dataSourceValues if specified
       const controlCode = dataSourceValues.controlCode;
 
-      // Use cached transformation from DataStore
-      // IMPORTANT: Pass the data source's client to ensure we fetch from the correct API
-      const transformStartTime = Date.now();
+      // Cached rows for graphics (DataStore), from the same data source's hub
       const dataStore = getDataStore();
       const cachedOgrafData = await dataStore.getTransformedClassResults(
         competitionId,
         className,
         {
           competitionName: competition?.name,
-          controlCode, // Pass control code for split time filtering
-          client, // Pass the data source's LiveResultsClient instance
+          controlCode,
+          client,
           maxAgeMs: 2000
         }
       );
-      logger.debug('Transformed class results', { durationMs: Date.now() - transformStartTime });
 
       // The DataStore caches this object, so never mutate it: work on copies.
-      const clock = competition ? competitionClock(competition) : null;
-      const rawByRunner = new Map<string, any>();
-      for (const raw of rawClassResults.data.results ?? []) rawByRunner.set(`${raw.name}|${raw.club}`, raw);
+      const clock = competition ? clockOf(competition) : null;
+      const rowByRunner = new Map<string, ResultRow>();
+      for (const row of classResults.rows) rowByRunner.set(`${row.name}|${row.club}`, row);
       // Relays: leg times count from the team's start, not the runner's changeover
-      const teamStarts = await relayTeamStarts(client, competitionId, className, rawClassResults.data.results ?? []);
+      const teamStarts = competition ? teamStartsByClub(classResults.rows, competition) : new Map<string, number>();
       // Radio controls of the class, and every runner's times at them, for split graphics
-      const splitControls = (rawClassResults.data.splitcontrols ?? []).map((c: any) =>
-        typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
+      const splitControls = classResults.controls.map(c => ({ code: c.key, name: c.name }));
       const logos = getClubLogoService();
       const ografData = {
         ...cachedOgrafData,
         // Timing plugins: extra class fields, read as x.<plugin>.<key>
-        ...(rawClassResults.data.ext ? { x: rawClassResults.data.ext } : {}),
+        ...(classResults.ext ? { x: classResults.ext } : {}),
         competitionName: rundownSettings?.competitionNameOverride || cachedOgrafData.competitionName,
         results: (cachedOgrafData.results ?? []).map(runner => {
-          const raw = rawByRunner.get(`${runner.name}|${runner.club}`);
-          const startCs = raw?.start ? Number(raw.start) : undefined;
+          const row = rowByRunner.get(`${runner.name}|${runner.club}`);
+          const startCs = row && competition ? wallClockCs(competition, row.start) || undefined : undefined;
           const startTimeMs = clock && startCs ? startTimeEpochMs(clock, startCs) : undefined;
           const extra: Record<string, any> = { className };
-          if (Number(raw?.status) === 0 && Number(raw?.result) > 0) extra.finishTimeMs = Number(raw.result) * 10;
+          if (row?.statusCode === 0 && row.time !== undefined && row.time > 0) extra.finishTimeMs = Math.round(row.time / 10) * 10;
           if (startTimeMs) extra.startTimeMs = startTimeMs;
           const teamStartCs = teamStarts.get(String(runner.club ?? ''));
           if (clock && teamStartCs && teamStartCs !== startCs) extra.teamStartTimeMs = startTimeEpochMs(clock, teamStartCs);
-          if (raw?.country) extra.country = raw.country;
+          if (row?.country) extra.country = row.country;
           // Timing plugins: declared extra fields, read as results[].x.<plugin>.<key>
-          if (raw?.ext) extra.x = raw.ext;
+          if (row?.ext) extra.x = row.ext;
           const logo = logos?.lookup(runner.club);
           if (logo) extra.clubLogo = logo;
-          if (raw?.splits && splitControls.length) {
+          if (row && splitControls.length) {
             extra.splitTimes = splitControls
-              .map((c: { code: number }) => ({
-                code: c.code,
-                time: Number(raw.splits[String(c.code)]) || 0,
-                place: Number(raw.splits[`${c.code}_place`]) || 0,
-                timeplus: Number(raw.splits[`${c.code}_timeplus`]) || 0,
-                status: Number(raw.splits[`${c.code}_status`] ?? 0)
-              }))
-              .filter((t: { time: number }) => t.time > 0);
+              .map(c => {
+                const split = row.splits[c.code];
+                return {
+                  code: c.code,
+                  time: split ? Math.round(split.time / 10) : 0,
+                  place: split?.place || 0,
+                  timeplus: split?.behind !== undefined ? Math.round(split.behind / 10) : 0,
+                  status: split?.status ?? 0
+                };
+              })
+              .filter(t => t.time > 0);
           }
           return { ...runner, ...extra };
         })
@@ -292,7 +278,7 @@ export class DataSourceFieldMapper {
 
       // Relays: the selected team on every leg, for graphics that follow a team (split comparison)
       if (dataSourceConfig.api?.fieldMappings?.some(m => m.apiPath === 'relayLegs')) {
-        const legs = await relayLegsOfTeam(client, competitionId, className, rawClassResults.data, dataSourceValues);
+        const legs = await relayLegsOfTeam(client, competitionId, className, classResults, dataSourceValues);
         if (legs.length) mappedFields.relayLegs = legs;
       }
 
@@ -332,22 +318,8 @@ export class DataSourceFieldMapper {
         } else if (controlCode === 'Start' || controlCode === 'S') {
           mappedFields.controlName = 'Start';
         } else {
-          // Check if control is in splitcontrols array (from raw data)
-          // splitcontrols is now an array of objects with { code: number, name: string }
-          const splitControls = rawClassResults.data.splitcontrols || [];
-          const controlObj = splitControls.find((ctrl: any) => {
-            // Handle both numeric and string control codes
-            const ctrlCode = typeof ctrl === 'object' ? ctrl.code : ctrl;
-            return String(ctrlCode) === String(controlCode);
-          });
-
-          if (controlObj) {
-            // Use the name from the API if available
-            const controlName = typeof controlObj === 'object' ? controlObj.name : `Control ${controlCode}`;
-            mappedFields.controlName = controlName;
-          } else {
-            mappedFields.controlName = `Control ${controlCode}`;
-          }
+          const controlObj = classResults.controls.find(c => String(c.key) === String(controlCode));
+          mappedFields.controlName = controlObj ? controlObj.name : `Control ${controlCode}`;
         }
       } else {
         // Default to Finish if no control selected
@@ -522,56 +494,27 @@ export class DataSourceFieldMapper {
   }
 }
 
+/** competitionClock() of a competition as the hub describes it */
+export function clockOf(info: CompetitionInfo): CompetitionClock | null {
+  return competitionClock({ date: info.date, timezone: info.timezone, timediff: info.timediffHours });
+}
+
 /**
  * Relays: when each team started (hundredths since midnight), by team name. Leg results and
- * splits count from the team's start, while a runner's own start is their changeover. MeOS,
- * MOP and IOF XML give it (teamstart). For Liveresultat it is the runner's changeover minus the
- * team's time at the end of the previous leg: start times can differ between leg classes (the
- * JWOC 2026 Sprint Relay has legs 1–2 nine hours off legs 3–4), but agree within one leg. A team
- * without a previous-leg time (a restart) falls back to its start on leg 1.
- * Empty for individual classes, and when the team's start can't be found.
+ * splits count from the team's start, while a runner's own start is their changeover.
+ * A team start after the runner's own start can't be right and is left out. Empty for
+ * individual classes, and for teams whose start the source does not know.
  */
-export async function relayTeamStarts(
-  client: Pick<LiveResultsClient, 'getClassResults'>,
-  competitionId: number,
-  className: string,
-  rows: Array<{ club?: string; start?: number | string; teamstart?: number }>
-): Promise<Map<string, number>> {
+export function teamStartsByClub(rows: ResultRow[], info: CompetitionInfo): Map<string, number> {
   const starts = new Map<string, number>();
-  for (const r of rows) if (Number(r.teamstart) > 0 && r.club) starts.set(String(r.club), Number(r.teamstart));
-  if (!starts.size) {
-    const leg = /^(.*\S)\s*-(\d+)$/.exec(String(className));
-    if (!leg || Number(leg[2]) < 2) return starts;
-    const teamTimeBefore = new Map<string, number>();
-    try {
-      const prev = await client.getClassResults(competitionId, `${leg[1]}-${Number(leg[2]) - 1}`, { maxAgeMs: 30_000 });
-      for (const r of prev.data.results ?? []) {
-        if (r.club && Number(r.status) === 0 && Number(r.result) > 0) teamTimeBefore.set(String(r.club), Number(r.result));
-      }
-    } catch (error) {
-      logger.debug('No previous leg for relay team starts', { className, error: error instanceof Error ? error.message : String(error) });
-    }
-    const missing: string[] = [];
-    for (const r of rows) {
-      const club = String(r.club ?? ''), start = Number(r.start), before = teamTimeBefore.get(club);
-      if (!club) continue;
-      if (start > 0 && before) starts.set(club, start - before);
-      else missing.push(club);
-    }
-    if (missing.length) {
-      try {
-        const first = await client.getClassResults(competitionId, `${leg[1]}-1`, { maxAgeMs: 60_000 });
-        for (const r of first.data.results ?? []) {
-          const club = String(r.club ?? '');
-          if (missing.includes(club) && Number(r.start) > 0) starts.set(club, Number(r.start));
-        }
-      } catch { /* no leg 1 either: those teams get no team start */ }
-    }
+  for (const r of rows) {
+    const cs = wallClockCs(info, r.teamStart);
+    if (cs > 0 && r.club) starts.set(String(r.club), cs);
   }
-  // a team start after the runner's own start can't be right: leave those out
   for (const r of rows) {
     const team = starts.get(String(r.club ?? ''));
-    if (team && Number(r.start) > 0 && team > Number(r.start)) starts.delete(String(r.club));
+    const start = wallClockCs(info, r.start);
+    if (team && start > 0 && team > start) starts.delete(String(r.club));
   }
   return starts;
 }
@@ -603,28 +546,30 @@ export interface RelayLegOfTeam {
   } | null;
 }
 
+const hundredths = (ms: number | undefined) => (ms !== undefined ? Math.round(ms / 10) : 0);
+
 /**
  * The selected runner's team on every leg of a relay: each leg class ("Mixed-1", "Mixed-2" …)
  * with the team's runner, places and times from the team's start. Empty for individual classes.
  */
 export async function relayLegsOfTeam(
-  client: Pick<LiveResultsClient, 'getClassResults' | 'getClasses'>,
+  client: Pick<TimingHub, 'getClassResults' | 'getClasses'>,
   competitionId: number,
   className: string,
-  current: { splitcontrols?: any[]; results?: any[] },
+  current: ClassResults,
   values: { runnerName?: string; runnerClub?: string }
 ): Promise<RelayLegOfTeam[]> {
   const leg = /^(.*\S)\s*-(\d+)$/.exec(String(className));
   if (!leg) return [];
   const base = leg[1];
-  const own = (current.results ?? []).find((r: any) => r.name === values.runnerName);
+  const own = current.rows.find(r => r.name === values.runnerName);
   const team = String(values.runnerClub || own?.club || '');
   if (!team) return [];
   // the relay's legs, from the class list (fall back to legs 1 … this one)
   let legNames: string[] = [];
   try {
     const classes = (await client.getClasses(competitionId)).data ?? [];
-    legNames = classes.map((c: any) => String(c.className))
+    legNames = classes.map(c => String(c.className))
       .filter(n => { const m = /^(.*\S)\s*-(\d+)$/.exec(n); return !!m && m[1] === base; });
   } catch { /* fall back below */ }
   if (!legNames.length) legNames = Array.from({ length: Number(leg[2]) }, (_, i) => `${base}-${i + 1}`);
@@ -634,18 +579,17 @@ export async function relayLegsOfTeam(
   // every team's time at the end of the previous leg, for leg times (team -> hundredths)
   let previousEnd = new Map<string, number>();
   for (const name of legNames) {
-    let data: { splitcontrols?: any[]; results?: any[] } | undefined = name === className ? current : undefined;
+    let data: ClassResults | undefined = name === className ? current : undefined;
     if (!data) {
       try { data = (await client.getClassResults(competitionId, name, { maxAgeMs: 10_000 })).data; }
       catch { previousEnd = new Map(); continue; } // the next leg's times can't be worked out
     }
-    const controls = (data.splitcontrols ?? []).map((c: any) =>
-      typeof c === 'object' ? { code: Number(c.code), name: String(c.name ?? '') } : { code: Number(c), name: '' });
+    const controls = data.controls.map(c => ({ code: c.key, name: c.name }));
     // leg times of all teams on this leg: team time now minus at the previous changeover
     const ends = new Map<string, number>();
     const legTimes = new Map<string, number>();
-    for (const x of data.results ?? []) {
-      const end = Number(x.status) === 0 ? Number(x.result) || 0 : 0;
+    for (const x of data.rows) {
+      const end = x.statusCode === 0 ? hundredths(x.time) || 0 : 0;
       if (!end) continue;
       ends.set(String(x.club), end);
       const before = legNo(name) === 1 ? 0 : previousEnd.get(String(x.club));
@@ -653,7 +597,7 @@ export async function relayLegsOfTeam(
     }
     previousEnd = ends;
     const fastest = Math.min(...legTimes.values());
-    const r = (data.results ?? []).find((x: any) => String(x.club) === team);
+    const r = data.rows.find(x => String(x.club) === team);
     const legTime = legTimes.get(team) ?? 0;
     out.push({
       leg: legNo(name),
@@ -662,20 +606,18 @@ export async function relayLegsOfTeam(
       runner: r ? {
         name: String(r.name ?? ''),
         club: String(r.club ?? ''),
-        status: Number(r.status) || 0,
-        result: Number(r.status) === 0 ? Number(r.result) || 0 : 0,
-        place: Number(r.place) || 0,
-        timeplus: Number(r.timeplus) || 0,
+        status: r.statusCode || 0,
+        result: r.statusCode === 0 ? hundredths(r.time) || 0 : 0,
+        place: r.tied ? 0 : r.place || 0,
+        timeplus: hundredths(r.behind) || 0,
         legTime,
         legPlace: legTime ? 1 + [...legTimes.values()].filter(t => t < legTime).length : 0,
         legTimeplus: legTime ? legTime - fastest : 0,
         splits: controls
-          .map(c => ({
-            code: c.code,
-            time: Number(r.splits?.[String(c.code)]) || 0,
-            place: Number(r.splits?.[`${c.code}_place`]) || 0,
-            timeplus: Number(r.splits?.[`${c.code}_timeplus`]) || 0
-          }))
+          .map(c => {
+            const split = r.splits[c.code];
+            return { code: c.code, time: split ? hundredths(split.time) : 0, place: split?.place || 0, timeplus: hundredths(split?.behind) || 0 };
+          })
           .filter(s => s.time > 0)
       } : null
     });

@@ -177,7 +177,7 @@ export class SqlProfileSource implements TimingSource {
     return list;
   }
 
-  private async competition(competitionId: string): Promise<Competition> {
+  private async findCompetition(competitionId: string): Promise<Competition> {
     let c = this.competitionCache.get(competitionId);
     if (!c) {
       await this.competitions();
@@ -228,7 +228,7 @@ export class SqlProfileSource implements TimingSource {
   }
 
   async entries(competitionId: string, classId: string): Promise<Entry[]> {
-    const competition = await this.competition(competitionId);
+    const competition = await this.findCompetition(competitionId);
     let cls = this.classCache.get(competitionId)?.find(c => c.id === classId);
     if (!cls) cls = (await this.classes(competitionId)).find(c => c.id === classId);
     if (!cls) throw new Error(`Class not found: ${classId}`);
@@ -299,7 +299,7 @@ export class SqlProfileSource implements TimingSource {
   }
 
   async passings(competitionId: string, limit: number): Promise<LatestPassing[]> {
-    const competition = await this.competition(competitionId);
+    const competition = await this.findCompetition(competitionId);
     const rows = await this.run('latestPassings', { competitionId: dbId(competitionId), limit });
     const out: LatestPassing[] = [];
     for (const r of rows) {

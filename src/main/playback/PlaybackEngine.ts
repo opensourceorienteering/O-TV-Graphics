@@ -8,10 +8,10 @@ import { getLogger } from '../utils/logger';
 import { getTemplateManager } from '../templates/OGrafManager';
 import { getRundownManager } from '../projects/RundownManager';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
-import { getLiveResultsClient } from '../data/LiveResultsClient';
+import { getDefaultTimingHub } from '../data/timing/defaultHub';
 import { WebSocketServer, SocketRoom } from '../data/WebSocketServer';
 import { getDataStore } from '../data/DataStore';
-import type { OGrafResultsData } from '../data/LiveResultsTransformer';
+import type { OGrafResultsData } from '../data/ResultsTransformer';
 import { getProjectManager } from '../projects/ProjectManager';
 import { getClubLogoService, shortClubName } from '../data/ClubLogoService';
 import { applyStartList } from '../events/EventService';
@@ -313,7 +313,7 @@ export class PlaybackEngine {
       const { getDataSourceRegistry } = await import('../data/DataSourceRegistry');
       const source = binding.sourceId ? getDataSourceRegistry().get(binding.sourceId) : null;
       const sourceType = source?.config.type ?? 'liveresults';
-      const pollingClient = client ?? getLiveResultsClient();
+      const pollingClient = client ?? getDefaultTimingHub();
       const apiFlavor = pollingClient.getApiFlavor();
       // Interval 0 = the client's own minimum: 10 s for the REST API, 15 s for legacy api.php
       dataStore.startPolling(binding.competitionId, binding.className, 0, client);

@@ -48,7 +48,7 @@ describe('MeosDataSource (HTTP)', () => {
 
     const updates: any[] = [];
     ds.getClient().startPolling({ competitionId: 1, className: 'H21', interval: 0, onUpdate: (d: any) => updates.push(d) });
-    await vi.waitFor(() => expect(updates.some(u => u.results?.[0]?.splits?.['1031'] === 30000)).toBe(true), { timeout: 4000 });
+    await vi.waitFor(() => expect(updates.some(u => u.rows?.[0]?.splits?.[1031]?.time === 300_000)).toBe(true), { timeout: 4000 });
     ds.destroy();
     expect(seen[0]).toBe('/meos?difference=zero');
     expect(seen).toContain('/meos?difference=1');

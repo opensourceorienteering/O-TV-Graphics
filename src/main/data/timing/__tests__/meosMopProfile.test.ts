@@ -10,7 +10,8 @@ import fs from 'fs';
 import path from 'path';
 import { DatabaseSync } from 'node:sqlite';
 import { mopStatusToLiveResults, mopSplitCode } from '../../sources/meosCodes';
-import { CanonicalBackend } from '../CanonicalBackend';
+import { TimingHub } from '../TimingHub';
+import { wallClockCs } from '../model';
 import { parseSqlProfile } from '../sql/SqlProfile';
 import { SqlProfileSource } from '../sql/SqlProfileSource';
 import { bindNamed } from '../sql/sqlText';
@@ -35,7 +36,7 @@ function loadDump(): DatabaseSync {
 }
 
 describe('meos-mop SQL profile (real MeOS MOP dump)', () => {
-  let backend: CanonicalBackend;
+  let hub: TimingHub;
 
   beforeAll(() => {
     const db = loadDump();
@@ -46,10 +47,10 @@ describe('meos-mop SQL profile (real MeOS MOP dump)', () => {
         return db.prepare(bound.sql).all(...(bound.values as any[])) as Record<string, unknown>[];
       }
     };
-    backend = new CanonicalBackend(new SqlProfileSource(profile, runner, { timezone: 'Europe/Stockholm' }), 'meos-mop');
+    hub = new TimingHub(new SqlProfileSource(profile, runner, { timezone: 'Europe/Stockholm' }), { pluginId: 'meos-mop' });
   });
 
-  it('maps MeOS statuses to LiveResults codes', () => {
+  it('maps MeOS statuses to the status numbers graphics know', () => {
     expect(mopStatusToLiveResults(1, false)).toBe(0);
     expect(mopStatusToLiveResults(3, false)).toBe(3);   // MP
     expect(mopStatusToLiveResults(4, false)).toBe(2);   // DNF
@@ -64,57 +65,55 @@ describe('meos-mop SQL profile (real MeOS MOP dump)', () => {
   });
 
   it('lists competitions and info', async () => {
-    const comps = await backend.fetchCompetitions();
+    const comps = (await hub.getCompetitions()).data;
     expect(comps.map(c => c.name)).toEqual(expect.arrayContaining(['Exempel (Individuell)', 'Exempel (Stafett)']));
-    const info = await backend.fetchCompetitionInfo(3);
-    expect(info).toMatchObject({ id: 3, date: '2015-04-15', timezone: 'Europe/Stockholm' });
+    expect(await hub.getCompetitionInfo(3)).toMatchObject({ id: 3, date: '2015-04-15', timezone: 'Europe/Stockholm' });
   });
 
   it('lists individual classes and expands relay classes into legs', async () => {
-    const individual = (await backend.fetchClasses(3)).map(c => c.className);
-    expect(individual).toEqual(['Öppen 1', 'Öppen 2', 'Öppen 3']);
-    const relay = (await backend.fetchClasses(2)).map(c => c.className);
-    expect(relay.some(c => /-\d+$/.test(c))).toBe(true);
+    expect((await hub.getClasses(3)).data.map(c => c.className)).toEqual(['Öppen 1', 'Öppen 2', 'Öppen 3']);
+    const relay = (await hub.getClasses(2)).data;
+    expect(relay.some(c => c.leg && /-\d+$/.test(c.className))).toBe(true);
   });
 
-  it('returns individual results in hundredths with radio splits and places', async () => {
-    const res = await backend.fetchClassResults(3, 'Öppen 1');
-    expect(res.splitcontrols.map(c => c.name)).toEqual(['Radio 1', 'Radio 2', 'Förvarning']);
-    expect(res.splitcontrols.map(c => c.code)).toEqual([1050, 1150, 1100]);
+  it('returns individual results with radio splits and places', async () => {
+    const res = (await hub.getClassResults(3, 'Öppen 1')).data;
+    expect(res.controls.map(c => c.name)).toEqual(['Radio 1', 'Radio 2', 'Förvarning']);
+    expect(res.controls.map(c => c.key)).toEqual([1050, 1150, 1100]);
 
-    const linda = res.results.find(r => r.name === 'Linda Klick')!;
-    expect(linda.result).toBe('490900');       // MOP rt 49090 tenths = 81:49.0
-    expect(linda.start).toBe(7467000);         // MOP st 746700 tenths since midnight
-    expect(linda.status).toBe(0);
+    const linda = res.rows.find(r => r.name === 'Linda Klick')!;
+    expect(linda.time).toBe(4_909_000);     // MOP rt 49090 tenths = 81:49.0
+    expect(wallClockCs(await hub.getCompetitionInfo(3), linda.start)).toBe(7467000); // MOP st 746700 tenths since midnight
+    expect(linda.status).toBe('ok');
 
-    const ranked = res.results.filter(r => r.place && r.place !== '');
-    expect(ranked[0].place).toBe('1');
-    expect(ranked[0].timeplus).toBe('0');
-    const times = ranked.map(r => Number(r.result));
+    const ranked = res.rows.filter(r => r.place !== undefined);
+    expect(ranked[0]).toMatchObject({ place: 1, behind: 0 });
+    const times = ranked.map(r => r.time!);
     expect([...times].sort((a, b) => a - b)).toEqual(times); // sorted by time
 
-    // Every split has the LiveResults key family
-    const withSplits = res.results.find(r => r.splits && Object.keys(r.splits).length)!;
-    const code = Object.keys(withSplits.splits!).find(k => /^\d+$/.test(k))!;
-    expect(withSplits.splits).toHaveProperty(`${code}_place`);
-    expect(withSplits.splits).toHaveProperty(`${code}_timeplus`);
+    // Every split has a place and a time behind
+    const withSplits = res.rows.find(r => Object.keys(r.splits).length)!;
+    for (const split of Object.values(withSplits.splits)) {
+      expect(split.time).toBeGreaterThan(0);
+      expect(split.behind).toBeGreaterThanOrEqual(0);
+    }
   });
 
   it('returns relay legs with team-perspective times and the team as club', async () => {
-    const leg2 = (await backend.fetchClasses(2)).find(c => c.className.endsWith('-2'))!;
-    const res = await backend.fetchClassResults(2, leg2.className);
-    expect(res.results.length).toBeGreaterThan(0);
-    const finished = res.results.filter(r => r.status === 0 && r.result);
+    const leg2 = (await hub.getClasses(2)).data.find(c => c.className.endsWith('-2'))!;
+    const res = (await hub.getClassResults(2, leg2.className)).data;
+    expect(res.rows.length).toBeGreaterThan(0);
+    const finished = res.rows.filter(r => r.statusCode === 0 && r.time);
     for (const r of finished) {
       expect(r.club).toMatch(/^Lag /);           // team name
-      expect(Number(r.result)).toBeGreaterThan(0);
+      expect(r.time).toBeGreaterThan(0);
       // results count from the team's start, at or before this runner's changeover
-      expect(r.teamstart).toBeGreaterThan(0);
-      expect(r.teamstart!).toBeLessThanOrEqual(r.start);
+      expect(r.teamStart).toBeGreaterThan(0);
+      expect(r.teamStart!).toBeLessThanOrEqual(r.start!);
     }
   });
 
   it('fails clearly for an unknown class', async () => {
-    await expect(backend.fetchClassResults(3, 'Nope')).rejects.toThrow('Class not found');
+    await expect(hub.getClassResults(3, 'Nope')).rejects.toThrow('Class not found');
   });
 });

@@ -14,7 +14,7 @@ import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
 import { initTemplateManager } from './templates/OGrafManager';
 import { registerTemplateHandlers } from './ipc/templateHandlers';
-import { initLiveResultsClient } from './data/LiveResultsClient';
+import { initDefaultTimingHub } from './data/timing/defaultHub';
 import { initDataStore } from './data/DataStore';
 import { registerDataHandlers } from './ipc/dataHandlers';
 import { registerDataSourceHandlers, timingPluginsFolder } from './ipc/dataSourceHandlers';
@@ -226,9 +226,9 @@ async function initializeServices() {
       logger.warn('No data sources configured. Users must configure data sources in Settings > Data.');
     }
 
-    // Initialize LiveResults client (backward compatibility)
+    // The application-wide Liveresultat hub, for graphics without a data source (backward compatibility)
     const liveResultsBaseUrl = appConfig.liveresults?.baseUrl || 'https://api.orienteering.services';
-    initLiveResultsClient({
+    initDefaultTimingHub({
       baseUrl: liveResultsBaseUrl,
       cacheInterval: appConfig.liveresults?.cacheInterval,
       timeout: 10000,

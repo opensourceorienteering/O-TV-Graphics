@@ -1,26 +1,16 @@
 /**
- * One data source class for every timing plugin (built-in, code plugin or SQL profile).
+ * One data source class for every timing source (built in, code plugin or SQL profile).
  *
- * The plugin's TimingSource reports facts; CanonicalBackend turns them into the core's
- * results; LiveResultsClient caches, detects changes and polls. The rest of Split Control
- * (field mapper, desk, playback, Director API) talks to getClient() as it always has.
+ * The plugin's TimingSource reports facts; its TimingHub works out standings, caches, detects
+ * changes and polls. The rest of Split Control (field mapper, desk, playback, Director API)
+ * reads ClassResults from getClient().
  */
 
 import { getLogger } from '../../utils/logger';
-import { LiveResultsClient } from '../LiveResultsClient';
-import { CanonicalBackend } from './CanonicalBackend';
+import { TimingHub } from './TimingHub';
 import { createMySqlRunner } from './mysqlRunner';
 import type { PluginContext, TimingPlugin, TimingSource, ConfigSchema } from '../../../shared/timing-sdk';
-import {
-  IDataSource,
-  DataSourceConfig,
-  Competition,
-  Class,
-  Result,
-  convertLiveResultsCompetition,
-  convertLiveResultsClass,
-  convertLiveResultsResult
-} from '../../../shared/types/dataSource';
+import type { IDataSource, DataSourceConfig, Competition, Class, Result } from '../../../shared/types/dataSource';
 
 const logger = getLogger();
 
@@ -66,8 +56,7 @@ export function pluginContext(pluginId: string, onChanged: (competitionId: strin
 export class PluginDataSource implements IDataSource {
   readonly config: DataSourceConfig;
   readonly source: TimingSource;
-  readonly backend: CanonicalBackend;
-  private client: LiveResultsClient;
+  readonly hub: TimingHub;
   private _initialized = false;
 
   constructor(readonly plugin: TimingPlugin, config: DataSourceConfig) {
@@ -80,20 +69,15 @@ export class PluginDataSource implements IDataSource {
     } catch {
       settings = { ...(config.config ?? {}) };
     }
-    // The plugin may report changes before the backend exists; they are dropped until then
-    const ctx = pluginContext(id, (competitionId, classId) => this.backend?.notifyChanged(competitionId, classId));
+    // The plugin may report changes before the hub exists; they are dropped until then
+    const ctx = pluginContext(id, (competitionId, classId) => this.hub?.notifyChanged(competitionId, classId));
     this.source = plugin.create(settings, ctx);
-    const minPoll = Math.max(
-      500,
-      Number(settings.pollIntervalMs) || 0,
-      plugin.manifest.capabilities?.minPollMs ?? 2000
-    );
-    this.backend = new CanonicalBackend(this.source, id, { minPollIntervalMs: minPoll });
-    this.client = new LiveResultsClient({
-      baseUrl: `plugin://${id}/${encodeURIComponent(config.id)}`,
-      backend: this.backend,
-      cacheInterval: minPoll,
-      retryAttempts: 1
+    this.hub = new TimingHub(this.source, {
+      pluginId: id,
+      label: `${id}:${config.id}`,
+      // 'cacheInterval' is Liveresultat's name for it
+      pollIntervalMs: Number(settings.pollIntervalMs ?? settings.cacheInterval) || undefined,
+      minPollMs: Math.max(500, plugin.manifest.capabilities?.minPollMs ?? 2000)
     });
   }
 
@@ -105,13 +89,13 @@ export class PluginDataSource implements IDataSource {
     if (this._initialized) return;
     applyConfigSchema(this.plugin.manifest.configSchema, this.config.config ?? {});
     await this.source.connect();
-    await this.client.getCompetitions();
+    await this.hub.getCompetitions();
     this._initialized = true;
     logger.info('Timing plugin source initialized', { id: this.config.id, plugin: this.plugin.manifest.id });
   }
 
   destroy(): void {
-    this.client.destroy();
+    this.hub.destroy();
     this._initialized = false;
     try {
       const closing = this.source.close();
@@ -129,34 +113,40 @@ export class PluginDataSource implements IDataSource {
 
   async getCompetitions(): Promise<Competition[]> {
     this.ensureReady();
-    return (await this.client.getCompetitions()).data.map(convertLiveResultsCompetition);
+    return (await this.hub.getCompetitions()).data.map(c => ({ id: c.id, name: c.name, organizer: c.organiser, date: c.date }));
   }
 
   async getClasses(competitionId: number): Promise<Class[]> {
     this.ensureReady();
-    return (await this.client.getClasses(competitionId)).data.map(convertLiveResultsClass);
+    return (await this.hub.getClasses(competitionId)).data.map(c => ({ className: c.className, displayName: c.className, numberOfEntries: 0 }));
   }
 
   async getResults(competitionId: number, className: string): Promise<Result[]> {
     this.ensureReady();
-    return ((await this.client.getClassResults(competitionId, className)).data.results ?? []).map(convertLiveResultsResult);
+    return (await this.hub.getClassResults(competitionId, className)).data.rows.map(r => ({
+      place: r.tied ? undefined : r.place || undefined,
+      name: r.name,
+      club: r.club,
+      time: r.time !== undefined ? String(Math.round(r.time / 10)) : '',
+      status: String(r.statusCode)
+    }));
   }
 
   startPolling(competitionId: number, className: string, interval: number): void {
     this.ensureReady();
-    this.client.startPolling({ competitionId, className, interval, onUpdate: () => undefined });
+    this.hub.startPolling({ competitionId, className, interval, onUpdate: () => undefined });
   }
 
   stopPolling(competitionId: number, className: string): void {
-    this.client.stopPolling(`${competitionId}_${className}`);
+    this.hub.stopPolling(`${competitionId}_${className}`);
   }
 
   supportsRealTime(): boolean {
     return true;
   }
 
-  /** The client the field mapper, desk, playback engine and Director API read from */
-  getClient(): LiveResultsClient {
-    return this.client;
+  /** The hub the field mapper, desk, playback engine and Director API read from */
+  getClient(): TimingHub {
+    return this.hub;
   }
 }

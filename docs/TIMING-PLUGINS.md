@@ -13,18 +13,19 @@ There are two kinds of plugin:
 - **Code plugin:** a small JavaScript module, for sources that are not a database or need logic
   that SQL cannot express (an HTTP API, a file format, a push connection).
 
-The sources built into Split Control are plugins too: **MeOS (information server)**,
+The sources built into Split Control are plugins too: **Liveresultat**
+([`liveresultat/`](../src/main/data/timing/liveresultat)), **MeOS (information server)**,
 **MySQL/MariaDB (MeOS Online Protocol)**, which is the SQL profile
 [`meos-mop.yaml`](../src/main/data/timing/profiles/meos-mop.yaml), and **IOF XML 3.0 file**.
-Liveresultat is the core's native API and is not a plugin.
+Inside, Split Control knows no source's own format: everything arrives as the model below.
 
 ## How it fits together
 
 ```
- timing source ──► plugin ──► facts (timing SDK model) ──► Split Control core ──► base tags ──► graphics
-                    SQL profile or code                     ranks, time behind,     results[].position,
-                                                            split places, progress, name, club, time,
-                                                            relay team times        diff, splitTimes …
+ timing source ──► plugin ──► facts (timing SDK model) ──► timing hub ──► standings ──► base tags ──► graphics
+                    SQL profile or code                     caching, polling,  (ms, epoch)   results[].position,
+                                                            push, ranking                    name, club, time,
+                                                                                             diff, splitTimes …
 ```
 
 A plugin **reports facts**: who started when, who finished in what time, who passed which radio
@@ -32,6 +33,10 @@ control when, and their status. Split Control works out everything that follows 
 the same way for every source: places and ties, time behind, split places and time behind,
 progress, relay team-perspective times, start and running clocks. Never compute places in a
 plugin.
+
+The one exception is an **official results service** whose published standings are the ones the
+public sees (Liveresultat is one). Such a source passes its own standings with the facts; see
+[Official standings](#official-standings).
 
 ## Installing a plugin
 
@@ -66,12 +71,21 @@ The full contract, with comments, is in [`src/shared/timing-sdk/index.ts`](../sr
 | `ClassInfo` | `id`, `name`, `order`, `kind` (`individual` / `relay`), `legs`, `course` (`lengthM`, `climbM`, `controls`), `radioControls`, `ext` |
 | `Control` | `id`, `code`, `visit` (1 = first visit), `name`, `leg` (relays), `ext` |
 | `Entry` | `id`, `classId`, `name` (`full`, `given`, `family`), `club` (`name`, `short`, `country`), `bib`, `country`, `status`, `ranked`, `start`, `finish`, `time`, `passings`, `team`, `changedAt`, `ext` |
-| `Passing` | `controlId`, and `at` (instant) or `time` (the runner's own running time) |
+| `Passing` | `controlId`, and `at` (instant) or `time` (the runner's own running time); relays may give `teamTime` instead |
 | `Entry.team` | `id`, `name`, `bib`, `start` (the team's start), `leg`, `time` (team total at the end of this leg, if known) |
+| `Competition.clockShiftHours` | only for sources that give a clock shift instead of a time zone (Liveresultat's legacy `timediff`) |
 
 **Status** is one of `notStarted`, `running`, `ok`, `okNoTime`, `mispunch`, `dnf`, `dsq`,
-`overtime`, `dns`, `cancelled`, `notCompeting` (left out of every list). `ranked: false` shows a
-runner who is out of competition without a place.
+`overtime`, `dns`, `cancelled`, `movedUp`, `notCompeting` (left out of every list).
+`ranked: false` shows a runner who is out of competition without a place.
+
+### Official standings
+
+Optional, and only for a source whose own published standings must be shown exactly as published.
+Give each entry a `standing` (`place`, `tied`, `behind`, `progress`) and each passing a `standing`
+(`place`, `behind`, and `status` = the runner's status at that control). When any entry of a class
+has one, Split Control keeps the source's order and standings for that class and works nothing
+out. A source that gives a time of 0 (for example for a runner who did not start) keeps it.
 
 **Relays:** report one entry per runner and leg, with `team`. Split Control shows each leg as
 the class `<Class>-<leg>`, timed from the team's start, with the team name as the club.
@@ -219,7 +233,14 @@ module.exports = {
       async competitions() { return [/* Competition */]; },
       async classes(competitionId) { return [/* ClassInfo */]; },
       async entries(competitionId, classId) { return [/* Entry: every runner, every leg */]; },
+      // Optional:
       // async passings(competitionId, limit) { return [/* LatestPassing, newest first */]; }
+      // async competition(competitionId) { /* one competition, cheaper than the list */ }
+      // async classDetails(competitionId, classId) { /* radioControls / course known only with the entries */ }
+      // watch(competitionId, classIds) { /* push sources: the classes being polled now */ }
+      // minPollMs() { /* fastest useful poll interval when it depends on the connection */ }
+      // async clockOffsetMs() { /* the source's clock minus this computer's */ }
+      // describe(competitionId) { return { api: 'rest', pushConnected: true }; } // status display
     };
   }
 };
@@ -236,9 +257,9 @@ module.exports = {
   MySQL/MariaDB connection with named parameters (`query(sql, { name: value })`), so a plugin
   does not have to bundle a database driver.
 
-Split Control caches, polls and detects changes; a plugin only answers the four calls. Calls can
-come often (every poll), so cache in the plugin when the source is slow, as the MeOS information
-server plugin does.
+Split Control caches, polls and detects changes; a plugin only has to answer the four calls. Calls
+can come often (every poll), so cache in the plugin when the source is slow, as the MeOS information
+server plugin does. Calls for the same class that overlap share one call to the plugin.
 
 Settings are filled with the schema's defaults and number fields are converted before `create`
 is called. Required settings are checked when the source connects, with a message that names the

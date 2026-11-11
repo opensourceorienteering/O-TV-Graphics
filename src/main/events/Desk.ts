@@ -165,8 +165,8 @@ export async function courseFields(project: SPXProject, className?: string): Pro
     const course = (await client?.getClassResults(ds.competitionId, className, { maxAgeMs: 10_000 }))?.data?.course;
     if (!course) return {};
     const out: Record<string, any> = { title: className };
-    if (course.length) out.length = (course.length / 1000).toFixed(1);
-    if (course.climb) out.climb = String(Math.round(course.climb));
+    if (course.lengthM) out.length = (course.lengthM / 1000).toFixed(1);
+    if (course.climbM) out.climb = String(Math.round(course.climbM));
     if (course.controls) out.controls = String(course.controls);
     return out;
   } catch {

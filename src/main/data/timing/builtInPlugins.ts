@@ -1,19 +1,42 @@
 /**
  * The timing plugins packaged with Split Control. Their ids are the source types saved in
- * existing events ('meos', 'iofxml', 'mysql'), so saved settings keep working.
- * Liveresultat is not a plugin: it is the core's native API (LiveResultsDataSource).
+ * existing events ('liveresults', 'meos', 'iofxml', 'mysql'), so saved settings keep working.
  */
 
 import type { TimingPlugin } from '../../../shared/timing-sdk';
 import { TIMING_SDK_VERSION } from '../../../shared/timing-sdk';
-import { MeosInfoServerSource } from '../sources/MeosInfoServerBackend';
-import { IofXmlSource } from '../sources/IofXmlBackend';
+import { MeosInfoServerSource } from '../sources/MeosInfoServerSource';
+import { IofXmlSource } from '../sources/IofXmlSource';
 import { parseSqlProfile, profileManifest, SqlProfile } from './sql/SqlProfile';
 import { createSqlProfileSource } from './sql/SqlProfileSource';
 import { createMySqlRunner } from './mysqlRunner';
+import { createLiveresultatSource } from './liveresultat/LiveresultatSource';
 import meosMopYaml from './profiles/meos-mop.yaml?raw';
 
 const num = (v: unknown): number | undefined => (v === undefined || v === null || v === '' ? undefined : Number(v));
+
+export const liveresultatPlugin: TimingPlugin = {
+  manifest: {
+    id: 'liveresults',
+    name: 'LiveResults',
+    description: 'Fetch live orienteering results from LiveResults API',
+    version: TIMING_SDK_VERSION,
+    sdk: '^1.0',
+    configSchema: {
+      type: 'object',
+      required: ['baseUrl'],
+      properties: {
+        baseUrl: { type: 'string', title: 'Base URL', default: 'https://api.orienteering.services', format: 'url' },
+        api: { type: 'string', title: 'API', enum: ['auto', 'rest', 'legacy'], default: 'auto' },
+        cacheInterval: { type: 'integer', title: 'Poll interval (ms)', minimum: 100 },
+        timeout: { type: 'integer', title: 'Request timeout (ms)', default: 10000 }
+      }
+    },
+    // The real floor (10 s REST, 15 s legacy) comes from the source once it knows its API
+    capabilities: { push: true, relays: true, minPollMs: 10000 }
+  },
+  create: (config, ctx) => createLiveresultatSource(config, ctx)
+};
 
 export const meosPlugin: TimingPlugin = {
   manifest: {
@@ -110,4 +133,4 @@ export const mopPlugin = sqlProfilePlugin(meosMopProfile, {
   description: 'MeOS Online Protocol (MOP) database: results, radio splits and relay legs'
 });
 
-export const BUILT_IN_TIMING_PLUGINS: TimingPlugin[] = [meosPlugin, mopPlugin, iofXmlPlugin];
+export const BUILT_IN_TIMING_PLUGINS: TimingPlugin[] = [liveresultatPlugin, meosPlugin, mopPlugin, iofXmlPlugin];

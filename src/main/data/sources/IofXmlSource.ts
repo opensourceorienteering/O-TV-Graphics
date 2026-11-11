@@ -3,8 +3,7 @@
  *
  * Reads an IOF XML 3.0 ResultList (or StartList) that timing software exports to disk, e.g.
  * OE/OS (SportSoftware), OLA, MeOS or Helga with "export every N seconds". Results come out
- * as timing SDK facts (IofXmlSource); CanonicalBackend ranks them and builds the results the
- * core uses, so templates, the transformer and the live loop work unchanged.
+ * as timing SDK facts; the core ranks them like every other source.
  *
  *  - The file is re-parsed only when its modification time or size changes.
  *  - Times: IOF <Time> is seconds (may have decimals); converted to hundredths.
@@ -20,7 +19,7 @@
 import fs from 'fs';
 import { XMLParser } from 'fast-xml-parser';
 import type { ClassInfo, Competition, Control, Entry, EntryStatus, TimingSource } from '../../../shared/timing-sdk';
-import { CanonicalBackend, STATUS_CODES } from '../timing/CanonicalBackend';
+import { STATUS_CODES } from '../timing/model';
 import { DEFAULT_COMPETITION_TIMEZONE, timeZoneOffsetMs } from '../liveTime';
 
 export interface IofXmlBackendOptions {
@@ -292,12 +291,5 @@ export class IofXmlSource implements TimingSource {
       file.classes.push({ info: { id: baseName, name: baseName, kind: 'relay', legs, radioControls: controls }, entries });
     }
     return file;
-  }
-}
-
-/** IOF XML file -> the core's backend */
-export class IofXmlBackend extends CanonicalBackend {
-  constructor(filePath: string, options: IofXmlBackendOptions = {}) {
-    super(new IofXmlSource(filePath, options), 'iofxml', { minPollIntervalMs: Math.max(1000, options.minPollIntervalMs ?? 2000) });
   }
 }

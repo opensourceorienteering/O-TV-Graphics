@@ -15,7 +15,7 @@ import type {
   EventStartList,
   EventSummary,
 } from "../../../shared/types/event";
-import type { LiveResultsCompetition } from "../../../shared/types/liveresults";
+import type { Competition as LiveResultsCompetition } from "../../../shared/types/dataSource";
 import type {
   OGrafTemplateInfo,
   TemplateSetInfo,

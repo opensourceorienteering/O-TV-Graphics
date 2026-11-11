@@ -16,7 +16,7 @@ vi.mock('../../../utils/logger', () => {
 import { getDataSourceRegistry } from '../../DataSourceRegistry';
 import { registerBuiltInDataSources } from '../../sources';
 import { listTimingPlugins, loadTimingPlugins, resetTimingPlugins, sdkCompatible } from '../TimingPlugins';
-import { numericCompetitionId } from '../CanonicalBackend';
+import { numericCompetitionId } from '../TimingHub';
 import { PluginDataSource, applyConfigSchema } from '../PluginDataSource';
 
 const EXAMPLES = path.resolve(__dirname, '../../../../../docs/timing-plugins/examples');
@@ -68,7 +68,7 @@ describe('timing plugins folder', () => {
     expect(list.folder).toBe(dir);
     const external = list.plugins.filter(p => p.kind !== 'builtin');
     expect(external.map(p => [p.id, p.kind]).sort()).toEqual([['club-db', 'sql-profile'], ['json-file', 'code'], ['pkg-main', 'code']]);
-    expect(list.plugins.filter(p => p.kind === 'builtin').map(p => p.id)).toEqual(['meos', 'mysql', 'iofxml']);
+    expect(list.plugins.filter(p => p.kind === 'builtin').map(p => p.id)).toEqual(['liveresults', 'meos', 'mysql', 'iofxml']);
 
     const reasons = Object.fromEntries(list.failures.map(f => [path.basename(path.dirname(f.path)) === path.basename(dir) ? path.basename(f.path) : path.basename(path.dirname(f.path)) || f.path, f.error]));
     expect(Object.keys(reasons).sort()).toEqual(['future', 'takes-builtin', 'takes-liveresults.yaml', 'throws', 'writes.yaml'].sort());
@@ -86,7 +86,7 @@ describe('timing plugins folder', () => {
     const club = types.find(t => t.type === 'club-db')!;
     expect(club.kind).toBe('sql-profile');
     expect(Object.keys(club.configSchema!.properties)).toEqual(expect.arrayContaining(['host', 'database', 'season']));
-    expect(types.find(t => t.type === 'liveresults')!.kind).toBe('native');
+    expect(types.find(t => t.type === 'liveresults')!.kind).toBe('builtin');
   });
 
   it('reloading forgets plugins that were removed', () => {
@@ -110,10 +110,10 @@ describe('timing plugins folder', () => {
 
     expect((await client.getCompetitions()).data[0]).toMatchObject({ id, name: 'Demo Sprint' });
     const res = (await client.getClassResults(id, 'W21')).data;
-    expect(res.course).toEqual({ length: 3100, climb: 45, controls: 22 });
-    expect(res.results[0]).toMatchObject({ name: 'Ada Ek', place: '1', result: '91200', start: 3600000, bib: '101', ext: { 'json-file': { heartRate: 182 } } });
-    expect(res.results[0].splits).toMatchObject({ '1100': 40100, '1100_place': 2 });
-    expect(res.results[1]).toMatchObject({ name: 'Bea Ny', status: 10 });
+    expect(res.course).toEqual({ lengthM: 3100, climbM: 45, controls: 22 });
+    expect(res.rows[0]).toMatchObject({ name: 'Ada Ek', place: 1, time: 912_000, start: Date.UTC(2026, 5, 1, 8, 0, 0), bib: '101', ext: { 'json-file': { heartRate: 182 } } });
+    expect(res.rows[0].splits[1100]).toMatchObject({ time: 401_000, place: 2 });
+    expect(res.rows[1]).toMatchObject({ name: 'Bea Ny', statusCode: 10 });
 
     // Push: rewriting the file refetches the polled class before the next poll
     const updates: any[] = [];
@@ -124,7 +124,7 @@ describe('timing plugins folder', () => {
     data.entries[1].status = 'ok';
     data.entries[1].time = 900000;
     fs.writeFileSync(sample, JSON.stringify(data));
-    await vi.waitFor(() => expect(updates.at(-1).results[0]).toMatchObject({ name: 'Bea Ny', place: '1' }), { timeout: 3000 });
+    await vi.waitFor(() => expect(updates.at(-1).rows[0]).toMatchObject({ name: 'Bea Ny', place: 1 }), { timeout: 3000 });
   });
 
   it('names the missing setting when a source is not configured', async () => {

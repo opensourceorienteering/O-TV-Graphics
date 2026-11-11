@@ -7,7 +7,7 @@ import { t as tr } from "../i18n";
 
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Check, X, Search } from 'lucide-react';
-import { LiveResultsCompetition } from '../../../shared/types/liveresults';
+import type { Competition as LiveResultsCompetition } from '../../../shared/types/dataSource';
 import { useToast } from '../contexts/ToastContext';
 
 interface CompetitionSelectorProps {
@@ -99,8 +99,8 @@ export function CompetitionSelector({
     const query = searchQuery.toLowerCase();
     return (
       competition.name.toLowerCase().includes(query) ||
-      competition.organizer.toLowerCase().includes(query) ||
-      competition.date.toLowerCase().includes(query)
+      (competition.organizer ?? "").toLowerCase().includes(query) ||
+      (competition.date ?? "").toLowerCase().includes(query)
     );
   });
 

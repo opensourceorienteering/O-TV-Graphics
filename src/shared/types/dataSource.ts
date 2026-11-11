@@ -3,7 +3,6 @@
  * Defines interfaces for pluggable data sources (LiveResults, manual entry, CSV, etc.)
  */
 
-import { LiveResultsCompetition, LiveResultsClass, LiveResultsResult } from './liveresults';
 import type { ConfigSchema, ExtFieldDecl, PluginManifest } from '../timing-sdk';
 
 /**
@@ -289,34 +288,3 @@ export interface TimingPluginList {
   /** Files in the folder that failed to load, with the reason */
   failures: { path: string; error: string }[];
 }
-
-/**
- * Helper function to convert LiveResults types to normalized types
- */
-export function convertLiveResultsCompetition(lr: LiveResultsCompetition): Competition {
-  return {
-    id: lr.id,
-    name: lr.name,
-    organizer: lr.organizer,
-    date: lr.date
-  };
-}
-
-export function convertLiveResultsClass(lr: LiveResultsClass): Class {
-  return {
-    className: lr.className,
-    displayName: lr.className,
-    numberOfEntries: 0 // LiveResultsClass doesn't have this field
-  };
-}
-
-export function convertLiveResultsResult(lr: LiveResultsResult): Result {
-  return {
-    place: parseInt(lr.place, 10) || undefined,
-    name: lr.name,
-    club: lr.club,
-    time: lr.result, // 'result' field contains the time
-    status: lr.status.toString() // Convert number to string
-  };
-}
-

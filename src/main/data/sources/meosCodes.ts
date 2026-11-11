@@ -9,7 +9,8 @@
  */
 
 import type { Control, EntryStatus } from '../../../shared/timing-sdk';
-import { STATUS_CODES, splitCode } from '../timing/CanonicalBackend';
+import { STATUS_CODES } from '../timing/model';
+import { splitCode } from '../timing/ranking';
 import { DEFAULT_COMPETITION_TIMEZONE, zonedWallTimeToEpochMs } from '../liveTime';
 
 /** MeOS runner status -> SDK status */

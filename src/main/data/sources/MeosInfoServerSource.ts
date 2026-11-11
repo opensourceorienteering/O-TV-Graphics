@@ -17,12 +17,11 @@
  *  - A repeated control's id is control + 100000 * repeat (see mopSplitCode).
  *
  * The data is kept in memory and reported as timing SDK facts with the same rules as the MOP
- * SQL profile; CanonicalBackend turns them into the core's results.
+ * SQL profile; the core ranks them like every other source.
  */
 
 import { XMLParser } from 'fast-xml-parser';
 import type { ClassInfo, Competition, Control, Entry, TimingSource } from '../../../shared/timing-sdk';
-import { CanonicalBackend } from '../timing/CanonicalBackend';
 import { meosClock, meosControl, meosStatus } from './meosCodes';
 
 export interface MeosInfoServerBackendOptions {
@@ -77,7 +76,7 @@ export class MeosInfoServerSource implements TimingSource {
   private syncing: Promise<void> | null = null;
   private hasData = false;
 
-  private competition = { name: '', date: '', organizer: '', zeroTime: '' };
+  private competitionInfo = { name: '', date: '', organizer: '', zeroTime: '' };
   private controls = new Map<number, string>();
   private classMap = new Map<number, MeosClass>();
   private orgs = new Map<number, { name: string; nat: string }>();
@@ -115,7 +114,7 @@ export class MeosInfoServerSource implements TimingSource {
 
   async competitions(): Promise<Competition[]> {
     await this.sync();
-    const c = this.competition;
+    const c = this.competitionInfo;
     return [{ id: this.competitionId, name: c.name || 'MeOS', organiser: c.organizer, date: c.date, timezone: this.options.timezone }];
   }
 
@@ -206,7 +205,7 @@ export class MeosInfoServerSource implements TimingSource {
 
     if (node.competition !== undefined) {
       const c = node.competition;
-      this.competition = {
+      this.competitionInfo = {
         name: text(c),
         date: text(c['@_date']),
         organizer: text(c['@_organizer']),
@@ -288,7 +287,7 @@ export class MeosInfoServerSource implements TimingSource {
   }
 
   private individualEntries(classId: number): Entry[] {
-    const clock = meosClock(this.competition.date, this.options.timezone);
+    const clock = meosClock(this.competitionInfo.date, this.options.timezone);
     const out: Entry[] = [];
     for (const [id, c] of this.competitors) {
       if (c.cls !== classId) continue;
@@ -313,7 +312,7 @@ export class MeosInfoServerSource implements TimingSource {
 
   /** Every leg of a relay class; the core times them from the team's start */
   private relayEntries(classId: number): Entry[] {
-    const clock = meosClock(this.competition.date, this.options.timezone);
+    const clock = meosClock(this.competitionInfo.date, this.options.timezone);
     const out: Entry[] = [];
     for (const [teamId, t] of this.teams) {
       if (t.cls !== classId) continue;
@@ -338,25 +337,5 @@ export class MeosInfoServerSource implements TimingSource {
       });
     }
     return out;
-  }
-}
-
-/** MeOS information server -> the core's backend */
-export class MeosInfoServerBackend extends CanonicalBackend {
-  readonly meos: MeosInfoServerSource;
-
-  constructor(url: string, options: MeosInfoServerBackendOptions = {}) {
-    const source = new MeosInfoServerSource(url, options);
-    super(source, 'meos', { minPollIntervalMs: source.minPollIntervalMs });
-    this.meos = source;
-  }
-
-  get endpoint(): string {
-    return this.meos.endpoint;
-  }
-
-  /** Apply a MOPComplete or MOPDiff document */
-  apply(xml: string): void {
-    this.meos.apply(xml);
   }
 }
