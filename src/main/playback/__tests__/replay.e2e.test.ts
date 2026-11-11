@@ -58,6 +58,7 @@ import { initDataStore } from '../../data/DataStore';
 import { initDefaultTimingHub } from '../../data/timing/defaultHub';
 import { DataSourceFieldMapper } from '../../data/DataSourceFieldMapper';
 import { PlaybackEngine } from '../PlaybackEngine';
+import { baseTagProblems } from '../../../shared/baseTags';
 
 /** Start the replay; resolves with its address once it listens */
 function replay(args: string[]): Promise<{ proc: ChildProcess; url: string }> {
@@ -160,6 +161,10 @@ describe('Liveresultat replay, end to end', () => {
       expect(Math.abs(data.clockOffsetMs)).toBeLessThan(1000); // the replay's clock is this computer's
     }
     expect(running).toBeGreaterThan(0); // runners were seen out on the course
+
+    // Everything the graphics got is described by the base tag library (docs/BASE-TAGS.md)
+    for (const u of updates) expect(baseTagProblems(u.data), u.id).toEqual([]);
+    expect(updates.at(-1)!.data.event).toMatchObject({ name: expect.any(String) });
 
     // Start times: the recorded start list, compressed 240x from 15:29
     const last = list.at(-1);

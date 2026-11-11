@@ -93,14 +93,11 @@ the class `<Class>-<leg>`, timed from the team's start, with the team name as th
 
 ## Base tags
 
-These are what graphics bind to (in `.datasource.json` field mappings, see
-[TEMPLATE-DEVELOPMENT.md](TEMPLATE-DEVELOPMENT.md)). Every source provides them.
-
-- **Per runner** (`results[]`): `position`, `name`, `club`, `country`, `clubLogo`, `bib`,
-  `status`, `statusCode`, `time`, `diff`, `progress`, `startTime`, `startTimeMs`, `finishTimeMs`,
-  `teamStartTimeMs`, `splitTimes[]` (`code`, `time`, `place`, `timeplus`, `status`), `className`
-- **Per class / event:** `results`, `className`, `controlName`, `competitionName`,
-  `competitionDate`, `relayLegs`, `splitControls`, and the course facts used by the course graphic
+What graphics bind to (in `.datasource.json` field mappings, see
+[TEMPLATE-DEVELOPMENT.md](TEMPLATE-DEVELOPMENT.md)). Every source provides them; the full,
+test-checked list is the [base tag library](BASE-TAGS.md) (generated from
+`src/shared/baseTags.ts`). A plugin never produces base tags itself: it reports facts, and
+Split Control makes the tags from them, the same way for every source.
 
 ## Extra fields
 

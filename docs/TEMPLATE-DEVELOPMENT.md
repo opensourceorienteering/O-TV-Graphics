@@ -54,7 +54,8 @@ from `<manifest-id>.datasource.json`: select the timing feed and provide the dat
 The datasource's `api.provider` is `"timing"`: the event's timing source, whichever it is
 (Liveresultat or any [timing plugin](TIMING-PLUGINS.md)). `"liveresults"` is the original name
 for the same thing and stays accepted; the bundled looks still use it so they keep working in
-older versions of Split Control. Map the [base tags](TIMING-PLUGINS.md#base-tags). Fields a
+older versions of Split Control. Map the [base tags](BASE-TAGS.md): the library lists every
+field, its type, its unit and when it is there. Fields a
 timing plugin adds are under `results[].x.<plugin-id>.<key>` (per runner) and
 `x.<plugin-id>.<key>` (per class); list the ones a graphic needs in the desk declaration's
 `sourceFields`.

@@ -141,7 +141,8 @@ Virtual bibs are found by their number alone: `105` finds V105.
   - **IOF XML 3.0** result or start list files from any timing software;
   - other sources through **timing plugins**: an SQL profile (a YAML file of queries) for any
     MySQL/MariaDB timing database, or a small JavaScript plugin. See
-    [docs/TIMING-PLUGINS.md](docs/TIMING-PLUGINS.md).
+    [docs/TIMING-PLUGINS.md](docs/TIMING-PLUGINS.md). Graphics see the same
+    [base tags](docs/BASE-TAGS.md) from every source.
 - **Outputs:** a web output page for OBS Browser Source, vMix Web Input and CasparCG HTML,
   and **NDI 6** with transparency.
 - **Director start alerts:** a page for the director on any device on the network,
