@@ -1,0 +1,242 @@
+/**
+ * End to end with the Liveresultat replay (scripts/replay-liveresultat.js) serving a recorded
+ * race (SM Medel kval 2025, Liveresultat 33124) as if it were live, compressed in time:
+ *
+ *   replay server (REST API) -> Liveresultat plugin (API detection, ETag polling) -> TimingHub
+ *   -> DataStore -> ResultsTransformer + DataSourceFieldMapper -> PlaybackEngine -> 'update'
+ *
+ * Only the rundown and template managers are stubbed. The race runs while the test watches:
+ * runners start, pass the radio controls and finish, and every update the graphics get must
+ * be consistent. A second replay, after the race, must give the recorded final results.
+ */
+
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { spawn, type ChildProcess } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+
+vi.mock('../../utils/logger', () => {
+  const logger = { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn(), verbose: vi.fn() };
+  return { logger, getLogger: () => logger };
+});
+
+const ROOT = path.resolve(__dirname, '../../../..');
+const FIXTURE = path.join(ROOT, 'test-data/liveresultat/33124.json');
+const RACE = JSON.parse(fs.readFileSync(FIXTURE, 'utf8'));
+const CLASS = 'D21–1'; // first start 15:30, winner 31:47, three radio controls
+const RADIO = String(RACE.results[CLASS].splitControls[1].code);
+const SPEED = 240; // two hours of racing in 30 s
+
+const api = (extra: object = {}) => ({ mode: 'api', api: { provider: 'liveresults', fieldMappings: [{ templateField: 'results', apiPath: 'results' }], ...extra } });
+const templates = [
+  { manifest: { id: 'results-list', name: 'Results' }, directoryName: 'results-list', dataSourceConfig: api() },
+  { manifest: { id: 'split-list', name: 'At the radio' }, directoryName: 'split-list', dataSourceConfig: api() }
+];
+vi.mock('../../templates/OGrafManager', () => ({
+  getTemplateManager: () => ({ getAllTemplates: () => templates })
+}));
+
+const rundown = {
+  id: 'r1', projectId: 'p1', settings: {},
+  dataSource: { sourceId: 'replay', competitionId: 33124 },
+  items: [
+    { id: 'finish', templateId: 'results-list', fields: {}, liveResultsData: { autoUpdate: true, dataSourceValues: { className: CLASS } } },
+    { id: 'radio', templateId: 'split-list', fields: {}, liveResultsData: { autoUpdate: true, dataSourceValues: { className: CLASS, controlCode: RADIO } } }
+  ]
+};
+vi.mock('../../projects/RundownManager', () => ({
+  getRundownManager: () => ({
+    loadRundown: async () => rundown,
+    updateItem: async () => ({}),
+    saveRundown: async () => undefined
+  })
+}));
+
+import { getDataSourceRegistry } from '../../data/DataSourceRegistry';
+import { registerBuiltInDataSources } from '../../data/sources';
+import { initDataStore } from '../../data/DataStore';
+import { initDefaultTimingHub } from '../../data/timing/defaultHub';
+import { DataSourceFieldMapper } from '../../data/DataSourceFieldMapper';
+import { PlaybackEngine } from '../PlaybackEngine';
+
+/** Start the replay; resolves with its address once it listens */
+function replay(args: string[]): Promise<{ proc: ChildProcess; url: string }> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(process.execPath, [path.join(ROOT, 'scripts/replay-liveresultat.js'), '--competition', '33124', '--data', FIXTURE, '--port', '0', ...args]);
+    let out = '';
+    proc.stdout.on('data', chunk => {
+      out += chunk;
+      const m = /on (http:\/\/127\.0\.0\.1:\d+)/.exec(out);
+      if (m) resolve({ proc, url: m[1] });
+    });
+    proc.stderr.on('data', chunk => { out += chunk; });
+    proc.on('exit', code => reject(new Error(`replay exited (${code}): ${out}`)));
+    setTimeout(() => reject(new Error(`replay did not start: ${out}`)), 10_000);
+  });
+}
+
+const seconds = (t: string) => t.split(':').map(Number).reduce((a, b) => a * 60 + b, 0);
+const placed = (rows: any[]) => rows.filter(r => r.position !== '' && r.statusCode === 0);
+
+/** What every update must satisfy */
+function checkFinishList(data: any) {
+  expect(data.className).toBe(CLASS);
+  expect(data.results.length).toBe(RACE.results[CLASS].results.length);
+  const top = placed(data.results);
+  // placed first, numbered 1.. in time order ("=" for a tie), time behind from the leader
+  expect(data.results.slice(0, top.length)).toEqual(top);
+  top.forEach((r: any, i: number) => {
+    if (i === 0) expect(r.position).toBe('1');
+    else if (r.position === '=') expect(seconds(r.time)).toBe(seconds(top[i - 1].time));
+    else expect(Number(r.position)).toBe(i + 1);
+    if (i > 0) expect(seconds(r.time)).toBeGreaterThanOrEqual(seconds(top[i - 1].time));
+    expect(r.finishTimeMs).toBeGreaterThan(0);
+  });
+  for (const r of data.results) {
+    expect(r.startTimeMs).toBeGreaterThan(0);
+    if (r.statusCode === 10 || r.statusCode === 9) expect(r.position).toBe('');
+  }
+}
+
+describe('Liveresultat replay, end to end', () => {
+  let engine: any;
+  let run: { proc: ChildProcess; url: string };
+  const updates: { id: string; data: any; at: number }[] = [];
+
+  beforeAll(async () => {
+    run = await replay(['--speed', String(SPEED), '--from', '15:29']);
+    initDataStore();
+    getDataSourceRegistry().clear();
+    registerBuiltInDataSources();
+    initDefaultTimingHub({ baseUrl: run.url });
+    // api 'auto' on another address: the source must find out that the replay speaks REST
+    await getDataSourceRegistry().create({
+      id: 'replay', name: 'Replay', type: 'liveresults', enabled: true,
+      config: { baseUrl: run.url, api: 'auto', localPollFloorMs: 200, push: false }
+    });
+    engine = new PlaybackEngine();
+    engine.setWebSocketServer({ setResponseCallback() {}, setNewClientCallback() {} });
+    engine.sendCommand = vi.fn(async (command: string, payload: any) => {
+      if (command === 'update') updates.push({ id: payload.id, data: payload.data, at: Date.now() });
+      return { success: true };
+    });
+  }, 20_000);
+
+  afterAll(async () => {
+    engine?.activeGraphics.clear();
+    await engine?.syncPolling();
+    getDataSourceRegistry().destroyAll();
+    run?.proc.kill();
+  });
+
+  it('follows the race on air: starts, radio passings and finishes, always consistent', async () => {
+    for (const item of rundown.items) {
+      engine.activeGraphics.set(`p1-r1-${item.id}`, {
+        id: `p1-r1-${item.id}`, projectId: 'p1', rundownId: 'r1', itemId: item.id, templateId: item.templateId,
+        isPlaying: true, manifest: templates.find(t => t.manifest.id === item.templateId)!.manifest,
+        templateDirectoryName: item.templateId, data: {}, currentStep: 1
+      });
+    }
+    await engine.syncPolling();
+    expect(engine.livePolls.size).toBe(1); // both graphics show the same class: one poll feeds them
+
+    const finish = () => updates.filter(u => u.id === 'p1-r1-finish').map(u => u.data);
+    const radio = () => updates.filter(u => u.id === 'p1-r1-radio').map(u => u.data);
+    // The winner (31:47) finishes about 8 s in; wait for five finishers
+    await vi.waitFor(() => expect(placed(finish().at(-1)?.results ?? []).length).toBeGreaterThanOrEqual(5), { timeout: 40_000, interval: 250 });
+
+    expect(engine.getLivePollingStatus()[0]).toMatchObject({ sourceId: 'replay', sourceType: 'liveresults', apiFlavor: 'rest' });
+
+    const list = finish();
+    expect(list.length).toBeGreaterThan(5); // the graphic was updated as the race went on
+    let finishers = 0;
+    let running = 0;
+    for (const data of list) {
+      checkFinishList(data);
+      const now = placed(data.results).length;
+      expect(now).toBeGreaterThanOrEqual(finishers); // a finisher never disappears
+      finishers = now;
+      running = Math.max(running, data.results.filter((r: any) => r.statusCode === 10).length);
+      expect(Math.abs(data.clockOffsetMs)).toBeLessThan(1000); // the replay's clock is this computer's
+    }
+    expect(running).toBeGreaterThan(0); // runners were seen out on the course
+
+    // Start times: the recorded start list, compressed 240x from 15:29
+    const last = list.at(-1);
+    // (by name and club: two runners in this class are both called Tilda Andersson)
+    const byName = new Map(RACE.results[CLASS].results.map((r: any) => [`${r.name}|${r.club}`, r]));
+    const recordedOf = (r: any) => byName.get(`${r.name}|${r.club}`) as any;
+    const starts = last.results.map((r: any) => [recordedOf(r).start, r.startTimeMs]).sort((a: any, b: any) => a[0] - b[0]);
+    const [first] = starts;
+    for (const [original, ms] of starts) expect(ms - first[1]).toBeCloseTo(((original - first[0]) * 10) / SPEED, -2);
+
+    // The finishers' times are the recorded ones compressed 240x, in the recorded order
+    for (const r of placed(last.results)) {
+      const recorded = recordedOf(r);
+      expect(recorded.status).toBe(0);
+      expect(Math.abs(seconds(r.time) * SPEED - recorded.result / 100)).toBeLessThanOrEqual(SPEED);
+    }
+    const recordedOrder = placed(last.results).map((r: any) => recordedOf(r).result);
+    expect([...recordedOrder].sort((a, b) => a - b)).toEqual(recordedOrder);
+
+    // At the radio: runners who passed it are ranked there, in order of their time there
+    const atRadio = radio().at(-1);
+    expect(atRadio.controlCode).toBe(RADIO);
+    const passed = atRadio.results.filter((r: any) => r.statusCode === 0 && r.position !== '');
+    expect(passed.length).toBeGreaterThan(placed(last.results).length);
+    passed.forEach((r: any, i: number) => {
+      if (i > 0) expect(seconds(r.time)).toBeGreaterThanOrEqual(seconds(passed[i - 1].time));
+    });
+    // Runners who have not started yet are "not started" (9), not "running" (10): the last starters
+    const waiting = atRadio.results.filter((r: any) => r.statusCode === 9);
+    expect(waiting.length).toBeGreaterThan(0);
+    const latestPassedStart = Math.max(...passed.map((r: any) => recordedOf(r).start));
+    for (const r of waiting) {
+      expect(r).toMatchObject({ position: '', time: '--:--' });
+      expect(recordedOf(r).start).toBeGreaterThan(latestPassedStart);
+    }
+  }, 60_000);
+});
+
+describe('Liveresultat replay after the race', () => {
+  let run: { proc: ChildProcess; url: string };
+
+  beforeAll(async () => {
+    // Real time, from long after the last finish: the final results
+    run = await replay(['--speed', '1', '--from', '20:00']);
+    initDataStore();
+    getDataSourceRegistry().clear();
+    registerBuiltInDataSources();
+    await getDataSourceRegistry().create({
+      id: 'final', name: 'Final', type: 'liveresults', enabled: true,
+      config: { baseUrl: run.url, api: 'rest', localPollFloorMs: 200, push: false }
+    });
+  }, 20_000);
+
+  afterAll(() => {
+    getDataSourceRegistry().destroyAll();
+    run?.proc.kill();
+  });
+
+  it('gives the recorded results for every class', async () => {
+    const config: any = api();
+    let compared = 0;
+    for (const className of RACE.classes) {
+      const data = await DataSourceFieldMapper.fetchAndMapData(config, 33124, { className }, {}, 'final');
+      const recorded = new Map(RACE.results[className].results.map((r: any) => [`${r.name}|${r.club}`, r]));
+      expect(data.results.length).toBe(recorded.size);
+      for (const r of data.results) {
+        const rec: any = recorded.get(`${r.name}|${r.club}`);
+        expect(r.statusCode).toBe(rec.status);
+        if (rec.status === 0) {
+          expect(r.finishTimeMs).toBe(rec.result * 10);
+          // the recorded place ("=" for a tie: the replay numbers ties)
+          if (rec.place !== '=') expect(r.position).toBe(rec.place);
+        }
+        for (const s of r.splitTimes ?? []) expect(s.time).toBe(Number(rec.splits[String(s.code)]));
+        compared++;
+      }
+    }
+    expect(compared).toBeGreaterThan(800);
+  }, 60_000);
+});
