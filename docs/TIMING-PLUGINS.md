@@ -16,7 +16,9 @@ There are two kinds of plugin:
 The sources built into Split Control are plugins too: **Liveresultat**
 ([`liveresultat/`](../src/main/data/timing/liveresultat)), **MeOS (information server)**,
 **MySQL/MariaDB (MeOS Online Protocol)**, which is the SQL profile
-[`meos-mop.yaml`](../src/main/data/timing/profiles/meos-mop.yaml), and **IOF XML 3.0 file**.
+[`meos-mop.yaml`](../src/main/data/timing/profiles/meos-mop.yaml), **IOF XML 3.0 file**, and
+**Trace / Track (GPS)**, an additional source for heart rate, pace and position
+([TRACE-TRACK.md](TRACE-TRACK.md)).
 Inside, Split Control knows no source's own format: everything arrives as the model below.
 
 ## How it fits together
@@ -130,7 +132,8 @@ the graphic, and says which fields are missing, when the event's source does not
 
 An event has one **timing source**, and can have **additional sources** next to it (**Plan →
 Choose event data → Additional sources**). An additional source is any data source whose plugin
-declares `extFields`: a GPS tracker, heart rate belts, a split-time radio system with extra data.
+declares `extFields`: a GPS tracker (built in: [Trace / Track](TRACE-TRACK.md)), heart rate belts, a
+split-time radio system with extra data.
 
 They never interfere with the timing source, or with each other:
 

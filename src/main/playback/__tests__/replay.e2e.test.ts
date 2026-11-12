@@ -61,6 +61,7 @@ import { PlaybackEngine } from '../PlaybackEngine';
 import { baseTagProblems } from '../../../shared/baseTags';
 import { registerTimingPlugin } from '../../data/timing/TimingPlugins';
 import type { Entry, PluginContext, TimingPlugin } from '../../../shared/timing-sdk';
+import { fakeTraceTrack, type FakeTraceTrack } from '../../data/timing/tracetrack/__tests__/fakeTraceTrack';
 
 /** Start the replay; resolves with its address once it listens */
 function replay(args: string[]): Promise<{ proc: ChildProcess; url: string }> {
@@ -341,5 +342,94 @@ describe('Liveresultat replay with a GPS source next to it, end to end', () => {
     const after = finishUpdates().at(-1)!.data;
     const strip = (d: any) => d.results.map((r: any) => ({ ...r, x: undefined }));
     expect(strip(after)).toEqual(strip(first)); // nothing but the GPS fields changed
+  }, 60_000);
+});
+
+describe('Liveresultat replay with Trace / Track next to it, end to end', () => {
+  let run: { proc: ChildProcess; url: string };
+  let tt: FakeTraceTrack;
+  let engine: any;
+  const updates: { id: string; data: any }[] = [];
+  const recorded: any[] = RACE.results[CLASS].results;
+
+  beforeAll(async () => {
+    run = await replay(['--speed', '1', '--from', '20:00']);
+    // The tracker's own class ids and names; every third runner without a bib (matched by name and club)
+    tt = await fakeTraceTrack({
+      eventId: 'sm-medel', key: 'ttr_e2e',
+      runners: recorded.map((r, i) => ({
+        id: `t${i}`, name: r.name, club: r.club, bib: i % 3 === 0 ? null : String(r.bib), classId: 'd21-q1', className: 'Damer 21 kval 1',
+        signal: 'live', age: 1, heartRate: 150 + (i % 30), speed: 3.5, pace: 286, onProgram: i < 2, lowerThird: i === 0, time: Date.now()
+      }))
+    });
+    initDataStore();
+    getDataSourceRegistry().clear();
+    registerBuiltInDataSources();
+    initDefaultTimingHub({ baseUrl: run.url });
+    await getDataSourceRegistry().create({ id: 'replay', name: 'Replay', type: 'liveresults', enabled: true,
+      config: { baseUrl: run.url, api: 'rest', localPollFloorMs: 200, push: false } });
+    await getDataSourceRegistry().create({ id: 'tt', name: 'Trace / Track', type: 'trace-track', enabled: true,
+      config: { url: tt.url, eventId: 'sm-medel', key: 'ttr_e2e', pollIntervalMs: 10_000 } });
+    rundown.additionalSources = [{ sourceId: 'tt' }];
+    engine = new PlaybackEngine();
+    engine.setWebSocketServer({ setResponseCallback() {}, setNewClientCallback() {} });
+    engine.sendCommand = vi.fn(async (command: string, payload: any) => {
+      if (command === 'update') updates.push({ id: payload.id, data: payload.data });
+      return { success: true };
+    });
+  }, 20_000);
+
+  afterAll(async () => {
+    engine?.activeGraphics.clear();
+    await engine?.syncPolling();
+    delete rundown.additionalSources;
+    getDataSourceRegistry().destroyAll();
+    run?.proc.kill();
+    await tt?.close();
+  });
+
+  it('puts heart rate and pace next to the official results, and follows the tracker\'s stream on air', async () => {
+    engine.activeGraphics.set('p1-r1-finish', {
+      id: 'p1-r1-finish', projectId: 'p1', rundownId: 'r1', itemId: 'finish', templateId: 'results-list',
+      isPlaying: true, manifest: templates[0].manifest, templateDirectoryName: 'results-list', data: {}, currentStep: 1
+    });
+    await engine.syncPolling();
+    expect([...engine.livePolls.values()].map((p: any) => [p.sourceId, p.role, p.className]).sort())
+      .toEqual([['replay', 'timing', CLASS], ['tt', 'additional', 'Damer 21 kval 1']]);
+
+    const finish = () => updates.filter(u => u.id === 'p1-r1-finish').map(u => u.data);
+    await vi.waitFor(() => expect(finish().length).toBeGreaterThan(0), { timeout: 10_000 });
+    await vi.waitFor(() => expect(tt.openStreams()).toBe(1), { timeout: 5000 });
+    const first = finish().at(-1);
+    expect(baseTagProblems(first)).toEqual([]);
+    const byName = new Map(recorded.map((r, i) => [`${r.name}|${r.club}`, i]));
+    for (const r of first.results) {
+      const i = byName.get(`${r.name}|${r.club}`)!;
+      // official results from the timing source; the tracker's values beside them, by bib or name and club
+      expect(r.statusCode).toBe(recorded[i].status);
+      expect(r.x['trace-track']).toMatchObject({ heartRate: 150 + (i % 30), speedKmh: 12.6, paceText: '4:46', signal: 'live' });
+    }
+
+    // The tracker streams new values: the graphic follows at once (poll intervals are 10 s and more)
+    const count = finish().length;
+    for (const r of tt.runners) r.heartRate = 190;
+    const t0 = Date.now();
+    tt.push();
+    await vi.waitFor(() => {
+      expect(finish().length).toBeGreaterThan(count);
+      expect(finish().at(-1).results.every((r: any) => r.x['trace-track'].heartRate === 190)).toBe(true);
+    }, { timeout: 5000, interval: 50 });
+    expect(Date.now() - t0).toBeLessThan(5000);
+    const strip = (d: any) => d.results.map((r: any) => ({ ...r, x: undefined }));
+    expect(strip(finish().at(-1))).toEqual(strip(first)); // nothing but the tracker's fields changed
+    expect(tt.requests.every(r => r.auth === 'Bearer ttr_e2e')).toBe(true);
+
+    // The tracker goes away: the official results still go out, with its last good values
+    await tt.close();
+    tt = { close: async () => undefined } as any;
+    await new Promise(r => setTimeout(r, 1200)); // past every short-lived cache
+    const after = await DataSourceFieldMapper.fetchAndMapData(api() as any, 33124, { className: CLASS }, {}, 'replay', [{ sourceId: 'tt' }]);
+    expect(after.results).toHaveLength(recorded.length);
+    expect(after.results.every((r: any) => r.x['trace-track'].heartRate === 190)).toBe(true);
   }, 60_000);
 });

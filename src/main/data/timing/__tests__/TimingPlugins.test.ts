@@ -68,7 +68,7 @@ describe('timing plugins folder', () => {
     expect(list.folder).toBe(dir);
     const external = list.plugins.filter(p => p.kind !== 'builtin');
     expect(external.map(p => [p.id, p.kind]).sort()).toEqual([['club-db', 'sql-profile'], ['json-file', 'code'], ['pkg-main', 'code']]);
-    expect(list.plugins.filter(p => p.kind === 'builtin').map(p => p.id)).toEqual(['liveresults', 'meos', 'mysql', 'iofxml']);
+    expect(list.plugins.filter(p => p.kind === 'builtin').map(p => p.id)).toEqual(['liveresults', 'meos', 'mysql', 'iofxml', 'trace-track']);
 
     const reasons = Object.fromEntries(list.failures.map(f => [path.basename(path.dirname(f.path)) === path.basename(dir) ? path.basename(f.path) : path.basename(path.dirname(f.path)) || f.path, f.error]));
     expect(Object.keys(reasons).sort()).toEqual(['future', 'takes-builtin', 'takes-liveresults.yaml', 'throws', 'writes.yaml'].sort());

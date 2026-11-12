@@ -775,7 +775,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
         <tbody>
           <tr><td>A MySQL/MariaDB timing database</td><td>An <strong>SQL profile</strong>: a YAML file of queries, no code. The app keeps the database driver and the safety rules (read only).</td></tr>
           <tr><td>Anything else (an API, a file format, a push connection)</td><td>A small <strong>code plugin</strong>: <code>manifest</code> + <code>create(config, ctx)</code> answering competitions, classes and entries.</td></tr>
-          <tr><td>Extra data, such as GPS speed or heart rate</td><td>Declare <code>extFields</code>; graphics read them as <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code> and list them in <code>sourceFields</code>. Such a source can be an event's <strong>additional source</strong> next to its timing source: it only adds its own fields, matched to the timing source's runners, and never changes places, times or runners.</td></tr>
+          <tr><td>Extra data, such as GPS speed or heart rate</td><td>Declare <code>extFields</code>; graphics read them as <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code> and list them in <code>sourceFields</code>. Such a source can be an event's <strong>additional source</strong> next to its timing source: it only adds its own fields, matched to the timing source's runners, and never changes places, times or runners. Built in: <strong>Trace / Track</strong> GPS (heart rate, pace, speed, position and experimental virtual standings under <code>results[].x['trace-track']</code>; see <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/TRACE-TRACK.md">docs/TRACE-TRACK.md</a>).</td></tr>
         </tbody>
       </table>
       </div>

@@ -11,6 +11,7 @@ import { parseSqlProfile, profileManifest, SqlProfile } from './sql/SqlProfile';
 import { createSqlProfileSource } from './sql/SqlProfileSource';
 import { createMySqlRunner } from './mysqlRunner';
 import { createLiveresultatSource } from './liveresultat/LiveresultatSource';
+import { createTraceTrackSource, DEFAULT_TRACE_TRACK_URL, TRACE_TRACK_FIELDS } from './tracetrack/TraceTrackSource';
 import meosMopYaml from './profiles/meos-mop.yaml?raw';
 
 const num = (v: unknown): number | undefined => (v === undefined || v === null || v === '' ? undefined : Number(v));
@@ -133,4 +134,35 @@ export const mopPlugin = sqlProfilePlugin(meosMopProfile, {
   description: 'MeOS Online Protocol (MOP) database: results, radio splits and relay legs'
 });
 
-export const BUILT_IN_TIMING_PLUGINS: TimingPlugin[] = [liveresultatPlugin, meosPlugin, mopPlugin, iofXmlPlugin];
+/**
+ * Trace / Track GPS tracking: an additional source next to the event's timing (heart rate, pace,
+ * speed, position, signal, and optionally experimental virtual standings), never results.
+ */
+export const traceTrackPlugin: TimingPlugin = {
+  manifest: {
+    id: 'trace-track',
+    name: 'Trace / Track (GPS)',
+    description: 'Heart rate, pace, speed and position from Trace / Track, next to the event\'s timing source (Plan → Additional sources)',
+    version: TIMING_SDK_VERSION,
+    sdk: '^1.0',
+    configSchema: {
+      type: 'object',
+      required: ['url', 'eventId', 'key'],
+      properties: {
+        url: { type: 'string', title: 'Server', default: DEFAULT_TRACE_TRACK_URL, format: 'url' },
+        eventId: { type: 'string', title: 'Event ID', description: 'In Trace / Track Admin: the event\'s address, or Overview › Data for other software' },
+        key: { type: 'string', title: 'Read key', format: 'password', description: 'Admin › event › Overview › Data for other software › create a key (ttr_…). Stored in plain text in config.json.' },
+        eventName: { type: 'string', title: 'Name in Split Control', description: 'Optional' },
+        timeline: { type: 'string', title: 'Timeline', enum: ['program', 'live'], default: 'program', description: 'program: as Trace / Track\'s Program map shows each runner (its delay or replay); live: the live time' },
+        push: { type: 'boolean', title: 'Follow the live stream', default: true, description: 'Graphics update as soon as Trace / Track sends new values; polling stays as the fallback' },
+        virtualStandings: { type: 'boolean', title: 'Virtual standings (experimental)', default: false, description: 'Estimated rank, gap, course progress, pacing and next-control arrival from GPS. Estimates, never results.' },
+        pollIntervalMs: { type: 'integer', title: 'Update every (ms)', default: 2000, minimum: 1000, maximum: 10000 }
+      }
+    },
+    capabilities: { push: true, minPollMs: 1000 },
+    extFields: TRACE_TRACK_FIELDS.map(f => ({ key: f.key, on: 'entry' as const, type: f.type, label: f.label, ...(f.unit ? { unit: f.unit } : {}) }))
+  },
+  create: (config, ctx) => createTraceTrackSource(config, ctx)
+};
+
+export const BUILT_IN_TIMING_PLUGINS: TimingPlugin[] = [liveresultatPlugin, meosPlugin, mopPlugin, iofXmlPlugin, traceTrackPlugin];
