@@ -4,7 +4,7 @@
 
 **Goal:** Graphics exported from OGraf Studio (ografstudio.org) import into Split Control, load as the OGraf v1 spec requires, and can be shown from the Live desk.
 
-**Architecture:** Three small changes. The renderer passes the `load()` and `playAction()` parameters that OGraf v1 requires. A standalone imported graphic (look `custom`) with no desk declaration gets a generic desk entry built from its manifest. The import preview lists facts the operator should see before importing a third-party graphic: its licences and the resolution and frame rate it was made for.
+**Architecture:** Four small changes. The renderer passes the `load()` and `playAction()` parameters that OGraf v1 requires. A standalone imported graphic (look `custom`) with no desk declaration gets a generic desk entry built from its manifest. The import preview lists facts the operator should see before importing a third-party graphic: its licences and the resolution and frame rate it was made for. Discovery finds a graphic whose manifest is not named after its folder.
 
 **Tech Stack:** TypeScript, Electron, React, Vitest.
 
@@ -20,7 +20,8 @@ Test packages: `lower-third`, `rankings`, `scoreboard` and `ticker`, from `https
 4. **`playAction` may be sent with neither `goto` nor `delta`.** `playGraphic(id, options = {})` passes `{}` through, but the spec requires one of the two.
 5. **Exports carry AGPL-3.0.** Every package contains `licenses/OGRAF-STUDIO-AGPL-3.0.txt`, and Split Control is MIT. Users may load these packages. We must not bundle them into our own looks, and the import preview should say which licences a package carries.
 6. **Fixed render requirements.** The packages declare `renderRequirements` of exactly 1920×1080 at exactly 25 fps.
-7. Not tested: executing a Studio graphic in a browser. That step was blocked in this session, so a manual check is part of Task 1.
+7. **A Studio graphic inside a look is not found.** Discovery reads only `<folder>/<folder>.ograf.json` (`src/main/templates/OGrafManager.ts:189`). Studio names its manifest `project-<uuid>-rt.ograf.json`, and the spec allows any `*.ograf.json` name. A look containing an unrenamed Studio folder imports with that graphic silently missing. After renaming the manifest to match the folder, the graphic loads and its `v_olgrafik_desk` resolves with no warnings (verified).
+8. Not tested: executing a Studio graphic in a browser. That step was blocked in this session, so a manual check is part of Task 1.
 
 ## Global Constraints
 
@@ -192,6 +193,37 @@ git add src/main/templates/TemplatePackages.ts src/main/templates/__tests__/Temp
 git commit -m "Graphics library: show licences and render requirements before import"
 ```
 
+### Task 4: Find a graphic whose manifest isn't named after its folder
+
+**Files:**
+- Modify: `src/main/templates/OGrafManager.ts:186-200` (manifest lookup per candidate folder)
+- Modify: `docs/DESIGN-IN-OGRAF-STUDIO.md` (step 5: renaming the manifest file becomes optional; the `id` and the datasource file name still go together)
+- Test: `src/main/templates/__tests__/TemplatePackages.test.ts`
+
+**Interfaces:**
+- Consumes: nothing new. Lookup order per folder: `<folder>.ograf.json`, then `manifest.json` (existing), then the folder's only `*.ograf.json` file. If there are two or more and none is named after the folder, skip the folder and log a warning naming the folder and the files.
+
+- [ ] **Step 1: Write the failing tests.** Import a look zip that contains `mylook/set.json` plus a graphic folder `mylook/strap/` holding `project-1-rt.ograf.json` (a valid manifest with `v_olgrafik_set: 'mylook'`) and `main.js`. Expect `manager.getAllTemplates().some(t => t.directoryName === 'sets/mylook/strap')` to be `true`. In a second case, the folder holds two `*.ograf.json` files and expect it to be skipped.
+
+- [ ] **Step 2: Run them and check that they fail**
+
+Run: `npx vitest run src/main/templates/__tests__/TemplatePackages.test.ts`
+Expected: FAIL, the graphic is not found.
+
+- [ ] **Step 3: Implement the lookup order above.**
+
+- [ ] **Step 4: Run the full suite**
+
+Run: `npx vitest run`
+Expected: all pass.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/main/templates/OGrafManager.ts src/main/templates/__tests__/TemplatePackages.test.ts docs/DESIGN-IN-OGRAF-STUDIO.md
+git commit -m "Templates: find a graphic's only .ograf.json whatever its name"
+```
+
 ---
 
 ## Follow-up plans (separate, one per subsystem)
@@ -203,4 +235,5 @@ These come from what OGraf Studio does well. Each one needs its own short design
 3. **Update only what changed.** When new timing data arrives, cross-fade only the cells whose value changed. Add a policy for data that arrives mid-transition: finish the current fade first, or jump to the newest data. This matters when radio-control times arrive in bursts.
 4. **Zones become lanes.** Today `v_olgrafik_zone` clashes are fixed rules. Studio lets the designer group graphics into lanes that replace each other, with a house transition per lane. Decide whether our looks need that much control.
 5. **Live preview on the local network.** A fixed URL and QR code for a director or commentator view of what is on air. This builds on the existing web output.
-6. **Try-it pages for looks.** On the website's looks page, run each look's graphics with test data so visitors can take them in and out before downloading.
+6. **A helper that adopts a Studio export.** Given an `.ograf.zip`, a look and a kind, it would rename the files, add the `v_olgrafik_*` fields and copy a matching datasource file, automating step 5 of `docs/DESIGN-IN-OGRAF-STUDIO.md`. Worth doing once someone has made a few graphics by hand.
+7. **Try-it pages for looks.** On the website's looks page, run each look's graphics with test data so visitors can take them in and out before downloading.
