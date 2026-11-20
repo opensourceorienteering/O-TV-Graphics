@@ -631,6 +631,13 @@ export class PlaybackEngine {
     const pending = this.removalTimeouts.get(graphicId);
     if (pending) clearTimeout(pending);
     const timeoutId = setTimeout(async () => {
+      // Only this removal's own handle: a newer one may have been scheduled since
+      if (this.removalTimeouts.get(graphicId) === timeoutId) this.removalTimeouts.delete(graphicId);
+      // Shown again meanwhile (e.g. a Show raced the clash that cleared it): keep it on air
+      if (this.activeGraphics.get(graphicId)?.isPlaying) {
+        logger.debug('Graphic back on air, removal skipped', { graphicId });
+        return;
+      }
       try {
         await this.sendCommand('dispose', { id: graphicId });
         logger.debug('Graphic disposed after stop animation', { graphicId });
@@ -640,8 +647,8 @@ export class PlaybackEngine {
           error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
+      // The renderers no longer have it: forget it, so the next Show loads it afresh
       this.activeGraphics.delete(graphicId);
-      this.removalTimeouts.delete(graphicId);
       logger.info('Graphic removed from active graphics', { graphicId });
     }, 1500); // Wait for stop animation + dispose
     this.removalTimeouts.set(graphicId, timeoutId);
