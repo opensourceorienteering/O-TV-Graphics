@@ -101,5 +101,8 @@ export function buildGraphicsCsp(o: GraphicsCspOptions): string {
     'frame-src': [...o.allowed],
     'connect-src': [...local, `ws://127.0.0.1:${o.wsPort}`, `ws://${o.wsHost}:${o.wsPort}`, ...o.allowed, ...o.allowed.map((a) => a.replace(/^https:/, 'wss:'))],
   };
-  return render(appDirectives(o).map(([name, sources]) => [name, [...sources, ...(extra[name] ?? [])]]));
+  // The operator UI's outside addresses (a documentation script library) are not for graphics:
+  // a graphics page reaches only this computer and the allowlist
+  const notOutside = (source: string) => !/^https:\/\//.test(source);
+  return render(appDirectives(o).map(([name, sources]) => [name, [...sources.filter(notOutside), ...(extra[name] ?? [])]]));
 }

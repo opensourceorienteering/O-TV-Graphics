@@ -8,6 +8,7 @@ import type { EventorLogoSettings } from '../data/ClubLogoService';
 import path from 'path';
 import { app } from 'electron';
 import { getLogger } from './logger';
+import { normalizeAllowedOrigin } from '../security/csp';
 import { DataSourceConfig } from '../../shared/types/dataSource';
 import { BUILT_IN_DATA_SOURCES, mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 
@@ -202,6 +203,17 @@ export function getConfig(): AppConfig {
   return config;
 }
 
+/** The allowlist as stored, checked again: a hand-edited entry must never reach the content rules */
+function cleanAllowedOrigins(list: unknown): string[] {
+  const out = new Set<string>();
+  for (const entry of Array.isArray(list) ? list : []) {
+    if (typeof entry !== 'string') continue;
+    const result = normalizeAllowedOrigin(entry);
+    if (result.ok) out.add(result.value);
+  }
+  return [...out].sort();
+}
+
 function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig {
   const merged = {
     general: { ...defaults.general, ...loaded.general },
@@ -211,7 +223,7 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
     ),
     ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
     ...(loaded.clubNames ? { clubNames: loaded.clubNames } : {}),
-    ...(loaded.graphicsAllowedOrigins ? { graphicsAllowedOrigins: loaded.graphicsAllowedOrigins } : {}),
+    ...(loaded.graphicsAllowedOrigins ? { graphicsAllowedOrigins: cleanAllowedOrigins(loaded.graphicsAllowedOrigins) } : {}),
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }
