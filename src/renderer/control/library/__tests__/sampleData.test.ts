@@ -45,4 +45,17 @@ describe('sample race data for previews', () => {
     expect(clockTime(race, slower, 1_005_000)).toBe(before);
     expect(clockTime(race, slower, 1_006_000)).toBe(before + 1000);
   });
+  it('fills empty typed text fields with sample values so the graphic is not blank', () => {
+    const t = tpl({ params: [], feeds: [] }, {
+      name: { type: 'string', title: 'Name' }, club: { type: 'string' }, title: { type: 'string', title: 'Role' },
+      count: { type: 'number' }, kept: { type: 'string', default: '' },
+    });
+    const data = sampleGraphicData(t, race, race.firstStart);
+    expect(data).toMatchObject({ name: 'Tove Alexandersson', club: 'Stora Tuna OK', title: 'Role', kept: '' });
+    expect(data.count).toBeUndefined();
+  });
+  it('leaves typed fields of data graphics empty, so they fall back to their data', () => {
+    const t = tpl({ params: ['class'], feeds: ['timing'] }, { title: { type: 'string', title: 'Title' } });
+    expect(sampleGraphicData(t, race, race.end - 60_000).title).toBeUndefined();
+  });
 });

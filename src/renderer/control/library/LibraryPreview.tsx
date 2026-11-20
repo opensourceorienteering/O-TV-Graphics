@@ -119,7 +119,7 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
 
   return (
     <aside className="library-preview studio-panel" aria-label={tr("Preview")}>
-      <h3>{template.manifest.name}</h3>
+      <h3>{template.desk?.label ?? template.manifest.name}</h3>
       <div className="monitor-frame" ref={frame}>
         <div className="monitor-stage" ref={stage} />
       </div>
