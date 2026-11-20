@@ -20,6 +20,14 @@
   "asarUnpack": [
     "node_modules/@stagetimerio/grandiose/dist/**/*"
   ],
+  "fileAssociations": [
+    {
+      "ext": "splitlook",
+      "name": "Split Control look",
+      "role": "Viewer",
+      "mimeType": "application/x-splitlook"
+    }
+  ],
   "npmRebuild": false,
   "buildDependenciesFromSource": false,
   "nodeGypRebuild": false,

@@ -22,6 +22,7 @@ import { EventPlan } from "./events/EventPlan";
 import { WorkspaceNav } from "./events/WorkspaceHeader";
 import { LiveDesk } from "./desk/LiveDesk";
 import { DeskMonitorsWindow } from "./desk/DeskMonitorsWindow";
+import { LookFileOpener } from "./library/LookFileOpener";
 import "./shared.css";
 
 function WorkspaceScreen({ children }: { children: ReactNode }) {
@@ -48,6 +49,7 @@ export function App() {
   return (
     <ToastProvider>
       <Router>
+        <LookFileOpener />
         <Routes>
           <Route
             path="/production/:projectId/:rundownId"
