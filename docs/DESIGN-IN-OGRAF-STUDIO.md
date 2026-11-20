@@ -105,11 +105,12 @@ project-295afc43-…_thumb.png
 Lower third.html                   a stand-alone preview page; delete it
 ```
 
-**Rename consistently.** Split Control finds a graphic only when its manifest is named after
-its folder, and the timing-data file is named after the manifest's `id`. Pick one name, such as
-`mylook-guest-strap`, and use it for all three: the folder, the manifest file
-(`mylook-guest-strap.ograf.json`) and the `"id"` inside the manifest. Studio's code doesn't use
-the id, so changing it is safe.
+**Give it an id.** Pick a name such as `mylook-guest-strap`. Use it for the folder and for the
+`"id"` inside the manifest, and name the timing-data file after the id
+(`mylook-guest-strap.datasource.json`). Studio's code doesn't use the id, so changing it is
+safe. The manifest file can keep Studio's name: Split Control uses a folder's only
+`.ograf.json`, whatever it's called. (Renaming it to `mylook-guest-strap.ograf.json` also works,
+and is needed if the folder ever holds two manifests.)
 
 **Add our fields to the manifest**, next to the existing ones:
 

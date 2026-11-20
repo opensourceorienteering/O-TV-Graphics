@@ -14,6 +14,7 @@ import * as path from 'path';
 import { unzipSync, zipSync, type Zippable } from 'fflate';
 import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 import type { OGrafManager } from './OGrafManager';
+import { pickManifestFile } from './manifestFile';
 
 /** Refuse zips that unpack to more than this (fonts and images included) */
 const MAX_UNPACKED_BYTES = 200 * 1024 * 1024;
@@ -131,13 +132,19 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
     if (!isValidId(id)) fail(`"${id}" can't be used as a look id: use letters, digits, - and _`);
     if (looks.some((l) => l.id === id)) fail(`The zip contains the look "${id}" twice`);
     const graphicIds: string[] = [];
-    for (const [file, data] of lookFiles) {
-      const m = /^([^/]+)\/\1\.ograf\.json$/.exec(file);
-      if (!m) continue;
-      const manifest = readJson(data, file);
+    const byFolder = new Map<string, string[]>();
+    for (const file of lookFiles.keys()) {
+      const parts = file.split('/');
+      if (parts.length !== 2) continue;
+      byFolder.set(parts[0], [...(byFolder.get(parts[0]) ?? []), parts[1]]);
+    }
+    for (const [folder, names] of byFolder) {
+      const pick = pickManifestFile(folder, names);
+      if (!pick || 'ambiguous' in pick || pick.file === 'manifest.json') continue;
+      const manifest = readJson(lookFiles.get(`${folder}/${pick.file}`), `${folder}/${pick.file}`);
       if (manifest?.id) graphicIds.push(String(manifest.id));
     }
-    if (!graphicIds.length) fail(`The look "${id}" has no graphics (no <graphic>/<graphic>.ograf.json)`);
+    if (!graphicIds.length) fail(`The look "${id}" has no graphics (no graphic folder with an .ograf.json)`);
     looks.push({ id, name: String(meta.name || id), description: meta.description, files: lookFiles, graphicIds });
   }
 

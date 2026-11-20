@@ -138,6 +138,32 @@ describe('looks as zip files', () => {
     expect(plate).toMatchObject({ setId: 'custom', directoryName: 'my-plate' });
   });
 
+  it('finds a graphic whose manifest is not named after its folder', async () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) files[`mylook/strap/${f}`] = fs.readFileSync(path.join(pattern, f));
+    files['mylook/strap/project-1-rt.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'project-1-rt', name: 'Strap', v_olgrafik_set: 'mylook' }));
+    await importTemplateZip(manager, zipSync(files));
+    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/strap')).toBe(true);
+  });
+
+  it('skips a graphic folder with two manifests, neither named after the folder', async () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) {
+      files[`mylook/ok/${f}`] = fs.readFileSync(path.join(pattern, f));
+      files[`mylook/twice/${f}`] = fs.readFileSync(path.join(pattern, f));
+    }
+    files['mylook/ok/ok.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'ok-1', name: 'Ok' }));
+    files['mylook/twice/a.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-a', name: 'A' }));
+    files['mylook/twice/b.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-b', name: 'B' }));
+    await importTemplateZip(manager, zipSync(files));
+    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/ok')).toBe(true);
+    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/twice')).toBe(false);
+  });
+
   it('rejects unsafe paths, damaged files and zips without graphics', () => {
     expect(() => readTemplateZip(zipSync({ '../evil/set.json': strToU8('{}') }))).toThrow(/unsafe path/);
     expect(() => readTemplateZip(strToU8('not a zip'))).toThrow(/not a zip/);
