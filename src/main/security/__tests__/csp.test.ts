@@ -52,4 +52,9 @@ describe('content rules', () => {
     const g = buildGraphicsCsp({ dev: false, webPort: 5657, wsPort: 5656, wsHost: 'localhost', allowed: [] });
     expect(directive(g, 'connect-src')).toContain('ws://127.0.0.1:5656');
   });
+  it('gives graphics pages no outside address that is not on the allowlist', () => {
+    const g = buildGraphicsCsp({ dev: false, webPort: 5657, wsPort: 5656, wsHost: 'localhost', allowed: [] });
+    expect(g).not.toContain('cdnjs.cloudflare.com');
+    expect(g).not.toMatch(/https:\/\//);
+  });
 });
