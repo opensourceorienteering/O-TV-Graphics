@@ -13,6 +13,8 @@ import { LookPage } from "../library/LookPage";
 import { lookCards, needsAttention, searchGraphics } from "../library/libraryModel";
 import "../library/library.css";
 import { ImportConfirm, type ImportPreview } from "../library/ImportConfirm";
+import type { OpenedLookFile } from "../library/LookFileOpener";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import type {
   OGrafTemplateInfo,
@@ -70,6 +72,17 @@ export function TemplatesView() {
   /** The picked file waiting for the operator's confirmation */
   const [pending, setPending] = useState<{ filePath: string; preview: ImportPreview } | null>(null);
 
+  // A .splitlook opened from the system (LookFileOpener brought us here with it)
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const opened = (location.state as { openLook?: OpenedLookFile } | null)?.openLook;
+    if (!opened) return;
+    setPending(opened);
+    // Shown once: going back here later doesn't ask again
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
   const importLook = async () => {
     setBusy(true);
     try {
@@ -93,6 +106,7 @@ export function TemplatesView() {
       const names = [
         ...result.preview.looks.map((l: { name: string }) => l.name),
         ...result.preview.graphics.map((g: { name: string }) => g.name),
+        ...(result.preview.additions ?? []).map((a: { lookId: string; lookName: string | null; graphics: number }) => `${a.lookName ?? a.lookId} (+${a.graphics})`),
       ].join(", ");
       toast.showToast("success", `${tr("Imported")}: ${names}`);
       await loadTemplates();

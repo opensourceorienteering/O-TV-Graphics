@@ -42,6 +42,7 @@ import { validateNodeVersionOrExit } from './utils/version-check';
 import { initDataSourceRegistry, getDataSourceRegistry } from './data/DataSourceRegistry';
 import { registerBuiltInDataSources } from './data/sources';
 import { claimSingleInstance } from './utils/singleInstance';
+import { lookFileFromArgv, setPendingLookFile } from './utils/lookFiles';
 
 const logger = initLogger();
 
@@ -443,15 +444,40 @@ if (process.env.OLG_REMOTE_DEBUGGING_PORT) {
 // One app at a time; in development the newest start takes over and orphans quit themselves
 let instanceClaimed = false;
 
+/** A .splitlook file opened from the system: the library shows its import confirmation */
+function openLookFile(filePath: string) {
+  logger.info('Look file opened from the system', { filePath });
+  setPendingLookFile(filePath);
+  const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  // Before the window has loaded, the operator UI asks for the file when it starts
+  if (window && !window.webContents.isLoading()) window.webContents.send('fromMain', { type: 'openLookFile' });
+}
+
+// macOS hands files over in an event, also before the app is ready (opened while closed)
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  if (filePath.toLowerCase().endsWith('.splitlook')) openLookFile(filePath);
+});
+
+// Windows and Linux: the file is on the command line of the first start
+{
+  const startFile = lookFileFromArgv(process.argv);
+  if (startFile) setPendingLookFile(startFile);
+}
+
 app.whenReady().then(async () => {
   instanceClaimed = claimSingleInstance({
     dev: !app.isPackaged,
-    focus: () => {
+    focus: (argv) => {
       const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
-      if (!window) return;
-      if (window.isMinimized()) window.restore();
-      window.show();
-      window.focus();
+      if (window) {
+        if (window.isMinimized()) window.restore();
+        window.show();
+        window.focus();
+      }
+      // Opening a .splitlook while the app runs starts a second copy with the file: take it over
+      const file = lookFileFromArgv(argv);
+      if (file) openLookFile(file);
     },
     log: (message) => logger.info(message)
   });

@@ -14,6 +14,7 @@ import {
   removeAddition,
   removeImportedLook,
 } from '../templates/TemplatePackages';
+import { takePendingLookFile } from '../utils/lookFiles';
 import { listEvents } from '../events/EventService';
 import { logger } from '../utils/logger';
 import { getConfig, saveConfig } from '../utils/config';
@@ -181,6 +182,20 @@ export function registerTemplateHandlers(): void {
       return { success: true, filePath, preview };
     } catch (error) {
       logger.warn('Look import check failed', { error: errorMessage(error) });
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  /** A .splitlook opened from the system and waiting for the operator: describe it, once */
+  ipcMain.handle('templates:pendingOpen', async () => {
+    const filePath = takePendingLookFile();
+    if (!filePath) return { success: true, data: null };
+    try {
+      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath), getConfig().graphicsAllowedOrigins ?? []);
+      pickedImport.remember(filePath);
+      return { success: true, data: { filePath, preview } };
+    } catch (error) {
+      logger.warn('Opened look file check failed', { filePath, error: errorMessage(error) });
       return { success: false, error: errorMessage(error) };
     }
   });
