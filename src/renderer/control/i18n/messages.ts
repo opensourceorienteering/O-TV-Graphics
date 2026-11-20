@@ -3319,5 +3319,61 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "This look is not installed. Import it in Graphics library, or choose another look.": {
     "sv": "Temat är inte installerat. Importera det i Grafikbibliotek, eller välj ett annat tema.",
     "nb": "Temaet er ikke installert. Importer det i Grafikkbibliotek, eller velg et annet tema."
+  },
+  "Sample race speed": {
+    "sv": "Fart för exempelloppet",
+    "nb": "Fart for eksempelløpet"
+  },
+  "Sample race": {
+    "sv": "Exempellopp",
+    "nb": "Eksempelløp"
+  },
+  "Data used": {
+    "sv": "Data som används",
+    "nb": "Data som brukes"
+  },
+  "typed fields only": {
+    "sv": "bara inskrivna fält",
+    "nb": "bare innskrevne felt"
+  },
+  "graphic": {
+    "sv": "grafik",
+    "nb": "grafikk"
+  },
+  "Fix…": {
+    "sv": "Åtgärda…",
+    "nb": "Fiks…"
+  },
+  "The import helper comes in a later version": {
+    "sv": "Importhjälpen kommer i en senare version",
+    "nb": "Importhjelpen kommer i en senere versjon"
+  },
+  "Not in a look": {
+    "sv": "Inte i något tema",
+    "nb": "Ikke i noe tema"
+  },
+  "Not in a look yet: see Needs attention": {
+    "sv": "Inte i något tema än: se Behöver åtgärdas",
+    "nb": "Ikke i noe tema ennå: se Trenger oppfølging"
+  },
+  "Try another name.": {
+    "sv": "Prova ett annat namn.",
+    "nb": "Prøv et annet navn."
+  },
+  "Looks": {
+    "sv": "Teman",
+    "nb": "Temaer"
+  },
+  "steps": {
+    "sv": "steg",
+    "nb": "steg"
+  },
+  "look": {
+    "sv": "tema",
+    "nb": "tema"
+  },
+  "looks": {
+    "sv": "teman",
+    "nb": "temaer"
   }
 };
