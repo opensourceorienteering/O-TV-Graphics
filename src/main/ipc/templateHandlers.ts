@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import { getTemplateManager } from '../templates/OGrafManager';
 import {
   exportLookZip,
+  lookFileName,
   importTemplateZip,
   previewTemplateZip,
   removeImportedLook,
@@ -160,7 +161,7 @@ export function registerTemplateHandlers(): void {
     }
   });
 
-  // --- import / export looks as zip files ---
+  // --- import / export looks as .splitlook (zip) files ---
 
   /** Choose a zip and describe what importing it would do (nothing is installed yet) */
   ipcMain.handle('templates:pickImport', async (event) => {
@@ -169,7 +170,7 @@ export function registerTemplateHandlers(): void {
       const options: Electron.OpenDialogOptions = {
         title: 'Import look',
         properties: ['openFile'],
-        filters: [{ name: 'Look or OGraf graphic (zip)', extensions: ['zip'] }],
+        filters: [{ name: 'Look or OGraf graphic (.splitlook, .zip)', extensions: ['splitlook', 'zip'] }],
       };
       const pick = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
       if (pick.canceled || !pick.filePaths[0]) return { success: true, cancelled: true };
@@ -212,10 +213,11 @@ export function registerTemplateHandlers(): void {
       const manager = getTemplateManager();
       const zip = exportLookZip(manager, setId);
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+      const lookName = manager.getTemplateSets().find((s) => s.id === setId)?.name || setId;
       const options: Electron.SaveDialogOptions = {
         title: 'Export look',
-        defaultPath: `${setId}.zip`,
-        filters: [{ name: 'Zip', extensions: ['zip'] }],
+        defaultPath: `${lookFileName(lookName)}.splitlook`,
+        filters: [{ name: 'Split Control look', extensions: ['splitlook'] }, { name: 'Zip', extensions: ['zip'] }],
       };
       const save = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
       if (save.canceled || !save.filePath) return { success: true, cancelled: true };

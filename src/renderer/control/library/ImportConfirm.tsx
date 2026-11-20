@@ -10,6 +10,8 @@ import "../components/DataSourceManager.css";
 export interface ImportPreview {
   looks: Array<{ id: string; name: string; graphics: number; replaces?: "imported" | "built-in" }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
+  /** Graphics added to a look; lookName is null when this computer doesn't have the look */
+  additions?: Array<{ lookId: string; lookName: string | null; graphics: number }>;
   internet?: string[];
   internetRefused?: Array<{ input: string; reason: string }>;
 }
@@ -26,6 +28,11 @@ export function importLines(preview: ImportPreview): string[] {
     ),
     ...preview.graphics.map(
       (g) => `${g.name}: ${g.replaces ? tr("replaces the imported graphic") : tr("new graphic")}`,
+    ),
+    ...(preview.additions ?? []).map((a) =>
+      a.lookName
+        ? `${a.lookName}: ${tr("adds graphics to this look")} (${a.graphics})`
+        : `${a.lookId}: ${tr("adds graphics to a look this computer doesn't have. They appear under Needs attention.")} (${a.graphics})`,
     ),
   ];
 }
@@ -55,7 +62,7 @@ export function ImportConfirm({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <h3 id="import-confirm-title">{tr("Import this zip?")}</h3>
+          <h3 id="import-confirm-title">{tr("Import this file?")}</h3>
           <button className="icon-button" aria-label={tr("Cancel")} onClick={onCancel}>
             ×
           </button>
