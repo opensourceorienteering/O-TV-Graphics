@@ -219,6 +219,12 @@ function initWebSocket() {
  * Handle graphics commands from WebSocket
  */
 async function handleCommand(data: any) {
+  // The internet allowlist changed: reload to take the new content rules (sent only when nothing is on air)
+  if (data.spxcmd === "graphics:reloadPage") {
+    window.location.reload();
+    return;
+  }
+
   // Filter for graphics commands only
   if (data.spxcmd !== "graphics:command") {
     logger.log("[WebOutput] ⏭️  Ignoring non-graphics message:", data.spxcmd);

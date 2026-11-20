@@ -135,6 +135,12 @@ function initWebSocket() {
 async function handlePlaybackCommand(data: any) {
   console.log("[Graphics] 📨 Received message:", JSON.stringify(data, null, 2));
 
+  // The internet allowlist changed: reload to take the new content rules (sent only when nothing is on air)
+  if (data.spxcmd === "graphics:reloadPage") {
+    window.location.reload();
+    return;
+  }
+
   // Filter for graphics commands only
   if (data.spxcmd !== "graphics:command") {
     console.log("[Graphics] ⏭️  Ignoring non-graphics message:", data.spxcmd);

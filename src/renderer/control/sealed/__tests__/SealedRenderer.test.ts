@@ -71,4 +71,22 @@ describe('sealed renderer', () => {
     await second;
     expect(r.isLoaded('x')).toBe(true);
   });
+  it('reloads the frame before its next graphic after the internet allowlist changed', async () => {
+    const env = fakeEnv();
+    const r = new SealedRenderer(env.host, previewFrameUrl(5657), { win: env.win, doc: env.doc });
+    env.deliver({ ready: true });
+    const first = r.loadGraphic('x', {} as any, 'sets/s/a', {});
+    await tick();
+    env.deliver({ requestId: env.posted.at(-1).requestId, ok: true });
+    await first;
+    const sets = env.iframe.srcSets;
+    SealedRenderer.rulesChanged();
+    const again = r.loadGraphic('x', {} as any, 'sets/s/a', {});
+    await tick();
+    expect(env.iframe.srcSets).toBe(sets + 1);
+    env.deliver({ ready: true });
+    await tick();
+    env.deliver({ requestId: env.posted.at(-1).requestId, ok: true });
+    await again;
+  });
 });
