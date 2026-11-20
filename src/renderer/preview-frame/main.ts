@@ -5,6 +5,7 @@
  */
 import { OGrafRenderer } from "../graphics/ograf-renderer";
 import { createFrameHandler, type FrameRequest } from "./frameProtocol";
+import { createBlockReporter } from "../graphics/blockReporter";
 
 const params = new URLSearchParams(window.location.search);
 const webPort = params.get("webPort") || window.location.port || "5657";
@@ -13,6 +14,15 @@ const templatesBase = `${window.location.protocol}//${window.location.hostname}:
 
 const renderer = new OGrafRenderer(document.getElementById("graphics-container")!, templatesBase);
 const handle = createFrameHandler(renderer);
+
+// What the content rules block here goes to the operator UI (Settings → Internet access)
+document.addEventListener(
+  "securitypolicyviolation",
+  createBlockReporter(
+    (blocked) => window.parent.postMessage({ blocked }, "*"),
+    () => renderer.getLoadedGraphics().map((g) => g.manifest.name),
+  ),
+);
 
 window.addEventListener("message", (event) => {
   if (event.source !== window.parent) return;

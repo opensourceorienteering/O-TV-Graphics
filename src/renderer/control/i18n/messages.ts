@@ -3475,5 +3475,29 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "These addresses were asked for but can't be allowed, so graphics won't reach them:": {
     "sv": "De här adresserna efterfrågades men kan inte tillåtas, så grafiken når dem inte:",
     "nb": "Disse adressene ble etterspurt, men kan ikke tillates, så grafikken når dem ikke:"
+  },
+  "Blocked recently": {
+    "sv": "Nyligen blockerade",
+    "nb": "Nylig blokkert"
+  },
+  "Graphics tried to reach these addresses and were refused. Allow only what you trust.": {
+    "sv": "Grafiken försökte nå de här adresserna och nekades. Tillåt bara det du litar på.",
+    "nb": "Grafikken prøvde å nå disse adressene og ble nektet. Tillat bare det du stoler på."
+  },
+  "Last": {
+    "sv": "Senast",
+    "nb": "Sist"
+  },
+  "Allow": {
+    "sv": "Tillåt",
+    "nb": "Tillat"
+  },
+  "Clear list": {
+    "sv": "Töm listan",
+    "nb": "Tøm listen"
+  },
+  "Nothing blocked right now. Show a graphic in a preview to see what it tries to reach.": {
+    "sv": "Inget blockerat just nu. Visa en grafik i en förhandsvisning för att se vad den försöker nå.",
+    "nb": "Ingenting blokkert akkurat nå. Vis en grafikk i en forhåndsvisning for å se hva den prøver å nå."
   }
 };

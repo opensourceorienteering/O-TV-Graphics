@@ -26,7 +26,12 @@ export function sealedOutputUrl(url: string): string {
 interface Env {
   win: Pick<Window, "addEventListener" | "removeEventListener">;
   doc: Pick<Document, "createElement">;
+  /** Where blocked-address reports from the frame go (Settings → Internet access) */
+  reportBlocked?: (report: { origin: string; graphics: string[] }) => void;
 }
+
+const reportThroughApp = (report: { origin: string; graphics: string[] }) =>
+  void window.electronAPI?.invoke("graphicsAccess:reportBlocked", report).catch(() => undefined);
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
@@ -60,7 +65,7 @@ export class SealedRenderer implements PreviewRenderer {
   constructor(
     host: HTMLElement,
     private frameUrl: string,
-    private env: Env = { win: window, doc: document },
+    private env: Env = { win: window, doc: document, reportBlocked: reportThroughApp },
   ) {
     this.iframe = env.doc.createElement("iframe") as HTMLIFrameElement;
     this.iframe.setAttribute("title", "Graphics preview");
@@ -98,6 +103,11 @@ export class SealedRenderer implements PreviewRenderer {
   private onMessage = (event: MessageEvent) => {
     // Only the frame we created may answer (origin strings don't work for file:// pages)
     if (event.source !== this.iframe.contentWindow) return;
+    const blocked = (event.data as { blocked?: { origin: string; graphics: string[] } })?.blocked;
+    if (blocked) {
+      this.env.reportBlocked?.({ origin: String(blocked.origin), graphics: Array.isArray(blocked.graphics) ? blocked.graphics.map(String) : [] });
+      return;
+    }
     const data = event.data as FrameReply | { ready?: boolean; gen?: number };
     if ((data as { ready?: boolean })?.ready) {
       if ((data as { gen?: number }).gen !== this.gen) return; // from the page before a reload

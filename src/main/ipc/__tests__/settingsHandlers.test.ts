@@ -37,4 +37,20 @@ describe('graphics internet allowlist', () => {
     await invoke('settings:update', { general: { loglevel: 'debug' } });
     expect(mock.saved.at(-1).graphicsAllowedOrigins).toEqual(['https://a.example']);
   });
+
 });
+
+describe('blocked addresses', () => {
+  it('lists what graphics were refused, without what is allowed, and can be cleared', async () => {
+    await invoke('graphicsAccess:clearBlocked');
+    await invoke('graphicsAccess:reportBlocked', { origin: 'https://tile.openstreetmap.org', graphics: ['Map strap'] });
+    await invoke('graphicsAccess:reportBlocked', { origin: 'https://a.example', graphics: ['GPS'] });
+    await invoke('graphicsAccess:reportBlocked', { origin: 'javascript:alert(1)', graphics: [] });
+    await invoke('graphicsAccess:set', ['https://a.example']);
+    const list = await invoke('graphicsAccess:blocked');
+    expect(list).toMatchObject({ success: true, data: [{ origin: 'https://tile.openstreetmap.org', graphics: ['Map strap'], count: 1 }] });
+    await invoke('graphicsAccess:clearBlocked');
+    expect((await invoke('graphicsAccess:blocked')).data).toEqual([]);
+  });
+});
+
