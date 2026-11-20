@@ -1,4 +1,5 @@
 import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
+import { pickManifestFile } from './manifestFile';
 /**
  * OGRAF Template Manager
  * Discovers, loads, and manages OGRAF templates
@@ -183,28 +184,29 @@ export class OGrafManager {
         }
       }
 
-      // Check for manifest files in parallel; .ograf.json first (spec), manifest.json as fallback
+      // Find each folder's manifest in parallel (see pickManifestFile for the order)
       const templateDirs = await Promise.all(
         candidates.map(async ({ dir: templateDir, name, setId, root }) => {
-          const ografManifestPath = path.join(templateDir, `${name}.ograf.json`);
+          let names: string[];
           try {
-            await fs.access(ografManifestPath);
-            this.setOfManifest.set(ografManifestPath, setId);
-            this.rootOfManifest.set(ografManifestPath, root);
-            return ografManifestPath;
+            names = (await fs.readdir(templateDir, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name);
           } catch {
-            const legacyManifestPath = path.join(templateDir, 'manifest.json');
-            try {
-              await fs.access(legacyManifestPath);
-              logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
-              this.setOfManifest.set(legacyManifestPath, setId);
-              this.rootOfManifest.set(legacyManifestPath, root);
-              return legacyManifestPath;
-            } catch {
-              logger.debug('Skipping directory without manifest', { dir: name });
-              return null;
-            }
+            return null;
           }
+          const pick = pickManifestFile(name, names);
+          if (!pick) {
+            logger.debug('Skipping directory without manifest', { dir: name });
+            return null;
+          }
+          if ('ambiguous' in pick) {
+            logger.warn('Skipping graphic folder with several manifests: keep one .ograf.json, or name it after the folder', { dir: templateDir, files: pick.ambiguous });
+            return null;
+          }
+          if (pick.file === 'manifest.json') logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
+          const manifestPath = path.join(templateDir, pick.file);
+          this.setOfManifest.set(manifestPath, setId);
+          this.rootOfManifest.set(manifestPath, root);
+          return manifestPath;
         })
       );
 
