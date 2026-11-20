@@ -14,6 +14,29 @@ export function raceTimeAt(race: SampleRace, startedAt: number, now: number, spe
   return race.firstStart + (((now - startedAt) * speed) % span);
 }
 
+/** A preview's race clock: real time it (virtually) started, and how many times real time it runs */
+export interface PreviewClock {
+  startedAt: number;
+  speed: number;
+}
+
+/** How far into the race a preview opens: most runners are out, the first have finished */
+const OPEN_AT_MS = 50 * 60_000;
+
+export function startClock(speed: number, now = Date.now()): PreviewClock {
+  return { startedAt: now - OPEN_AT_MS / speed, speed };
+}
+
+export function clockTime(race: SampleRace, clock: PreviewClock, now = Date.now()): number {
+  return raceTimeAt(race, clock.startedAt, now, clock.speed);
+}
+
+/** The same race moment, running at a new speed from now on */
+export function changeClockSpeed(race: SampleRace, clock: PreviewClock, speed: number, now = Date.now()): PreviewClock {
+  const at = clockTime(race, clock, now);
+  return { startedAt: now - (at - race.firstStart) / speed, speed };
+}
+
 /** The runner who started most recently at `simNow` (the first runner before the start) */
 function lastStarted(race: SampleRace, simNow: number) {
   const started = race.runners.filter((r) => r.startTimeMs <= simNow);

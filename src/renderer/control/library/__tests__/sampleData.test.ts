@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createRace } from '../../../../../site/preview/sim.js';
-import { raceTimeAt, sampleGraphicData } from '../sampleData';
+import { changeClockSpeed, clockTime, raceTimeAt, sampleGraphicData, startClock } from '../sampleData';
 import type { OGrafTemplateInfo } from '../../../../shared/types/ograf';
 import type { DeskTemplate } from '../../../../shared/desk';
 
@@ -31,5 +31,18 @@ describe('sample race data for previews', () => {
   it('uses schema defaults for typed fields', () => {
     const data = sampleGraphicData(tpl({ params: [], feeds: [] }, { headline: { type: 'string', default: 'Jane Doe' } }), race, race.firstStart);
     expect(data.headline).toBe('Jane Doe');
+  });
+  it('starts the preview clock late in the race, at the chosen speed', () => {
+    const clock = startClock(20, 1_000_000);
+    expect(clock.speed).toBe(20);
+    expect(clockTime(race, clock, 1_000_000)).toBe(race.firstStart + 50 * 60_000);
+  });
+  it('keeps the race at the same moment when the speed changes', () => {
+    const clock = startClock(20, 1_000_000);
+    const before = clockTime(race, clock, 1_005_000);
+    const slower = changeClockSpeed(race, clock, 1, 1_005_000);
+    expect(slower.speed).toBe(1);
+    expect(clockTime(race, slower, 1_005_000)).toBe(before);
+    expect(clockTime(race, slower, 1_006_000)).toBe(before + 1000);
   });
 });
