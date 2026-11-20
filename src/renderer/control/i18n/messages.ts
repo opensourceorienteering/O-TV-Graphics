@@ -3375,5 +3375,9 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "looks": {
     "sv": "teman",
     "nb": "temaer"
+  },
+  "Version": {
+    "sv": "Version",
+    "nb": "Versjon"
   }
 };

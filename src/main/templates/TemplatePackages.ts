@@ -140,7 +140,12 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
     }
     for (const [folder, names] of byFolder) {
       const pick = pickManifestFile(folder, names);
-      if (!pick || 'ambiguous' in pick || pick.file === 'manifest.json') continue;
+      if (!pick) continue;
+      if ('ambiguous' in pick) {
+        fail(`The graphic folder "${folder}" in the look "${id}" has several manifests (${pick.ambiguous.join(', ')}): keep one .ograf.json, or name it after the folder`);
+        continue;
+      }
+      if (pick.file === 'manifest.json') continue;
       const manifest = readJson(lookFiles.get(`${folder}/${pick.file}`), `${folder}/${pick.file}`);
       if (manifest?.id) graphicIds.push(String(manifest.id));
     }

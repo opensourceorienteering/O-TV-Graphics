@@ -9,15 +9,15 @@ import { OGrafRenderer } from "../../graphics/ograf-renderer";
 import { call } from "../events/api";
 import { createRace } from "../../../../site/preview/sim.js";
 import { changeClockSpeed, clockTime, sampleGraphicData, startClock } from "./sampleData";
+import { PreviewSession } from "./previewSession";
+import { graphicDetails } from "./libraryModel";
 import type { PreviewClock } from "./sampleData";
 import type { OGrafTemplateInfo } from "../../../shared/types/ograf";
-
-const ID = "library-preview";
 
 export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
   const frame = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const renderer = useRef<OGrafRenderer | null>(null);
+  const session = useRef<PreviewSession | null>(null);
   const race = useRef(createRace());
   const clock = useRef<PreviewClock | null>(null);
   const [origin, setOrigin] = useState("");
@@ -52,30 +52,30 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
   }, []);
 
   // A new renderer for each graphic; shown straight away
+  // A new session for each graphic; it shows the graphic once loaded
   useEffect(() => {
     if (!origin || !stage.current) return;
     const host = document.createElement("div");
     host.className = "monitor-graphics";
     stage.current.appendChild(host);
-    const r = new OGrafRenderer(host, origin);
-    renderer.current = r;
+    const renderer = new OGrafRenderer(host, origin);
+    const s = new PreviewSession(renderer, template, data);
+    session.current = s;
     let alive = true;
-    setShown(false);
-    setError("");
-    (async () => {
-      try {
-        await r.loadGraphic(ID, template.manifest, template.directoryName, data());
+    const sync = () => alive && setShown(s.shown);
+    s.open()
+      .then(() => {
         if (!alive) return;
-        await r.playGraphic(ID, {});
-        if (alive) setShown(true);
-      } catch (e) {
-        if (alive) setError((e as Error).message);
-      }
-    })();
+        sync();
+        setError("");
+      })
+      .catch((e) => alive && setError((e as Error).message));
     return () => {
       alive = false;
-      renderer.current = null;
-      void r.clearAll().finally(() => host.remove());
+      session.current = null;
+      s.close();
+      // clearAll runs inside close(); remove the element once it has had a moment to finish
+      setTimeout(() => host.remove(), 0);
     };
     // data() reads refs; the graphic changes only with the template
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,26 +85,18 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
   useEffect(() => {
     if (!shown) return;
     const timer = setInterval(() => {
-      const r = renderer.current;
-      if (r?.isLoaded(ID)) void r.updateGraphic(ID, data()).catch((e) => setError((e as Error).message));
+      void session.current?.tick().catch((e) => setError((e as Error).message));
     }, 1000);
     return () => clearInterval(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, template]);
+  }, [shown]);
 
   const act = async (what: "show" | "next" | "hide") => {
-    const r = renderer.current;
-    if (!r) return;
+    const s = session.current;
+    if (!s) return;
     setError("");
     try {
-      if (!r.isLoaded(ID)) await r.loadGraphic(ID, template.manifest, template.directoryName, data());
-      if (what === "hide") {
-        await r.stopGraphic(ID);
-        setShown(false);
-      } else {
-        await r.playGraphic(ID, what === "next" ? { delta: 1 } : {});
-        setShown(true);
-      }
+      await s[what]();
+      setShown(s.shown);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -149,6 +141,20 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
       <p className="muted">
         {tr("Sample race")} · {tr("Data used")}: {feeds}
       </p>
+      {(template.description || template.manifest.description) && (
+        <p>{template.description || template.manifest.description}</p>
+      )}
+      <details>
+        <summary>{tr("Technical details")}</summary>
+        <dl>
+          {graphicDetails(template).map(([label, value]) => (
+            <div key={label}>
+              <dt>{tr(label)}</dt>
+              <dd>{label === "ID" ? <code>{value}</code> : value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
       {error && (
         <p className="studio-error" role="alert">
           {error}

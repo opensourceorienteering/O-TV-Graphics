@@ -148,7 +148,7 @@ describe('looks as zip files', () => {
     expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/strap')).toBe(true);
   });
 
-  it('skips a graphic folder with two manifests, neither named after the folder', async () => {
+  it('refuses a look whose graphic folder has two manifests, neither named after the folder', () => {
     const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
     const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
     const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
@@ -159,9 +159,7 @@ describe('looks as zip files', () => {
     files['mylook/ok/ok.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'ok-1', name: 'Ok' }));
     files['mylook/twice/a.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-a', name: 'A' }));
     files['mylook/twice/b.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-b', name: 'B' }));
-    await importTemplateZip(manager, zipSync(files));
-    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/ok')).toBe(true);
-    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/twice')).toBe(false);
+    expect(() => previewTemplateZip(manager, zipSync(files))).toThrow(/"twice" in the look "mylook" has several manifests \(a\.ograf\.json, b\.ograf\.json\)/);
   });
 
   it('rejects unsafe paths, damaged files and zips without graphics', () => {

@@ -38,3 +38,13 @@ export function searchGraphics(
       lookName: template.setId === CUSTOM_TEMPLATE_SET ? 'Not in a look' : sets.find((s) => s.id === template.setId)?.name ?? template.setId,
     }));
 }
+
+/** Technical details of a graphic (label, value); the ID is what OGraf Server API controllers use */
+export function graphicDetails(template: OGrafTemplateInfo): Array<[string, string]> {
+  const { id, version, author } = template.manifest;
+  return [
+    ['ID', id],
+    ...(version ? [['Version', version] as [string, string]] : []),
+    ...(author?.name ? [['Author', author.name] as [string, string]] : []),
+  ];
+}
