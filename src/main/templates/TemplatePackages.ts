@@ -49,6 +49,8 @@ export interface ZipContents {
 export interface ImportPreview {
   /** Internet addresses the graphics ask for that aren't on the allowlist yet */
   internet: string[];
+  /** Addresses the graphics ask for that can't be allowed, with the reason */
+  internetRefused: Array<{ input: string; reason: string }>;
   looks: Array<{ id: string; name: string; graphics: number; replaces?: 'imported' | 'built-in' }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
 }
@@ -205,9 +207,13 @@ export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array, allow
   return previewContents(manager, readTemplateZip(zip), allowed);
 }
 
-/** Internet addresses the zip's graphics declare (v_olgrafik_internet) that aren't allowed yet */
-function declaredInternet(contents: ZipContents, allowed: string[]): string[] {
-  const out = new Set<string>();
+/**
+ * Internet addresses the zip's graphics declare (v_olgrafik_internet): those not allowed yet,
+ * and those that can never be allowed (with the reason), so the operator sees both
+ */
+function declaredInternet(contents: ZipContents, allowed: string[]): { asked: string[]; refused: Array<{ input: string; reason: string }> } {
+  const asked = new Set<string>();
+  const refused = new Map<string, string>();
   const manifests = [...contents.looks.flatMap((l) => [...l.files]), ...contents.graphics.flatMap((g) => [...g.files])]
     .filter(([name]) => name.endsWith('.ograf.json'));
   for (const [name, data] of manifests) {
@@ -215,18 +221,24 @@ function declaredInternet(contents: ZipContents, allowed: string[]): string[] {
     try { manifest = readJson(data, name) ?? {}; } catch { continue; }
     for (const entry of Array.isArray(manifest.v_olgrafik_internet) ? manifest.v_olgrafik_internet : []) {
       const result = normalizeAllowedOrigin(String(entry));
-      if (result.ok && !allowed.includes(result.value)) out.add(result.value);
+      if (!result.ok) refused.set(String(entry), result.reason);
+      else if (!allowed.includes(result.value)) asked.add(result.value);
     }
   }
-  return [...out].sort();
+  return {
+    asked: [...asked].sort(),
+    refused: [...refused].sort(([a], [b]) => a.localeCompare(b)).map(([input, reason]) => ({ input, reason })),
+  };
 }
 
 function previewContents(manager: OGrafManager, contents: ZipContents, allowed: string[] = []): ImportPreview {
   checkIdClashes(manager, contents);
+  const internet = declaredInternet(contents, allowed);
   const sets = new Map(manager.getTemplateSets().map((s) => [s.id, s]));
   const userDir = manager.getUserDirectory();
   return {
-    internet: declaredInternet(contents, allowed),
+    internet: internet.asked,
+    internetRefused: internet.refused,
     looks: contents.looks.map((l) => {
       const existing = sets.get(l.id);
       return {
