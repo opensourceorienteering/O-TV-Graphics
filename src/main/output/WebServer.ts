@@ -18,6 +18,7 @@ import { createControlApiRouter } from './ControlApi';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from '../utils/config';
 import { PortInUseError } from '../utils/portAvailability';
+import { graphicsCspMiddleware } from '../security/cspMiddleware';
 
 const logger = getLogger();
 const isDev = process.env.NODE_ENV === 'development';
@@ -43,6 +44,13 @@ export class WebServer {
 
   private setupMiddleware(): void {
     const config = getConfig();
+
+    // Graphics pages (OBS/vMix web output, preview frame, template preview) get the same
+    // content rules as in the app, including the internet allowlist
+    this.app.use(graphicsCspMiddleware(() => {
+      const current = getConfig();
+      return { dev: isDev, webPort: current.general.port, wsPort: current.general.wsPort, allowed: current.graphicsAllowedOrigins ?? [] };
+    }));
 
     // CORS
     if (config.output.web.cors) {

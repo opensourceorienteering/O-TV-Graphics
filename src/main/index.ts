@@ -3,6 +3,7 @@
  * Electron main process - handles app lifecycle, windows, and backend services
  */
 
+import { buildAppCsp, buildGraphicsCsp, isGraphicsPage } from './security/csp';
 import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
@@ -391,61 +392,12 @@ function setupContentSecurityPolicy() {
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const webOrigin = `http://localhost:${getConfig().general.port}`;
-    const socketOrigin = `ws://localhost:${getConfig().general.wsPort}`;
-    // Build CSP based on environment
-    const cspDirectives = [
-      // Default: only allow resources from same origin
-      "default-src 'self'",
-
-      // Scripts: allow self and localhost for Vite dev server and web output server
-      // Production also needs localhost:5657 for dynamic ES module imports from web server
-      // Allow cdnjs.cloudflare.com for highlight.js in documentation
-      isDev
-        ? "script-src 'self' 'unsafe-inline' http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
-        : "script-src 'self' http://localhost:5657 https://cdnjs.cloudflare.com",
-
-      // Styles: allow self and inline styles (required for React inline styles)
-      // Allow cdnjs.cloudflare.com for highlight.js CSS in documentation
-      `style-src 'self' 'unsafe-inline' ${webOrigin} https://cdnjs.cloudflare.com`,
-
-      // Images: allow self, data URIs, and localhost
-      isDev
-        ? "img-src 'self' data: http://localhost:5175 http://localhost:5657"
-        : `img-src 'self' data: ${webOrigin}`,
-
-      // Fonts: allow self and data URIs
-      `font-src 'self' data: ${webOrigin}`,
-
-      // Connect: allow WebSocket and HTTP connections to localhost
-      // Allow cdnjs.cloudflare.com for documentation assets
-      isDev
-        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5175 http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
-        : "connect-src 'self' ws://localhost:5656 http://localhost:5657 https://cdnjs.cloudflare.com",
-
-      // Media: allow self
-      "media-src 'self'",
-
-      // Workers: allow self
-      "worker-src 'self' blob:",
-
-      // Child frames: allow self and localhost web server
-      // Production also needs localhost:5657 for web output pages
-      isDev
-        ? "frame-src 'self' http://localhost:5657"
-        : "frame-src 'self' http://localhost:5657",
-
-      // Object/embed: disallow
-      "object-src 'none'",
-
-      // Base URI: restrict to self
-      "base-uri 'self'",
-
-      // Form actions: restrict to self
-      "form-action 'self'"
-    ];
-
-    const csp = cspDirectives.join('; ').split('http://localhost:5657').join(webOrigin).split('ws://localhost:5656').join(socketOrigin);
+    const { port, wsPort } = getConfig().general;
+    // Pages that run graphics also get the operator's internet allowlist, read on every load
+    const graphics = (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') && isGraphicsPage(details.url);
+    const csp = graphics
+      ? buildGraphicsCsp({ dev: isDev, webPort: port, wsPort, wsHost: 'localhost', allowed: getConfig().graphicsAllowedOrigins ?? [] })
+      : buildAppCsp({ dev: isDev, webPort: port, wsPort });
 
     callback({
       responseHeaders: {

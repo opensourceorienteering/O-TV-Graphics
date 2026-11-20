@@ -80,6 +80,8 @@ export interface AppConfig {
   eventor?: EventorLogoSettings;
   /** Club name library: name as the data source sends it -> name on air (see data/clubNames.ts) */
   clubNames?: Record<string, string>;
+  /** Addresses graphics may load from (Settings → Internet access for graphics), normalised https origins */
+  graphicsAllowedOrigins?: string[];
   output: {
     ndi: {
       enabled: boolean;
@@ -209,6 +211,7 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
     ),
     ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
     ...(loaded.clubNames ? { clubNames: loaded.clubNames } : {}),
+    ...(loaded.graphicsAllowedOrigins ? { graphicsAllowedOrigins: loaded.graphicsAllowedOrigins } : {}),
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }
