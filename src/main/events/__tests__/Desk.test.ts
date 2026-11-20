@@ -20,7 +20,8 @@ const templates: any[] = [tpl('iof-runner-identity', 'runner-identity'), tpl('io
 // Like classic's results-list-paginated: requires fields that the timing data fills in
 templates[1].manifest.schema.required = ['className', 'results'];
 templates[1].dataSourceConfig = { mode: 'api', api: { fieldMappings: [{ templateField: 'className' }, { templateField: 'results' }] } };
-vi.mock('../../templates/OGrafManager', () => ({ getTemplateManager: () => ({ getAllTemplates: () => templates }) }));
+let replacements: Record<string, string> = {};
+vi.mock('../../templates/OGrafManager', () => ({ getTemplateManager: () => ({ getAllTemplates: () => templates, getReplacements: () => replacements }) }));
 
 let project: any;
 vi.mock('../../projects/ProjectManager', () => ({
@@ -68,7 +69,21 @@ describe('live desk', () => {
   beforeEach(() => {
     project = { id: 'p1', name: 'Bohemian Forest Open', templateSet: 'iof', dataSource: { sourceId: 'lr', competitionId: 7 }, info: {}, settings: {} };
     active.length = 0;
+    replacements = {};
     vi.clearAllMocks();
+  });
+
+  it('offers a graphic added to the look under the key of the graphic it replaces', async () => {
+    templates.push({ ...tpl('guest-strap', 'free-text', false), directoryName: 'additions/iof/guest-strap', addition: true });
+    replacements = { 'guest-strap': 'iof-free-text' };
+    try {
+      const list = await desk.deskTemplates('p1');
+      expect(list.find(t => t.key === 'free-text')).toMatchObject({ available: true, templateId: 'guest-strap' });
+      replacements = {};
+      expect((await desk.deskTemplates('p1')).find(t => t.key === 'free-text')?.templateId).toBe('iof-free-text');
+    } finally {
+      templates.pop();
+    }
   });
 
   it('lists the desk graphics the look provides', async () => {

@@ -1,4 +1,4 @@
-import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
+import { deskEntriesForLook, resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
  * Live desk: show / update / hide prepared drafts, template favourites and the command map.
  *
@@ -39,12 +39,9 @@ function err(message: string, status = 400): Error {
 
 /** Validated entries and their exact graphics in a look. First entry wins duplicate keys. */
 function entriesFor(project: SPXProject) {
-  const entries = new Map<string, { def: DeskTemplate; template: OGrafTemplateInfo }>();
-  for (const template of getTemplateManager().getAllTemplates().filter(t => t.setId === (project.templateSet || DEFAULT_TEMPLATE_SET))) {
-    const def = template.desk ?? resolveDeskDeclaration(template.manifest).desk;
-    if (def && !entries.has(def.key)) entries.set(def.key, { def, template });
-  }
-  return entries;
+  const look = project.templateSet || DEFAULT_TEMPLATE_SET;
+  const manager = getTemplateManager();
+  return deskEntriesForLook(manager.getAllTemplates().filter(t => t.setId === look), manager.getReplacements(look));
 }
 export function deskDefinitions(project: SPXProject): DeskTemplate[] {
   return [...entriesFor(project).values()].map(e => e.def);
