@@ -153,8 +153,17 @@ export interface CustomActionOptions {
   skipAnimation?: boolean;
 }
 
+/** What the renderer can do (OGraf v1 load() parameter) */
+export interface RenderCharacteristics {
+  resolution?: { width: number; height: number };
+  frameRate?: number;
+}
+
 export interface LoadOptions {
   data: any;
+  /** Required by OGraf v1; Split Control always renders in realtime */
+  renderType: 'realtime' | 'non-realtime';
+  renderCharacteristics: RenderCharacteristics;
 }
 
 export interface GoToTimeOptions {
