@@ -24,12 +24,17 @@ export type AllowedOriginResult = { ok: true; value: string } | { ok: false; rea
 
 const HOST = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
 
-/** An allowlist entry as typed: "https://host" or "https://*.host", nothing else */
+/**
+ * An allowlist entry as typed, stored as "https://host" or "https://*.host". http:// and a bare
+ * host name become https:// (graphics never get unencrypted access); other schemes are refused.
+ */
 export function normalizeAllowedOrigin(input: string): AllowedOriginResult {
-  const text = String(input ?? '').trim();
+  let text = String(input ?? '').trim();
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) text = `https://${text}`;
   const m = /^([a-z][a-z0-9+.-]*):\/\/(.*)$/i.exec(text);
   if (!m) return { ok: false, reason: 'Start the address with https://' };
-  if (m[1].toLowerCase() !== 'https') return { ok: false, reason: 'Only https:// addresses can be allowed' };
+  const scheme = m[1].toLowerCase();
+  if (scheme !== 'https' && scheme !== 'http') return { ok: false, reason: 'Only https:// addresses can be allowed' };
   const rest = m[2].replace(/\/$/, '');
   if (!rest) return { ok: false, reason: 'Add a host name after https://' };
   if (/[/?#]/.test(rest)) return { ok: false, reason: 'Leave out the path: just https:// and the host name' };

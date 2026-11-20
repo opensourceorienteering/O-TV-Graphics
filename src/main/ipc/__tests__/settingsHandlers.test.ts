@@ -27,8 +27,8 @@ beforeEach(() => {
 
 describe('graphics internet allowlist', () => {
   it('saves valid entries normalised, sorted and once, and reports the rest', async () => {
-    const result = await invoke('graphicsAccess:set', ['HTTPS://B.example', 'https://a.example', 'http://bad', 'https://a.example']);
-    expect(result).toMatchObject({ success: true, data: { saved: ['https://a.example', 'https://b.example'], rejected: [{ input: 'http://bad', reason: expect.any(String) }] } });
+    const result = await invoke('graphicsAccess:set', ['HTTPS://B.example', 'https://a.example', 'https://bad/path', 'http://a.example']);
+    expect(result).toMatchObject({ success: true, data: { saved: ['https://a.example', 'https://b.example'], rejected: [{ input: 'https://bad/path', reason: expect.any(String) }] } });
     expect(mock.saved.at(-1).graphicsAllowedOrigins).toEqual(['https://a.example', 'https://b.example']);
     expect(await invoke('graphicsAccess:get')).toEqual({ success: true, data: ['https://a.example', 'https://b.example'] });
   });

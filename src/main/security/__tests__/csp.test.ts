@@ -8,8 +8,11 @@ describe('allowlist entries', () => {
     ['HTTPS://Maps.Example.com/', 'https://maps.example.com'],
     ['https://*.tile.openstreetmap.org', 'https://*.tile.openstreetmap.org'],
     ['  https://www.livelox.com  ', 'https://www.livelox.com'],
+    ['http://maps.example.com', 'https://maps.example.com'],
+    ['HTTP://Tiles.Example.com/', 'https://tiles.example.com'],
+    ['www.livelox.com', 'https://www.livelox.com'],
   ])('normalises %s', (input, value) => expect(normalizeAllowedOrigin(input)).toEqual({ ok: true, value }));
-  it.each(['http://x.example', 'https://x.example/path', 'https://x.example:8443', 'https://', 'maps example', 'https://*.', 'https://x.example?a=1', 'wss://x.example'])(
+  it.each(['ftp://x.example', 'https://x.example/path', 'https://x.example:8443', 'https://', 'maps example', 'https://*.', 'https://x.example?a=1', 'wss://x.example'])(
     'refuses %s with a reason', (input) => expect(normalizeAllowedOrigin(input)).toMatchObject({ ok: false, reason: expect.any(String) }));
 });
 

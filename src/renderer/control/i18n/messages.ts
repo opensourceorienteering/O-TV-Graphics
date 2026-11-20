@@ -3467,5 +3467,9 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Import": {
     "sv": "Importera",
     "nb": "Importer"
+  },
+  "Saved as": {
+    "sv": "Sparad som",
+    "nb": "Lagret som"
   }
 };
