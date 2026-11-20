@@ -1,4 +1,5 @@
 import { graphicsWindowPreferences, guardWindow } from "./guards";
+import { registerOperatorWindow } from "../security/callers";
 import { devIconPath } from "../utils/appIdentity";
 /**
  * Window Management
@@ -71,6 +72,7 @@ export function createMainWindow(): BrowserWindow {
   });
 
   guardWindow(window);
+  registerOperatorWindow(window);
 
   // Load the app
   if (isDev) {
