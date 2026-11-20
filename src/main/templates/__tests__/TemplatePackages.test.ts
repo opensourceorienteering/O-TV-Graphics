@@ -22,10 +22,12 @@ import {
   importTemplateZip,
   previewTemplateZip,
   readTemplateZip,
+  removeAddition,
   removeImportedLook,
 } from '../TemplatePackages';
 
 import { writeGraphic } from './additions.test';
+import { deskEntriesForLook } from '../../../shared/deskDeclaration';
 
 const REPO_TEMPLATES = path.resolve(__dirname, '../../../../templates');
 
@@ -271,6 +273,21 @@ describe('additions travel as .splitlook files', () => {
   it('names the file after the look, safely on every system', () => {
     expect(lookFileName('IOF / Sprint: "final"')).toBe('IOF - Sprint - final');
     expect(lookFileName('...')).toBe('look');
+  });
+
+  it('removing an addition brings back the graphic it replaced', async () => {
+    await addGuestStrap();
+    const deskFor = () => deskEntriesForLook(manager.getAllTemplates().filter((t) => t.setId === 'standard'), manager.getReplacements('standard'));
+    expect(deskFor().get('free-text')?.template.manifest.id).toBe('guest-strap');
+    await removeAddition(manager, 'standard', 'guest-strap');
+    expect(fs.existsSync(path.join(additionsDir(), 'guest-strap'))).toBe(false);
+    expect(manager.getReplacements('standard')).toEqual({});
+    expect(deskFor().get('free-text')?.template.manifest.id).toBe('standard-free-text');
+  });
+
+  it('only removes additions', async () => {
+    await expect(removeAddition(manager, 'standard', 'standard-free-text')).rejects.toThrow('not a graphic added to this look');
+    await expect(removeAddition(manager, '../sets', 'x')).rejects.toThrow();
   });
 
   it('refuses to export a built-in look with no additions', () => {

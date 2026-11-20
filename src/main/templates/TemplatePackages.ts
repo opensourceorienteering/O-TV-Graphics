@@ -461,3 +461,25 @@ export function lookFileName(name: string): string {
   const clean = name.replace(/\s*[<>:"/\\|?*\x00-\x1f][\s<>:"/\\|?*\x00-\x1f]*/g, ' - ').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '');
   return clean.slice(0, 80) || 'look';
 }
+
+/**
+ * Remove a graphic added to a look, and what it replaced in that look: the replaced graphic
+ * comes back in Live
+ */
+export async function removeAddition(manager: OGrafManager, lookId: string, graphicId: string): Promise<void> {
+  const userDir = manager.getUserDirectory() ?? fail('There is no templates folder');
+  if (!isValidId(lookId)) fail('Invalid look');
+  const lookDir = path.join(userDir, ADDITIONS, lookId);
+  const graphic = manager.getAllTemplates().find(
+    (t) => t.addition && t.manifest.id === graphicId && t.directoryName.startsWith(`${ADDITIONS}/${lookId}/`),
+  ) ?? fail(`"${graphicId}" is not a graphic added to this look`);
+  const dir = path.join(userDir, ...graphic.directoryName.split('/'));
+  if (path.dirname(dir) !== lookDir) fail('Invalid graphic');
+  fs.rmSync(dir, { recursive: true, force: true });
+  const replaces = readOverrides(lookDir);
+  if (graphicId in replaces) {
+    delete replaces[graphicId];
+    writeOverrides(lookDir, replaces);
+  }
+  await rediscover(manager);
+}

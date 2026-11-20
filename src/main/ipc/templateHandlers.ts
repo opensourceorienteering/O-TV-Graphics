@@ -11,6 +11,7 @@ import {
   lookFileName,
   importTemplateZip,
   previewTemplateZip,
+  removeAddition,
   removeImportedLook,
 } from '../templates/TemplatePackages';
 import { listEvents } from '../events/EventService';
@@ -248,6 +249,22 @@ export function registerTemplateHandlers(): void {
     } catch (error) {
       return { success: false, error: errorMessage(error) };
     }
+  });
+
+  /** Remove a graphic added to a look; a graphic it replaced comes back */
+  ipcMain.handle('templates:removeAddition', async (_event, lookId: string, graphicId: string) => {
+    try {
+      await removeAddition(getTemplateManager(), String(lookId), String(graphicId));
+      logger.info('Graphic removed from look', { lookId, graphicId });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  /** Which graphics replace which in a look (new graphic id → replaced id) */
+  ipcMain.handle('templates:getReplacements', async (_event, setId: string) => {
+    return { success: true, data: getTemplateManager().getReplacements(String(setId)) };
   });
 
   ipcMain.handle('templates:openFolder', async () => {
