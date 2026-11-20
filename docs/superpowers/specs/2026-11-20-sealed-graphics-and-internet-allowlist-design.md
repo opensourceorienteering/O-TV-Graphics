@@ -151,6 +151,47 @@ Settings › Internet access for graphics
   `templates:pickImport` (or by the file-association route from the library design, when that
   exists), and only once.
 
+## Settled after the builder check
+
+- **CSP reaches `file://` pages.** Checked with this repository's Electron: `onHeadersReceived`
+  fires for a `loadFile` page and its CSP is enforced (an inline script was blocked). The
+  production windows are covered by the existing handler.
+- **No popups or navigation from graphics** *(builder-check decision)*. Add a
+  `setWindowOpenHandler` that denies every request in every window, and a `will-navigate` guard
+  that keeps each window on its own page. A popup would otherwise inherit the opener's preload,
+  which escapes the seal. The operator UI opens links only through `window:openExternal`.
+- **The preview frame gets no `sandbox` attribute** *(builder-check decision)*. Sealing comes from
+  the frame not having the preload, plus the popup and navigation guards. A sandboxed frame
+  without `allow-same-origin` would change how graphic modules load.
+- **One frame per monitor, reused** *(builder-check decision)*. Live desk and Plan previews keep
+  today's speed. The frame reloads (freeing every module a graphic loaded) when its graphic's
+  template changes, not on data changes. The library preview reloads its frame per graphic.
+- **The frame's address differs from the operator window's in every mode** *(builder-check
+  decision)*. The frame always loads from `http://127.0.0.1:<web port>/preview-frame`. In
+  development the web server redirects it to `http://127.0.0.1:5175/preview-frame.html`, a
+  different origin from the operator window's `http://localhost:5175`. In production it's served
+  directly, while the operator window is `file://`. The seal therefore holds in development too,
+  and the end-to-end checks prove something.
+- **Message checks use the window, not the origin string** *(builder-check decision)*. The frame
+  accepts messages only where `event.source === window.parent`. The parent accepts replies only
+  where `event.source === iframe.contentWindow`. That works whatever the operator window's origin
+  is (`file://` shows up as `"null"`).
+- **`window:openExternal` caller** *(builder-check decision)*: the main frame of any window that
+  loads the operator UI, meaning the main window and the pop-out monitor windows. Graphics never
+  get the preload, so they can't call it.
+- **`/preview` (`template-preview.html`)** also runs graphics, so it gets the graphics CSP.
+- **Protocol fields** follow the existing call: `load {id, manifest, directory, data}`.
+  `SealedRenderer` keeps its own record of what is loaded, so `isLoaded` stays synchronous.
+- **Plan's theme preview** is `<Monitor kind="preview" />`, so it needs no separate work.
+
+## Open: the network control interfaces
+
+Graphics pages can reach the app's network interfaces, which every device on the venue network
+can already use without a password, for Companion and outside OGraf controllers: `/api/control`,
+`/ograf/v1` and the WebSocket. Through them a graphic could show, hide or clear graphics. It
+could not delete events, change settings, touch files or open the browser. Whether this
+milestone also closes that path is the operator's decision (see the conversation).
+
 ## What a reasonable operator expects (edge cases)
 
 - An address added in Settings works in the next preview and the next Show, without a restart.
