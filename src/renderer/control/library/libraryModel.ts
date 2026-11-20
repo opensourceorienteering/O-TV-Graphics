@@ -9,6 +9,14 @@ export interface LookCard {
 
 const byName = (a: OGrafTemplateInfo, b: OGrafTemplateInfo) => a.manifest.name.localeCompare(b.manifest.name);
 
+/**
+ * A graphic's title in the library: its desk label (shared by every graphic of a kind), but
+ * the operator's own name for a graphic added to a look, so it stands apart from the original
+ */
+export function graphicTitle(template: OGrafTemplateInfo): string {
+  return template.addition ? template.manifest.name : template.desk?.label ?? template.manifest.name;
+}
+
 /** Every look, built-in first then imported, each by name, with its graphics by name */
 export function lookCards(sets: TemplateSetInfo[], templates: OGrafTemplateInfo[]): LookCard[] {
   return sets

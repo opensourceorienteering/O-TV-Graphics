@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { graphicDetails, lookCards, needsAttention, replacedBy, searchGraphics } from '../libraryModel';
+import { graphicDetails, graphicTitle, lookCards, needsAttention, replacedBy, searchGraphics } from '../libraryModel';
 import type { OGrafTemplateInfo, TemplateSetInfo } from '../../../../shared/types/ograf';
 
 const set = (id: string, name: string, source: 'built-in' | 'imported' = 'built-in'): TemplateSetInfo =>
@@ -49,5 +49,13 @@ describe('replacements in a look', () => {
   it('ignores replacements whose graphics are not in the look', () => {
     const look = [g('standard-free-text', 'Free text', 'standard')];
     expect(replacedBy(look, { gone: 'standard-free-text', 'standard-free-text': 'missing' }).size).toBe(0);
+  });
+});
+
+describe('graphic titles', () => {
+  it("uses the desk label, but an added graphic's own name", () => {
+    const desk = { label: 'Identity plate' } as OGrafTemplateInfo['desk'];
+    expect(graphicTitle(g('standard-free-text', 'Free text', 'standard', { desk }))).toBe('Identity plate');
+    expect(graphicTitle(g('guest-strap', 'Guest strap', 'standard', { desk, addition: true }))).toBe('Guest strap');
   });
 });

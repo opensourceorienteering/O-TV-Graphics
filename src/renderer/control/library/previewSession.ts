@@ -65,7 +65,8 @@ export class PreviewSession {
 
   close(): void {
     this.closed = true;
-    void this.renderer.clearAll();
+    // The frame usually goes right after (the preview closed): nothing to report then
+    this.renderer.clearAll().catch(() => undefined);
   }
 
   private async play(options: { delta?: number }) {

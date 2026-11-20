@@ -3,6 +3,7 @@
  * Express server serving graphics HTML pages
  */
 
+import { additionFallbackPath } from '../templates/additionPaths';
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -92,6 +93,12 @@ export class WebServer {
     // set of the same id, and imported graphics still load the shared code (sets/_core/)
     // that ships with the app. The folder is known once the template manager has started.
     let importedStatic: { dir: string; handler: express.RequestHandler } | undefined;
+    // Graphics added to a look load the look's own files (set.js, theme, fonts, sets/_core)
+    this.app.use('/templates', (req, _res, next) => {
+      const fallback = additionFallbackPath(req.path, findTemplateManager()?.getUserDirectory() ?? null);
+      if (fallback) req.url = fallback + req.url.slice(req.path.length);
+      next();
+    });
     this.app.use('/templates', (req, res, next) => {
       const dir = findTemplateManager()?.getUserDirectory();
       if (!dir) return next();

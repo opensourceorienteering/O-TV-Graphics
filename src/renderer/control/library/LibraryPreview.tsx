@@ -10,7 +10,7 @@ import { call } from "../events/api";
 import { createRace } from "../../../../site/preview/sim.js";
 import { changeClockSpeed, clockTime, sampleGraphicData, startClock } from "./sampleData";
 import { PreviewSession } from "./previewSession";
-import { graphicDetails } from "./libraryModel";
+import { graphicDetails, graphicTitle } from "./libraryModel";
 import type { PreviewClock } from "./sampleData";
 import type { OGrafTemplateInfo } from "../../../shared/types/ograf";
 
@@ -107,7 +107,7 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
 
   return (
     <aside className="library-preview studio-panel" aria-label={tr("Preview")}>
-      <h3>{template.desk?.label ?? template.manifest.name}</h3>
+      <h3>{graphicTitle(template)}</h3>
       <div className="monitor-frame" ref={frame}>
         <div className="monitor-stage" ref={stage} />
       </div>

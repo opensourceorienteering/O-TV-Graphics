@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowLeft, Download, PlusCircle, Trash2 } from "lucide-react";
 import { LibraryPreview } from "./LibraryPreview";
 import { SourceBadges } from "./LibraryHome";
-import { replacedBy, type LookCard } from "./libraryModel";
+import { graphicTitle, replacedBy, type LookCard } from "./libraryModel";
 import type { OGrafTemplateInfo } from "../../../shared/types/ograf";
 
 function stepsLabel(stepCount: number | undefined) {
@@ -39,8 +39,10 @@ function GraphicTile({
       onClick={onSelect}
     >
       <span className="template-card-heading">
-        {template.addition && <PlusCircle size={15} className="library-added" aria-label={tr("Added to this look")} />}
-        <strong>{template.desk?.label ?? template.manifest.name}</strong>
+        <span className="library-tile-title">
+          {template.addition && <PlusCircle size={15} className="library-added" aria-label={tr("Added to this look")} />}
+          <strong>{graphicTitle(template)}</strong>
+        </span>
       </span>
       {replacedByName && (
         <span className="muted">

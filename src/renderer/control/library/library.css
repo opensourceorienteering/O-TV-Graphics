@@ -118,6 +118,13 @@
   text-decoration: line-through;
   opacity: 0.7;
 }
+.template-card-heading > .library-tile-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font-size: inherit;
+}
 .library-added {
   color: var(--color-accent);
   flex: none;

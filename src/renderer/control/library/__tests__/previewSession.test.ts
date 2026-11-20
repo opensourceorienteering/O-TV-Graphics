@@ -59,4 +59,18 @@ describe('preview session', () => {
     expect(r.playGraphic).not.toHaveBeenCalled();
     expect(r.clearAll).toHaveBeenCalled();
   });
+  it('closing does not leave an unhandled error when the frame is already gone', async () => {
+    // A plain function: a vi.fn() result counts as handled (the mock records how it settled)
+    const r = { ...slowRenderer().r, clearAll: async () => { throw new Error('Preview closed'); } };
+    const unhandled: unknown[] = [];
+    const onUnhandled = (e: unknown) => unhandled.push(e);
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      new PreviewSession(r, tpl, () => ({})).close();
+      await new Promise((res) => setTimeout(res, 20));
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+  });
 });
