@@ -123,6 +123,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'output:updateConfig',
       'output:updateNDIConfig',
       // Settings channels
+      'graphicsAccess:get',
+      'graphicsAccess:set',
       'settings:get',
       'settings:update',
       'settings:reset',
