@@ -155,6 +155,19 @@ export class WebServer {
       res.json({ status: 'ok', timestamp: Date.now() });
     });
 
+    // Sealed preview frame for the operator window's previews: always on 127.0.0.1, a different
+    // origin from the operator UI, and never given the app's preload bridge
+    this.app.get('/preview-frame', (req, res) => {
+      const query = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      if (isDev) {
+        res.redirect(`http://127.0.0.1:5175/preview-frame.html${query}`);
+        return;
+      }
+      const htmlPath = path.join(__dirname, '../../dist/preview-frame.html');
+      if (fs.existsSync(htmlPath)) res.sendFile(htmlPath);
+      else res.status(404).send('Preview frame not found. Please build the application first.');
+    });
+
     // Template preview page
     this.app.get('/preview', (req, res) => {
       if (isDev) {
