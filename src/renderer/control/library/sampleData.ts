@@ -53,6 +53,17 @@ export function sampleGraphicData(template: OGrafTemplateInfo, race: SampleRace,
     const runner = lastStarted(race, simNow);
     Object.assign(data, { runnerName: runner.name, runnerClub: runner.club, runnerBib: runner.bib });
   }
+  // A graphic of typed fields only, with no defaults, would preview blank: fill a sample person,
+  // or the field's own title (what the operator would be asked for). Data graphics keep their
+  // empty fields, which fall back to the data (a results title shows the class).
+  const person = race.runners[0];
+  const people: Record<string, string> = { name: person.name, club: person.club, country: person.country, bib: person.bib };
+  const properties = (template.manifest.schema as { properties?: Record<string, { type?: string; title?: string; default?: unknown }> } | undefined)?.properties ?? {};
+  const typedOnly = !template.desk?.feeds?.length;
+  for (const [key, field] of Object.entries(typedOnly ? properties : {})) {
+    if (field?.type !== 'string' || field.default !== undefined || data[key] !== undefined) continue;
+    data[key] = people[key] ?? field.title ?? key;
+  }
   data.clockOffsetMs = simNow - Date.now();
   data.presentation = { language: 'en', identity: 'club', international: false, logoMode: 'template' };
   return data;
