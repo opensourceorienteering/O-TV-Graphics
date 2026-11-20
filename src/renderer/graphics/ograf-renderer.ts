@@ -17,6 +17,9 @@ import {
 } from "../../shared/types/ograf";
 import { defineOGrafGraphic } from "./ograf-loader";
 
+/** The graphics window is always this size */
+const OUTPUT_RESOLUTION = { width: 1920, height: 1080 };
+
 /**
  * Renderer error
  */
@@ -131,7 +134,11 @@ export class OGrafRenderer {
       created = true;
 
       // Call load method
-      const loadOptions: LoadOptions = { data };
+      const loadOptions: LoadOptions = {
+        data,
+        renderType: "realtime",
+        renderCharacteristics: { resolution: { ...OUTPUT_RESOLUTION } },
+      };
       const result = await element.load(loadOptions);
       checkResult(result, "Load");
 
@@ -179,7 +186,12 @@ export class OGrafRenderer {
       }
 
       // Call play action
-      const result = await state.element!.playAction(options);
+      // OGraf v1 needs goto or delta: without either, play the next step
+      const params =
+        options.goto === undefined && options.delta === undefined
+          ? { ...options, delta: 1 }
+          : options;
+      const result = await state.element!.playAction(params);
       checkResult(result, "Play");
 
       // Update state
