@@ -29,15 +29,16 @@ export function isOperatorMainFrame(
 
 /** The file the operator picked in the import dialog: it may be imported once */
 export class PickedFile {
-  private path: string | null = null;
+  /** A few recent files: one picked in the dialog and one opened from the system can both wait */
+  private paths: string[] = [];
 
   remember(path: string): void {
-    this.path = path;
+    this.paths = [...this.paths.filter((p) => p !== path), path].slice(-4);
   }
 
   take(path: string): boolean {
-    if (!this.path || path !== this.path) return false;
-    this.path = null;
+    if (!this.paths.includes(path)) return false;
+    this.paths = this.paths.filter((p) => p !== path);
     return true;
   }
 }

@@ -32,4 +32,13 @@ describe('the file picked for import', () => {
   it('accepts nothing before a pick', () => {
     expect(new PickedFile().take('/tmp/x.zip')).toBe(false);
   });
+
+  it('keeps a file picked in the dialog when another arrives from the system', () => {
+    const picked = new PickedFile();
+    picked.remember('/a.splitlook');
+    picked.remember('/b.splitlook');
+    expect(picked.take('/a.splitlook')).toBe(true);
+    expect(picked.take('/b.splitlook')).toBe(true);
+    expect(picked.take('/a.splitlook')).toBe(false);
+  });
 });

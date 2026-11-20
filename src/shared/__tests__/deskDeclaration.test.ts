@@ -57,4 +57,13 @@ describe('desk entries for a look', () => {
     const entries = deskEntriesForLook([info('iof-results', 'results'), info('x', 'free-text')], { x: 'gone' });
     expect(entries.get('free-text')?.template.manifest.id).toBe('x');
   });
+  it('ignores a replacement made by a graphic that is itself replaced (chains and cycles)', () => {
+    const three = [info('iof-free-text', 'free-text'), info('b', 'results'), info('a', 'guest-strap-kind')];
+    // a replaces b, b replaces iof-free-text: b is gone, so its own replacement is ignored
+    const chain = deskEntriesForLook(three, { b: 'iof-free-text', a: 'b' });
+    expect(chain.get('results')?.template.manifest.id).toBe('a');
+    expect(chain.get('free-text')?.template.manifest.id).toBe('iof-free-text');
+    const cycle = deskEntriesForLook(three, { a: 'b', b: 'a' });
+    expect(cycle.get('results')?.template.manifest.id).toBe('b');
+  });
 });
