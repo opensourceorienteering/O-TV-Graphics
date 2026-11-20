@@ -28,6 +28,8 @@ interface Env {
   doc: Pick<Document, "createElement">;
 }
 
+const REQUEST_TIMEOUT_MS = 10_000;
+
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 type Request = FrameRequest extends infer R ? (R extends unknown ? Omit<R, "requestId"> : never) : never;
 
@@ -50,6 +52,10 @@ export class SealedRenderer implements PreviewRenderer {
   private loaded = new Set<string>();
   private directory: string | null = null;
   private disposed = false;
+  /** Page load number, echoed by the frame's ready message, so a late ready from the page before is ignored */
+  private gen = 0;
+  private markClosed!: (e: Error) => void;
+  private closed = new Promise<never>((_, reject) => (this.markClosed = reject));
 
   constructor(
     host: HTMLElement,
@@ -67,6 +73,8 @@ export class SealedRenderer implements PreviewRenderer {
       background: "transparent",
     });
     this.iframe.setAttribute("allowtransparency", "true");
+    // Nobody may be waiting when the preview closes: don't report that as an unhandled rejection
+    this.closed.catch(() => undefined);
     env.win.addEventListener("message", this.onMessage);
     this.reload();
     host.appendChild(this.iframe);
@@ -76,14 +84,23 @@ export class SealedRenderer implements PreviewRenderer {
     this.frameRules = SealedRenderer.rulesVersion;
     this.ready = new Promise((resolve) => (this.markReady = resolve));
     this.loaded.clear();
-    this.iframe.src = this.frameUrl;
+    this.rejectPending("Preview reloaded");
+    const url = new URL(this.frameUrl);
+    url.searchParams.set("gen", String(++this.gen));
+    this.iframe.src = url.toString();
+  }
+
+  private rejectPending(message: string) {
+    for (const waiting of this.pending.values()) waiting.reject(new Error(message));
+    this.pending.clear();
   }
 
   private onMessage = (event: MessageEvent) => {
     // Only the frame we created may answer (origin strings don't work for file:// pages)
     if (event.source !== this.iframe.contentWindow) return;
-    const data = event.data as FrameReply | { ready?: boolean };
+    const data = event.data as FrameReply | { ready?: boolean; gen?: number };
     if ((data as { ready?: boolean })?.ready) {
+      if ((data as { gen?: number }).gen !== this.gen) return; // from the page before a reload
       this.frameOrigin = event.origin;
       this.markReady();
       return;
@@ -98,10 +115,18 @@ export class SealedRenderer implements PreviewRenderer {
 
   private async send(request: Request): Promise<unknown> {
     if (this.disposed) throw new Error("Preview closed");
-    await this.ready;
+    await Promise.race([this.ready, this.closed]);
+    if (this.disposed) throw new Error("Preview closed");
     const requestId = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(requestId, { resolve, reject });
+      // A frame that stops answering must not hold the preview for ever
+      const timer = setTimeout(() => {
+        if (this.pending.delete(requestId)) reject(new Error("The preview did not answer"));
+      }, REQUEST_TIMEOUT_MS);
+      this.pending.set(requestId, {
+        resolve: (v) => { clearTimeout(timer); resolve(v); },
+        reject: (e) => { clearTimeout(timer); reject(e); },
+      });
       this.iframe.contentWindow?.postMessage({ ...request, requestId }, this.frameOrigin || new URL(this.frameUrl).origin);
     });
   }
@@ -141,8 +166,8 @@ export class SealedRenderer implements PreviewRenderer {
   dispose(): void {
     this.disposed = true;
     this.env.win.removeEventListener("message", this.onMessage);
-    for (const waiting of this.pending.values()) waiting.reject(new Error("Preview closed"));
-    this.pending.clear();
+    this.rejectPending("Preview closed");
+    this.markClosed(new Error("Preview closed"));
     this.iframe.remove();
   }
 }
