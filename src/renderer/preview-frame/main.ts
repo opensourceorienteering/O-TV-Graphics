@@ -22,4 +22,5 @@ window.addEventListener("message", (event) => {
   });
 });
 
-window.parent.postMessage({ ready: true }, "*");
+// Echo the page load number, so the parent can ignore a ready from a page it already replaced
+window.parent.postMessage({ ready: true, gen: Number(params.get("gen")) || 0 }, "*");
