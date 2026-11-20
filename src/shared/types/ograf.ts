@@ -230,6 +230,8 @@ export interface OGrafTemplateInfo {
   setId: string;
   /** Screen zone (manifest v_olgrafik_zone): graphics in clashing zones replace each other */
   zone?: GraphicZone;
+  /** Added to its look by the operator (stored in the user's additions folder) */
+  addition?: true;
 }
 
 export type GraphicZone = 'main' | 'lower' | 'side' | 'corner' | 'full';
@@ -247,6 +249,8 @@ export interface TemplateSetInfo {
   /** The look's own logo (set.json "logo") as a data URL, for previews in Plan */
   logoPreview?: string;
   templateCount: number;
+  /** Graphics the operator added to this look */
+  additions?: number;
   /** built-in: ships with the app; imported: installed from a zip into the templates folder */
   source?: 'built-in' | 'imported';
   /** An imported look with the id of a built-in one: it is used instead of the built-in copy */
