@@ -154,4 +154,14 @@ describe('sealed renderer', () => {
     env.deliver({ ready: true });
     await expect(p).rejects.toThrow('Preview closed');
   });
+  it('passes on what the frame reports as blocked, only from its own frame', () => {
+    const env = fakeEnv();
+    const reportBlocked = vi.fn();
+    new SealedRenderer(env.host, previewFrameUrl(5657), { win: env.win, doc: env.doc, reportBlocked });
+    env.deliver({ blocked: { origin: 'https://tile.openstreetmap.org', graphics: ['Map'] } });
+    env.deliver({ blocked: { origin: 'https://evil.example', graphics: [] } }, { postMessage() {} });
+    expect(reportBlocked).toHaveBeenCalledTimes(1);
+    expect(reportBlocked).toHaveBeenCalledWith({ origin: 'https://tile.openstreetmap.org', graphics: ['Map'] });
+  });
 });
+

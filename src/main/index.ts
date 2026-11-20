@@ -5,6 +5,7 @@
 
 import { buildAppCsp, buildGraphicsCsp, isGraphicsPage } from './security/csp';
 import { RulesReloader, setRulesReloader } from './security/rulesReload';
+import { setBlockedNotifier } from './security/blocked';
 import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
@@ -266,6 +267,10 @@ async function initializeServices() {
 
     // A changed internet allowlist reaches graphics pages when they reload: output pages reload
     // once nothing is on air, preview frames before their next graphic
+    // New blocked-address reports refresh Settings → Internet access
+    setBlockedNotifier(() => BrowserWindow.getAllWindows().forEach((w) => {
+      if (!w.isDestroyed()) w.webContents.send('fromMain', { type: 'graphicsBlocked' });
+    }));
     setRulesReloader(new RulesReloader({
       // Anything still loaded counts: a hidden graphic stays loaded through its out-animation and
       // the undo window, and a graphic being shown is loaded before it plays. Graphics of external

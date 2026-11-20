@@ -7,6 +7,7 @@ import { t as tr } from "../i18n";
 import { useEffect, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 
+type Blocked = { origin: string; graphics: string[]; last: number; count: number };
 type SetResult = { saved: string[]; rejected: Array<{ input: string; reason: string }> };
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
@@ -20,15 +21,30 @@ export function GraphicsInternetAccess() {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [blocked, setBlocked] = useState<Blocked[]>([]);
+
+  const refreshBlocked = () => {
+    invoke<Blocked[]>("graphicsAccess:blocked").then(setBlocked).catch(() => undefined);
+  };
 
   useEffect(() => {
     invoke<string[]>("graphicsAccess:get").then(setList).catch((e) => setError((e as Error).message));
+    refreshBlocked();
+    // New reports arrive while graphics run (preview, output, OBS)
+    let alive = true;
+    window.electronAPI?.receive?.("fromMain", (message: { type?: string }) => {
+      if (alive && message?.type === "graphicsBlocked") refreshBlocked();
+    });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const save = async (next: string[]): Promise<SetResult | null> => {
     try {
       const result = await invoke<SetResult>("graphicsAccess:set", next);
       setList(result.saved);
+      refreshBlocked();
       return result;
     } catch (e) {
       setError((e as Error).message);
@@ -125,6 +141,53 @@ export function GraphicsInternetAccess() {
       <p className="muted">
         {tr("Applies to graphics loaded from now on. A graphic already on air keeps its rules until it is shown again.")}
       </p>
+      <h3>{tr("Blocked recently")}</h3>
+      {blocked.length ? (
+        <>
+          <p className="muted">{tr("Graphics tried to reach these addresses and were refused. Allow only what you trust.")}</p>
+          <div className="table-scroll">
+            <table className="studio-table">
+              <thead>
+                <tr>
+                  <th scope="col">{tr("Address")}</th>
+                  <th scope="col">{tr("Graphics")}</th>
+                  <th scope="col">{tr("Last")}</th>
+                  <th scope="col">
+                    <span className="visually-hidden">{tr("Allow")}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {blocked.map((b) => (
+                  <tr key={b.origin}>
+                    <td>
+                      <code>{b.origin}</code>
+                    </td>
+                    <td>{b.graphics.join(", ") || "—"}</td>
+                    <td>
+                      {new Date(b.last).toLocaleTimeString()}
+                      {b.count > 1 ? ` · ${b.count}×` : ""}
+                    </td>
+                    <td>
+                      <button className="studio-button" onClick={() => void save([...list, b.origin])}>
+                        {tr("Allow")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button
+            className="studio-button"
+            onClick={() => void invoke("graphicsAccess:clearBlocked").then(refreshBlocked).catch(() => undefined)}
+          >
+            {tr("Clear list")}
+          </button>
+        </>
+      ) : (
+        <p className="empty-state">{tr("Nothing blocked right now. Show a graphic in a preview to see what it tries to reach.")}</p>
+      )}
     </div>
   );
 }

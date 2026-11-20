@@ -3,6 +3,7 @@
  * Initializes the OGRAF renderer and handles playback commands via WebSocket
  */
 
+import { createBlockReporter } from "./blockReporter";
 import { createRulesVersionGate } from "./rulesVersionGate";
 import { io, Socket } from "socket.io-client";
 import { RendererCommandQueue } from "./RendererCommandQueue";
@@ -16,6 +17,14 @@ const rulesGate = createRulesVersionGate({
   reload: () => window.location.reload(),
   showing: () => renderer?.getPlayingCount() ?? 0,
 });
+// What the content rules block here is listed in Settings → Internet access, with an Allow button
+document.addEventListener(
+  "securitypolicyviolation",
+  createBlockReporter(
+    (blocked) => socket?.emit("SPXMessage2Server", { spxcmd: "graphics:blocked", ...blocked }),
+    () => renderer?.getLoadedGraphics().map((g) => g.manifest.name) ?? [],
+  ),
+);
 let socket: Socket | null = null;
 const commands = new RendererCommandQueue();
 let connectionVersion = 0;

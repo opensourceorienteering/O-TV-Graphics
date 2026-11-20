@@ -11,6 +11,7 @@ import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 import { findTemplateManager } from '../templates/OGrafManager';
 import { normalizeAllowedOrigin } from '../security/csp';
 import { graphicsRulesChanged } from '../security/rulesReload';
+import { blockedList, clearBlocked, recordBlocked } from '../security/blocked';
 
 const logger = getLogger();
 
@@ -116,6 +117,18 @@ export function registerSettingsHandlers() {
   // Settings → Internet access for graphics: addresses graphics may load from
   ipcMain.handle('graphicsAccess:get', async (): Promise<IPCResponse<string[]>> => {
     return { success: true, data: getConfig().graphicsAllowedOrigins ?? [] };
+  });
+
+  // What graphics tried to reach and were refused (Settings → Internet access → Blocked recently)
+  ipcMain.handle('graphicsAccess:blocked', async () => ({ success: true, data: blockedList(getConfig().graphicsAllowedOrigins ?? []) }));
+  // Preview frames report through the operator UI, which has the IPC bridge
+  ipcMain.handle('graphicsAccess:reportBlocked', async (_event, report: unknown) => {
+    recordBlocked(report);
+    return { success: true };
+  });
+  ipcMain.handle('graphicsAccess:clearBlocked', async () => {
+    clearBlocked();
+    return { success: true };
   });
 
   ipcMain.handle('graphicsAccess:set', async (_event, list: unknown): Promise<IPCResponse<{ saved: string[]; rejected: Array<{ input: string; reason: string }> }>> => {
