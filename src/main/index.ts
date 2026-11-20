@@ -267,7 +267,10 @@ async function initializeServices() {
     // A changed internet allowlist reaches graphics pages when they reload: output pages reload
     // once nothing is on air, preview frames before their next graphic
     setRulesReloader(new RulesReloader({
-      onAirCount: () => playbackEngine.getActiveGraphics().filter((g) => g.isPlaying).length,
+      // Anything still loaded counts: a hidden graphic stays loaded through its out-animation and
+      // the undo window, and a graphic being shown is loaded before it plays. Graphics of external
+      // OGraf controllers count only while playing (they may stay loaded for good)
+      onAirCount: () => playbackEngine.getActiveGraphics().filter((g) => g.isPlaying || g.source !== 'api').length,
       reloadPages: () => wsServer?.broadcastToRoom(SocketRoom.PROGRAM_OUTPUT, { spxcmd: 'graphics:reloadPage' } as any),
       notifyPreviews: () => BrowserWindow.getAllWindows().forEach((w) => {
         if (!w.isDestroyed()) w.webContents.send('fromMain', { type: 'graphicsAccessChanged' });

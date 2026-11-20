@@ -13,6 +13,16 @@ export function previewFrameUrl(webPort: number): string {
   return `http://127.0.0.1:${webPort}/preview-frame?webPort=${webPort}`;
 }
 
+/**
+ * The web output as the Program monitor embeds it: on 127.0.0.1, so it is never the operator
+ * UI's own origin (in development both would otherwise be localhost:5175 after the redirect)
+ */
+export function sealedOutputUrl(url: string): string {
+  const u = new URL(url);
+  if (u.hostname === "localhost") u.hostname = "127.0.0.1";
+  return u.toString();
+}
+
 interface Env {
   win: Pick<Window, "addEventListener" | "removeEventListener">;
   doc: Pick<Document, "createElement">;
@@ -31,6 +41,8 @@ export class SealedRenderer implements PreviewRenderer {
 
   private iframe: HTMLIFrameElement;
   private frameRules = 0;
+  /** Where the frame actually lives (development redirects it to the Vite server) */
+  private frameOrigin = "";
   private ready!: Promise<void>;
   private markReady!: () => void;
   private pending = new Map<number, Pending>();
@@ -72,6 +84,7 @@ export class SealedRenderer implements PreviewRenderer {
     if (event.source !== this.iframe.contentWindow) return;
     const data = event.data as FrameReply | { ready?: boolean };
     if ((data as { ready?: boolean })?.ready) {
+      this.frameOrigin = event.origin;
       this.markReady();
       return;
     }
@@ -89,7 +102,7 @@ export class SealedRenderer implements PreviewRenderer {
     const requestId = this.nextId++;
     return new Promise((resolve, reject) => {
       this.pending.set(requestId, { resolve, reject });
-      this.iframe.contentWindow?.postMessage({ ...request, requestId }, new URL(this.frameUrl).origin);
+      this.iframe.contentWindow?.postMessage({ ...request, requestId }, this.frameOrigin || new URL(this.frameUrl).origin);
     });
   }
 

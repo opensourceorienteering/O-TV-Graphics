@@ -6,7 +6,7 @@ import { t as tr } from "../i18n";
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { SealedRenderer, previewFrameUrl } from '../sealed/SealedRenderer';
+import { SealedRenderer, previewFrameUrl, sealedOutputUrl } from '../sealed/SealedRenderer';
 import { call } from '../events/api';
 
 /** Scale a 1920x1080 stage into its box */
@@ -42,7 +42,8 @@ export function useOutputUrl(): string {
 /** Monitor-only output URL. The real web/NDI output remains transparent. */
 function alphaPreviewUrl(url: string): string {
   if (!url) return '';
-  const parsed = new URL(url);
+  // On 127.0.0.1: never the operator UI's own origin, so on-air graphics can't reach it
+  const parsed = new URL(sealedOutputUrl(url));
   parsed.searchParams.set('alphaPreview', '1');
   return parsed.toString();
 }

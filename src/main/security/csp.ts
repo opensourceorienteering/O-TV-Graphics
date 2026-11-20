@@ -94,7 +94,7 @@ export function buildGraphicsCsp(o: GraphicsCspOptions): string {
     'font-src': [...local, ...o.allowed],
     'media-src': [...o.allowed],
     'frame-src': [...o.allowed],
-    'connect-src': [...local, `ws://${o.wsHost}:${o.wsPort}`, ...o.allowed, ...o.allowed.map((a) => a.replace(/^https:/, 'wss:'))],
+    'connect-src': [...local, `ws://127.0.0.1:${o.wsPort}`, `ws://${o.wsHost}:${o.wsPort}`, ...o.allowed, ...o.allowed.map((a) => a.replace(/^https:/, 'wss:'))],
   };
   return render(appDirectives(o).map(([name, sources]) => [name, [...sources, ...(extra[name] ?? [])]]));
 }
