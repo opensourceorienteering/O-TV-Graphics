@@ -109,6 +109,9 @@ leader ("+1:01"), and a thin line under each row for the runner's course progres
 - Rows: `virtualRank` order. The leader reads **Leader**; runners with `progressState`
   `timing-finished` carry the finish mark (F); runners whose `signal` is `lost` and whose rank
   Trace / Track withholds go to the bottom, dimmed, marked **GPS**.
+- Positions are counted on the tower (1, 2, 3 …), so a rank Trace / Track withholds leaves no gap.
+- Overtakes get an arrow (▲2, ▼1) for **Arrows shown** seconds (10). Only overtakes count: a
+  runner joining or leaving the tower moves no one's arrow. Moves within that time add up.
 - **Rows** sets the length (10); a runner picked in Live stays on the tower, highlighted.
 - The header and footer say **Estimated**. It is an estimate from GPS, never a result.
 - The website preview's simulated race sends the same fields, so a look can style the tower

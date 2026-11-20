@@ -141,6 +141,7 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
 
     async load(params = {}) {
       this.data = params.data ?? {};
+      this.memory = {};
       const shadow = this.shadowRoot;
       shadow.innerHTML = '';
       await Promise.all([ensureFonts(set.fonts), cssLink(shadow, set.theme)]);
@@ -171,7 +172,8 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
     }
 
     context() {
-      return { ...set, kind, step: this.step };
+      // memory: a view's own state between draws (e.g. the GPS tower's last ranks), per graphic
+      return { ...set, kind, step: this.step, memory: (this.memory ??= {}) };
     }
 
     /**

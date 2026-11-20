@@ -169,13 +169,15 @@ function gpsStandings(race, at) {
     const best = Math.min(...state.filter((o) => o.p >= s.p).map((o) => timeTo(o.r, s.p)));
     s.gap = Math.max(0, Math.round((s.ms - best) / 1000) * 1000);
   }
-  const ranked = state.filter((s) => s.p > 0.02).sort((a, b) => a.gap - b.gap);
-  ranked.forEach((s, i) => {
-    const lost = s.r.bib === '6' && !s.finished && s.p > 0.3 && s.p < 0.45; // one runner's tracker drops out for a while
-    const base = { signal: lost ? 'lost' : 'live', progressPercent: Math.round(s.p * 1000) / 10,
+  const tracked = state.filter((s) => s.p > 0.02).sort((a, b) => a.gap - b.gap);
+  // one runner's tracker drops out for a while: no estimate, and not counted in the ranks
+  const isLost = (s) => s.r.bib === '6' && !s.finished && s.p > 0.3 && s.p < 0.45;
+  const ranked = tracked.filter((s) => !isLost(s));
+  for (const s of tracked) {
+    const base = { signal: isLost(s) ? 'lost' : 'live', progressPercent: Math.round(s.p * 1000) / 10,
       progressState: s.finished ? 'timing-finished' : 'tracking', virtualFieldSize: ranked.length };
-    out.set(s.r.name, lost ? base : { ...base, virtualRank: i + 1, virtualGap: s.gap });
-  });
+    out.set(s.r.name, isLost(s) ? base : { ...base, virtualRank: ranked.indexOf(s) + 1, virtualGap: s.gap });
+  }
   return out;
 }
 

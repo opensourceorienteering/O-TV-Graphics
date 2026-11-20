@@ -139,6 +139,31 @@ const ctlLabel = (data, label, ctx) => `<span class="ftr-class">${esc(shownClass
 const nameStyle = (ctx, where) => ctx.nameStyle?.[where] ?? 'full';
 const runnerName = (r, data, ctx, where) => (teamFirst(data, ctx) ? nameHtml(r?.club, 'team') : nameHtml(r?.name, nameStyle(ctx, where)));
 
+/**
+ * GPS tower: places gained or lost, kept in the graphic's memory (ctx.memory). Only overtakes
+ * count: positions are compared among the runners on the tower both times, so a runner joining
+ * or leaving it moves no one's arrow. An arrow shows for `changeSeconds` (10 s); moves within that
+ * time add up, and moves that cancel out clear it. Without memory (a one-off render) no arrows.
+ */
+function rankChanges(ranked, data, ctx) {
+  const mem = ctx?.memory;
+  if (!mem) return {};
+  if (mem.tower?.className !== data.className) mem.tower = { className: data.className, order: [], arrows: {} };
+  const m = mem.tower, t = now(data), hold = Math.max(1, int(data.changeSeconds, 10)) * 1000;
+  const order = ranked.map(x => rowKey(x.r));
+  const both = new Set(order.filter(k => m.order.includes(k)));
+  const before = m.order.filter(k => both.has(k)), after = order.filter(k => both.has(k));
+  after.forEach((k, i) => {
+    const moved = before.indexOf(k) - i;
+    if (!moved) return;
+    const delta = (m.arrows[k] && t - m.arrows[k].at <= hold ? m.arrows[k].delta : 0) + moved;
+    if (delta) m.arrows[k] = { delta, at: t }; else delete m.arrows[k];
+  });
+  m.order = order;
+  for (const [k, a] of Object.entries(m.arrows)) if (t - a.at > hold) delete m.arrows[k];
+  return Object.fromEntries(Object.entries(m.arrows).map(([k, a]) => [k, { delta: a.delta }]));
+}
+
 /** A radio control's short name on air (TV1, Arena, or C35) */
 const controlShort = (c) => c.short || (c.name && !/^control\s/i.test(c.name) ? c.name : `C${c.code % 1000}`);
 
@@ -541,6 +566,7 @@ const views = {
     const lost = all.filter(x => !Number.isFinite(Number(x.g.virtualRank)) && x.g.signal === 'lost');
     const max = int(data.rows, 10);
     const focus = findRunner(all.map(x => x.r), data);
+    const arrows = rankChanges(ranked, data, ctx);
     let shown = [...ranked, ...lost].slice(0, max);
     // the selected runner stays on the tower, in place of the last row
     const f = focus && [...ranked, ...lost].find(x => x.r === focus);
@@ -549,18 +575,24 @@ const views = {
       const isLost = !Number.isFinite(Number(g.virtualRank));
       const official = g.progressState === 'timing-finished';
       const cls = ['row', r === focus ? 'row--hl' : '', isLost ? 'is-lost' : '', official ? 'is-official' : '', i === 0 && !isLost ? 'row--leader' : ''].filter(Boolean).join(' ');
-      const gap = isLost ? '' : Number(g.virtualRank) === 1 ? L(ctx, 'leader', 'Leader') : clock(Math.round(Number(g.virtualGap) / 1000) || 0, { sign: true });
+      const gap = isLost ? '' : ranked[0]?.r === r ? L(ctx, 'leader', 'Leader') : clock(Math.round(Number(g.virtualGap) / 1000) || 0, { sign: true });
       const mark = isLost ? L(ctx, 'gps', 'GPS') : official ? L(ctx, 'finishShort', 'F') : '';
+      // places gained (▲) or lost (▼) lately; a mark (finished, GPS lost) comes first
+      const moved = mark ? 0 : arrows[rowKey(r)]?.delta ?? 0;
+      const change = mark ? esc(mark) : moved ? String(Math.abs(moved)) : '';
       const progress = Math.max(0, Math.min(100, Number(g.progressPercent) || 0));
       return `<div class="${cls}" style="--i:${i}" data-key="${rowKey(r)}">` +
-        `<span class="c-place">${isLost ? '' : esc(String(g.virtualRank))}</span>` +
+        // positions are counted on the tower (1, 2, 3 …): ranks withheld by Trace / Track leave no gaps
+        `<span class="c-place">${isLost ? '' : ranked.findIndex(x => x.r === r) + 1}</span>` +
         `<span class="c-label">${nameHtml(r.name, 'family')}</span>` +
-        `<span class="c-change">${esc(mark)}</span>` +
+        `<span class="c-change${moved > 0 ? ' up' : moved < 0 ? ' down' : ''}">${change}</span>` +
         `<span class="c-time">${esc(gap)}</span>` +
         `<span class="c-progress" style="--p:${progress}"></span></div>`;
     }).join('') || emptyRow(L(ctx, 'noResults', 'No results yet'));
     return {
       steps: 1,
+      // redrawn when the rows or an arrow change, so arrows go away on time
+      key: JSON.stringify([shown.map(x => rowKey(x.r)), arrows]), rekey: true,
       html: `<div class="panel panel--side panel--splits panel--tower">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'estimated', 'Estimated')), data)}` +
         `<div class="rows">${rows}</div>${footer(esc(`${L(ctx, 'gps', 'GPS')} · ${L(ctx, 'estimated', 'Estimated')}`), data)}</div>`
     };

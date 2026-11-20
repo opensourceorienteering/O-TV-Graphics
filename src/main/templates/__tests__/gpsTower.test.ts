@@ -40,3 +40,54 @@ describe('GPS tower', () => {
     expect(text(views.renderView('gps-tower', { className: 'D21', results: [runner('Not Tracked')] }, ctx).html)).toContain('No results yet');
   });
 });
+
+describe('GPS tower arrows', () => {
+  const t0 = Date.UTC(2026, 10, 20, 10);
+  const at = (ranks: Record<string, number>, ms: number, extra = {}) => ({
+    className: 'D21', frozenAt: t0 + ms, ...extra,
+    results: Object.entries(ranks).map(([name, virtualRank]) =>
+      ({ name, club: 'Club', statusCode: 0, x: { 'trace-track': { virtualRank, virtualGap: (virtualRank - 1) * 5000, progressState: 'tracking', signal: 'live' } } }))
+  });
+  const changes = (html: string) => [...html.matchAll(/<span class="c-change([^"]*)">([^<]*)<\/span>/g)].map(m => (m[1].trim() || '-') + m[2]);
+
+  it('shows places gained or lost after a change, then lets them go', () => {
+    const memory = {};
+    const c = { ...ctx, memory };
+    views.renderView('gps-tower', at({ A: 1, B: 2, C: 3 }, 0), c);
+    // C passes A and B
+    expect(changes(views.renderView('gps-tower', at({ C: 1, A: 2, B: 3 }, 1000), c).html)).toEqual(['up2', 'down1', 'down1']);
+    // a second move within 10 s adds up: B passes A
+    expect(changes(views.renderView('gps-tower', at({ C: 1, B: 2, A: 3 }, 4000), c).html)).toEqual(['up2', '-', 'down2']);
+    // 10 s after its last move an arrow goes
+    expect(changes(views.renderView('gps-tower', at({ C: 1, B: 2, A: 3 }, 12000), c).html)).toEqual(['-', '-', 'down2']);
+    expect(changes(views.renderView('gps-tower', at({ C: 1, B: 2, A: 3 }, 15000), c).html)).toEqual(['-', '-', '-']);
+  });
+
+  it('clears an arrow when the moves cancel out, and starts again for another class', () => {
+    const memory = {};
+    const c = { ...ctx, memory };
+    views.renderView('gps-tower', at({ A: 1, B: 2 }, 0), c);
+    views.renderView('gps-tower', at({ B: 1, A: 2 }, 1000), c);
+    expect(changes(views.renderView('gps-tower', at({ A: 1, B: 2 }, 2000), c).html)).toEqual(['-', '-']);
+    views.renderView('gps-tower', at({ B: 1, A: 2 }, 3000), c);
+    expect(changes(views.renderView('gps-tower', at({ A: 1, B: 2 }, 3500, { className: 'H21' }), c).html)).toEqual(['-', '-']);
+  });
+});
+
+describe('GPS tower arrows count overtakes only', () => {
+  const at = (ranks: Record<string, number>, ms: number) => ({
+    className: 'D21', frozenAt: Date.UTC(2026, 10, 20, 10) + ms,
+    results: Object.entries(ranks).map(([name, virtualRank]) =>
+      ({ name, club: 'Club', statusCode: 0, x: { 'trace-track': { virtualRank, virtualGap: 0, progressState: 'tracking', signal: 'live' } } }))
+  });
+  const changes = (html: string) => [...html.matchAll(/<span class="c-change([^"]*)">([^<]*)<\/span>/g)].map(m => (m[1].trim() || '-') + m[2]);
+
+  it('a runner joining or leaving the tower moves no one\'s arrow', () => {
+    const c = { ...ctx, memory: {} };
+    views.renderView('gps-tower', at({ A: 1, B: 2, C: 3 }, 0), c);
+    // N appears in 2nd: B and C drop a place on the tower, but nobody overtook them
+    expect(changes(views.renderView('gps-tower', at({ A: 1, N: 2, B: 3, C: 4 }, 1000), c).html)).toEqual(['-', '-', '-', '-']);
+    // A leaves (GPS withheld): no arrows either
+    expect(changes(views.renderView('gps-tower', at({ N: 1, B: 2, C: 3 }, 2000), c).html)).toEqual(['-', '-', '-']);
+  });
+});

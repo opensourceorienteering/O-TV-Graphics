@@ -360,6 +360,14 @@
             "title": "Rows",
             "description": "Runners on the tower",
             "default": 10
+          },
+          "changeSeconds": {
+            "type": "number",
+            "title": "Arrows shown (seconds)",
+            "description": "How long a place gained or lost shows its arrow",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 60
           }
         }
       },
@@ -397,6 +405,9 @@
         "sourceFields": [
           "results[].x.trace-track.virtualRank",
           "results[].x.trace-track.virtualGap"
+        ],
+        "settingsFields": [
+          "changeSeconds"
         ]
       }
     },
