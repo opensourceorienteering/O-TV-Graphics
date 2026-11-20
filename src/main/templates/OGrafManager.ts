@@ -477,7 +477,8 @@ export class OGrafManager {
    * <user>/additions/<look>/overrides.json and, for an imported look, <user>/sets/<look>/overrides.json.
    */
   getReplacements(setId: string): Record<string, string> {
-    if (!this.userDir) return {};
+    // A look id is one folder name; anything else would read outside the templates folder
+    if (!this.userDir || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(String(setId))) return {};
     const out: Record<string, string> = {};
     for (const file of [path.join(this.userDir, ADDITIONS, setId, 'overrides.json'), path.join(this.userDir, 'sets', setId, 'overrides.json')]) {
       try {

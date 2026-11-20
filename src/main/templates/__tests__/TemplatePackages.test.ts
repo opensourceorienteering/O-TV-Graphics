@@ -17,11 +17,15 @@ vi.mock('../../utils/logger', () => {
 import { OGrafManager } from '../OGrafManager';
 import {
   exportLookZip,
+  lookFileName,
+  wholeLookZip,
   importTemplateZip,
   previewTemplateZip,
   readTemplateZip,
   removeImportedLook,
 } from '../TemplatePackages';
+
+import { writeGraphic } from './additions.test';
 
 const REPO_TEMPLATES = path.resolve(__dirname, '../../../../templates');
 
@@ -60,7 +64,7 @@ describe('looks as zip files', () => {
   });
 
   it('exports a look as <set>/... with every file of the set', () => {
-    const files = Object.keys(unzipSync(exportLookZip(full, 'iof')));
+    const files = Object.keys(unzipSync(wholeLookZip(full, 'iof')));
     expect(files).toContain('iof/set.json');
     expect(files).toContain('iof/theme.css');
     expect(files).toContain('iof/iof-results/iof-results.ograf.json');
@@ -69,12 +73,13 @@ describe('looks as zip files', () => {
   });
 
   it('imports a look into the templates folder and serves it next to the built-in ones', async () => {
-    const zip = exportLookZip(full, 'iof');
+    const zip = wholeLookZip(full, 'iof');
     expect(previewTemplateZip(manager, zip)).toEqual({
       internet: [],
       internetRefused: [],
       looks: [{ id: 'iof', name: 'IOF', graphics: 17, replaces: undefined }],
       graphics: [],
+      additions: [],
     });
     await importTemplateZip(manager, zip);
     expect(setIds()).toEqual(['iof', 'standard']);
@@ -86,14 +91,14 @@ describe('looks as zip files', () => {
   });
 
   it('accepts a zip with the look files at the top level', async () => {
-    const files = unzipSync(exportLookZip(full, 'signal'));
+    const files = unzipSync(wholeLookZip(full, 'signal'));
     const flat = Object.fromEntries(Object.entries(files).map(([name, data]) => [name.replace(/^signal\//, ''), data]));
     await importTemplateZip(manager, zipSync(flat));
     expect(setIds()).toEqual(['signal', 'standard']);
   });
 
   it('replaces the built-in look with an imported copy, and brings it back on remove', async () => {
-    const files = unzipSync(exportLookZip(full, 'standard'));
+    const files = unzipSync(wholeLookZip(full, 'standard'));
     const meta = JSON.parse(Buffer.from(files['standard/set.json']).toString());
     files['standard/set.json'] = strToU8(JSON.stringify({ ...meta, name: 'Standard (club colours)' }));
     const zip = zipSync(files);
@@ -112,8 +117,8 @@ describe('looks as zip files', () => {
   });
 
   it('replaces an earlier import of the same look', async () => {
-    await importTemplateZip(manager, exportLookZip(full, 'cz'));
-    const zip = exportLookZip(full, 'cz');
+    await importTemplateZip(manager, wholeLookZip(full, 'cz'));
+    const zip = wholeLookZip(full, 'cz');
     expect(previewTemplateZip(manager, zip).looks[0].replaces).toBe('imported');
     await importTemplateZip(manager, zip);
     expect(setIds()).toEqual(['cz', 'standard']);
@@ -121,7 +126,7 @@ describe('looks as zip files', () => {
   });
 
   it('refuses a look whose graphic ids are taken by another look', async () => {
-    const files = unzipSync(exportLookZip(full, 'standard'));
+    const files = unzipSync(wholeLookZip(full, 'standard'));
     const renamed = Object.fromEntries(Object.entries(files).map(([n, d]) => [n.replace(/^standard\//, 'copy/'), d]));
     renamed['copy/set.json'] = strToU8(JSON.stringify({ id: 'copy', name: 'Copy' }));
     expect(() => previewTemplateZip(manager, zipSync(renamed))).toThrow(/"standard-.*" is already used by the "standard" look/);
@@ -187,6 +192,89 @@ describe('looks as zip files', () => {
 
   it('only removes imported looks', async () => {
     await expect(removeImportedLook(manager, 'standard')).rejects.toThrow(/not an imported look/);
+  });
+});
+
+describe('additions travel as .splitlook files', () => {
+  const additionsDir = () => path.join(tmp, 'user', 'additions', 'standard');
+  async function addGuestStrap() {
+    writeGraphic(path.join(additionsDir(), 'guest-strap'), 'guest-strap', { v_olgrafik_kind: 'free-text' });
+    fs.writeFileSync(path.join(additionsDir(), 'overrides.json'), JSON.stringify({ replaces: { 'guest-strap': 'standard-free-text' } }));
+    manager.clearCache();
+    await manager.discoverTemplates();
+  }
+  async function freshManager() {
+    fs.rmSync(path.join(tmp, 'user'), { recursive: true, force: true });
+    const m = new OGrafManager(path.join(tmp, 'app'), path.join(tmp, 'user'));
+    await m.initialize();
+    await m.discoverTemplates();
+    return m;
+  }
+
+  it('exports only the additions of a built-in look, and imports them back into additions/', async () => {
+    await addGuestStrap();
+    const zip = exportLookZip(manager, 'standard');
+    const names = Object.keys(unzipSync(zip)).sort();
+    expect(names).toContain('standard/set.json');
+    expect(names).toContain('standard/overrides.json');
+    expect(names.some((n) => n.startsWith('standard/guest-strap/'))).toBe(true);
+    expect(names.some((n) => n.startsWith('standard/standard-results/'))).toBe(false);
+    expect(JSON.parse(Buffer.from(unzipSync(zip)['standard/set.json']).toString())).toMatchObject({ id: 'standard', extends: 'standard' });
+
+    const fresh = await freshManager();
+    expect(previewTemplateZip(fresh, zip)).toMatchObject({ looks: [], graphics: [], additions: [{ lookId: 'standard', lookName: 'Standard', graphics: 1 }] });
+    await importTemplateZip(fresh, zip);
+    expect(fresh.getAllTemplates().find((t) => t.manifest.id === 'guest-strap')).toMatchObject({ setId: 'standard', addition: true });
+    expect(fresh.getReplacements('standard')).toEqual({ 'guest-strap': 'standard-free-text' });
+    expect(fs.existsSync(path.join(tmp, 'user', 'sets', 'standard'))).toBe(false);
+    expect(fresh.getTemplateSets().find((s) => s.id === 'standard')).toMatchObject({ source: 'built-in', additions: 1 });
+  });
+
+  it('importing the same file twice leaves one copy of each addition', async () => {
+    await addGuestStrap();
+    const zip = exportLookZip(manager, 'standard');
+    await importTemplateZip(manager, zip);
+    await importTemplateZip(manager, zip);
+    expect(manager.getAllTemplates().filter((t) => t.manifest.id === 'guest-strap')).toHaveLength(1);
+    expect(fs.readdirSync(additionsDir()).sort()).toEqual(['guest-strap', 'overrides.json']);
+  });
+
+  it('keeps other overrides of the look when merging', async () => {
+    await addGuestStrap();
+    const zip = exportLookZip(manager, 'standard');
+    fs.writeFileSync(path.join(additionsDir(), 'overrides.json'), JSON.stringify({ replaces: { other: 'standard-clock' } }));
+    await importTemplateZip(manager, zip);
+    expect(manager.getReplacements('standard')).toEqual({ other: 'standard-clock', 'guest-strap': 'standard-free-text' });
+  });
+
+  it('installs additions for a look this computer does not have, under Needs attention', async () => {
+    const zip = zipSync({
+      'gps-pack/set.json': strToU8(JSON.stringify({ id: 'gps-pack', name: 'GPS pack', extends: 'gps-pack' })),
+      'gps-pack/tracker/tracker.ograf.json': strToU8(JSON.stringify({ id: 'tracker', name: 'Tracker', main: 'graphic.js' })),
+      'gps-pack/tracker/graphic.js': strToU8('export default class {}'),
+    });
+    expect(previewTemplateZip(manager, zip).additions).toEqual([{ lookId: 'gps-pack', lookName: null, graphics: 1 }]);
+    await importTemplateZip(manager, zip);
+    expect(fs.existsSync(path.join(tmp, 'user', 'additions', 'gps-pack', 'tracker', 'tracker.ograf.json'))).toBe(true);
+  });
+
+  it('only takes replacements for graphics the file brings', async () => {
+    const zip = zipSync({
+      'standard/set.json': strToU8(JSON.stringify({ id: 'standard', extends: 'standard' })),
+      'standard/overrides.json': strToU8(JSON.stringify({ replaces: { 'standard-clock': 'standard-results', x: 'standard-free-text' } })),
+      'standard/x/x.ograf.json': strToU8(JSON.stringify({ id: 'x', name: 'X', main: 'graphic.js' })),
+    });
+    await importTemplateZip(manager, zip);
+    expect(manager.getReplacements('standard')).toEqual({ x: 'standard-free-text' });
+  });
+
+  it('names the file after the look, safely on every system', () => {
+    expect(lookFileName('IOF / Sprint: "final"')).toBe('IOF - Sprint - final');
+    expect(lookFileName('...')).toBe('look');
+  });
+
+  it('refuses to export a built-in look with no additions', () => {
+    expect(() => exportLookZip(manager, 'standard')).toThrow('This look has no additions to export');
   });
 });
 

@@ -7,13 +7,17 @@
  *
  * Imported looks go to the writable templates folder (DATAROOT/templates/sets/<set>/); the
  * graphics there still load the shared code (sets/_core/) that ships with the app.
+ *
+ * A look whose set.json says "extends": "<look>" carries only graphics added to that look (and
+ * its overrides.json). Those go to DATAROOT/templates/additions/<look>/, so they survive app
+ * updates. A built-in look exports this way: only what the operator added to it.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { unzipSync, zipSync, type Zippable } from 'fflate';
+import { strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
-import type { OGrafManager } from './OGrafManager';
+import { ADDITIONS, type OGrafManager } from './OGrafManager';
 import { pickManifestFile } from './manifestFile';
 import { normalizeAllowedOrigin } from '../security/csp';
 
@@ -40,9 +44,18 @@ export interface ZipGraphic {
   files: Map<string, Uint8Array>;
 }
 
+/** Graphics added to a look, from a set.json with "extends" */
+export interface ZipExtension {
+  lookId: string;
+  graphics: ZipGraphic[];
+  /** New graphic id → the id it replaces, only for graphics in this file */
+  replaces: Record<string, string>;
+}
+
 export interface ZipContents {
   looks: ZipLook[];
   graphics: ZipGraphic[];
+  extensions: ZipExtension[];
 }
 
 /** What an import would do, for the operator to confirm */
@@ -53,6 +66,8 @@ export interface ImportPreview {
   internetRefused: Array<{ input: string; reason: string }>;
   looks: Array<{ id: string; name: string; graphics: number; replaces?: 'imported' | 'built-in' }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
+  /** Graphics added to a look; lookName is null when this computer doesn't have the look */
+  additions: Array<{ lookId: string; lookName: string | null; graphics: number }>;
 }
 
 export class TemplatePackageError extends Error {}
@@ -83,6 +98,54 @@ function readJson(bytes: Uint8Array | undefined, what: string): any {
   } catch {
     return fail(`${what} is not valid JSON`);
   }
+}
+
+/** The graphic folders directly inside a look folder, with their manifests */
+function graphicFolders(lookFiles: Map<string, Uint8Array>, lookId: string): Array<{ folder: string; manifest: any }> {
+  const byFolder = new Map<string, string[]>();
+  for (const file of lookFiles.keys()) {
+    const parts = file.split('/');
+    if (parts.length !== 2) continue;
+    const names = byFolder.get(parts[0]);
+    if (names) names.push(parts[1]);
+    else byFolder.set(parts[0], [parts[1]]);
+  }
+  const out: Array<{ folder: string; manifest: any }> = [];
+  for (const [folder, names] of byFolder) {
+    const pick = pickManifestFile(folder, names);
+    if (!pick) continue;
+    if ('ambiguous' in pick) {
+      fail(`The graphic folder "${folder}" in the look "${lookId}" has several manifests (${pick.ambiguous.join(', ')}): keep one .ograf.json, or name it after the folder`);
+      continue;
+    }
+    if (pick.file === 'manifest.json') continue;
+    const manifest = readJson(lookFiles.get(`${folder}/${pick.file}`), `${folder}/${pick.file}`);
+    if (manifest?.id) out.push({ folder, manifest });
+  }
+  return out;
+}
+
+/** A set.json with "extends": the graphics it adds to that look and the replacements among them */
+function readExtension(lookFiles: Map<string, Uint8Array>, meta: any): ZipExtension {
+  const lookId = String(meta.extends ?? '').trim();
+  if (!isValidId(lookId)) fail(`"${lookId}" can't be used as a look id: use letters, digits, - and _`);
+  const graphics: ZipGraphic[] = graphicFolders(lookFiles, lookId).map(({ folder, manifest }) => {
+    if (!isValidId(folder)) fail(`"${folder}" can't be used as a graphic folder name`);
+    const files = new Map<string, Uint8Array>();
+    for (const [file, data] of lookFiles) if (file.startsWith(`${folder}/`)) files.set(file.slice(folder.length + 1), data);
+    return { folder, id: String(manifest.id), name: String(manifest.name || manifest.id), files };
+  });
+  if (!graphics.length) fail(`The file adds no graphics to the look "${lookId}"`);
+  const own = new Set(graphics.map((g) => g.id));
+  const replaces: Record<string, string> = {};
+  const declared = readJson(lookFiles.get('overrides.json'), 'overrides.json')?.replaces;
+  if (declared && typeof declared === 'object') {
+    // A file may only say what its own graphics replace
+    for (const [newId, oldId] of Object.entries(declared)) {
+      if (own.has(newId) && typeof oldId === 'string' && oldId.trim() && oldId !== newId) replaces[newId] = oldId;
+    }
+  }
+  return { lookId, graphics, replaces };
 }
 
 /** Unpack a zip into the looks and graphics it holds. Nothing is written to disk. */
@@ -128,34 +191,22 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
   };
 
   const looks: ZipLook[] = [];
+  const extensions: ZipExtension[] = [];
   for (const dir of lookDirs) {
     const lookFiles = within(dir);
     const meta = readJson(lookFiles.get('set.json'), `${dir || 'The'} set.json`) || {};
+    if (meta.extends !== undefined) {
+      const extension = readExtension(lookFiles, meta);
+      if (extensions.some((e) => e.lookId === extension.lookId)) fail(`The file adds to the look "${extension.lookId}" twice`);
+      extensions.push(extension);
+      continue;
+    }
     const folderName = dir.split('/').pop() || '';
     const id = String(meta.id || folderName || '').trim();
     if (!id) fail('A look in the zip has no id: add "id" to its set.json');
     if (!isValidId(id)) fail(`"${id}" can't be used as a look id: use letters, digits, - and _`);
     if (looks.some((l) => l.id === id)) fail(`The zip contains the look "${id}" twice`);
-    const graphicIds: string[] = [];
-    const byFolder = new Map<string, string[]>();
-    for (const file of lookFiles.keys()) {
-      const parts = file.split('/');
-      if (parts.length !== 2) continue;
-      const names = byFolder.get(parts[0]);
-      if (names) names.push(parts[1]);
-      else byFolder.set(parts[0], [parts[1]]);
-    }
-    for (const [folder, names] of byFolder) {
-      const pick = pickManifestFile(folder, names);
-      if (!pick) continue;
-      if ('ambiguous' in pick) {
-        fail(`The graphic folder "${folder}" in the look "${id}" has several manifests (${pick.ambiguous.join(', ')}): keep one .ograf.json, or name it after the folder`);
-        continue;
-      }
-      if (pick.file === 'manifest.json') continue;
-      const manifest = readJson(lookFiles.get(`${folder}/${pick.file}`), `${folder}/${pick.file}`);
-      if (manifest?.id) graphicIds.push(String(manifest.id));
-    }
+    const graphicIds = graphicFolders(lookFiles, id).map(({ manifest }) => String(manifest.id));
     if (!graphicIds.length) fail(`The look "${id}" has no graphics (no graphic folder with an .ograf.json)`);
     looks.push({ id, name: String(meta.name || id), description: meta.description, files: lookFiles, graphicIds });
   }
@@ -176,24 +227,31 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
     graphics.push({ folder, id: String(manifest.id), name: String(manifest.name || manifest.id), files: graphicFiles });
   }
 
-  if (!looks.length && !graphics.length)
+  if (!looks.length && !graphics.length && !extensions.length)
     fail('The zip contains no look (set.json) and no OGraf graphic (.ograf.json)');
-  return { looks, graphics };
+  return { looks, graphics, extensions };
 }
 
 /** Graphic ids already used outside the looks/graphics being replaced */
 function checkIdClashes(manager: OGrafManager, contents: ZipContents): void {
   const replacing = new Set(contents.looks.map((l) => l.id));
   const replacedGraphicDirs = new Set(contents.graphics.map((g) => g.folder));
+  // Additions already installed from an earlier copy of this file are replaced, not clashes
+  const replacedAdditions = new Set(contents.extensions.flatMap((e) => e.graphics.map((g) => `${ADDITIONS}/${e.lookId}/${g.folder}`)));
   const userDir = manager.getUserDirectory();
   const taken = new Map<string, string>();
   for (const t of manager.getAllTemplates()) {
     if (replacing.has(t.setId)) continue;
+    if (t.addition && replacedAdditions.has(t.directoryName)) continue;
     if (t.setId === CUSTOM_TEMPLATE_SET && userDir && t.manifestPath.startsWith(userDir) && replacedGraphicDirs.has(t.directoryName)) continue;
     taken.set(t.manifest.id, t.setId === CUSTOM_TEMPLATE_SET ? 'another graphic' : `the "${t.setId}" look`);
   }
   const seen = new Set<string>();
-  const ids = [...contents.looks.flatMap((l) => l.graphicIds), ...contents.graphics.map((g) => g.id)];
+  const ids = [
+    ...contents.looks.flatMap((l) => l.graphicIds),
+    ...contents.graphics.map((g) => g.id),
+    ...contents.extensions.flatMap((e) => e.graphics.map((g) => g.id)),
+  ];
   for (const id of ids) {
     if (seen.has(id)) fail(`The graphic id "${id}" is used twice in the zip`);
     seen.add(id);
@@ -214,7 +272,10 @@ export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array, allow
 function declaredInternet(contents: ZipContents, allowed: string[]): { asked: string[]; refused: Array<{ input: string; reason: string }> } {
   const asked = new Set<string>();
   const refused = new Map<string, string>();
-  const manifests = [...contents.looks.flatMap((l) => [...l.files]), ...contents.graphics.flatMap((g) => [...g.files])]
+  const manifests = [
+    ...contents.looks.flatMap((l) => [...l.files]),
+    ...[...contents.graphics, ...contents.extensions.flatMap((e) => e.graphics)].flatMap((g) => [...g.files]),
+  ]
     .filter(([name]) => name.endsWith('.ograf.json'));
   for (const [name, data] of manifests) {
     let manifest: { v_olgrafik_internet?: unknown };
@@ -253,6 +314,7 @@ function previewContents(manager: OGrafManager, contents: ZipContents, allowed: 
       name: g.name,
       replaces: !!userDir && fs.existsSync(path.join(userDir, g.folder)),
     })),
+    additions: contents.extensions.map((e) => ({ lookId: e.lookId, lookName: sets.get(e.lookId)?.name ?? null, graphics: e.graphics.length })),
   };
 }
 
@@ -302,6 +364,13 @@ export async function importTemplateZip(manager: OGrafManager, zip: Uint8Array):
     replaceFolder(path.join(userDir, 'sets', look.id), files);
   }
   for (const graphic of contents.graphics) replaceFolder(path.join(userDir, graphic.folder), graphic.files);
+  for (const extension of contents.extensions) {
+    const dir = path.join(userDir, ADDITIONS, extension.lookId);
+    for (const graphic of extension.graphics) replaceFolder(path.join(dir, graphic.folder), graphic.files);
+    if (Object.keys(extension.replaces).length) {
+      writeOverrides(dir, { ...readOverrides(dir), ...extension.replaces });
+    }
+  }
   await rediscover(manager);
   return preview;
 }
@@ -316,12 +385,63 @@ function collectFiles(dir: string, prefix: string, out: Zippable): void {
   }
 }
 
-/** Zip a look (built-in or imported) as <set>/... */
-export function exportLookZip(manager: OGrafManager, setId: string): Uint8Array {
+function readOverrides(dir: string): Record<string, string> {
+  try {
+    const replaces = JSON.parse(fs.readFileSync(path.join(dir, 'overrides.json'), 'utf-8'))?.replaces;
+    return replaces && typeof replaces === 'object' && !Array.isArray(replaces) ? { ...replaces } : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeOverrides(dir: string, replaces: Record<string, string>): void {
+  const file = path.join(dir, 'overrides.json');
+  if (!Object.keys(replaces).length) {
+    fs.rmSync(file, { force: true });
+    return;
+  }
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ replaces }, null, 2) + '\n');
+}
+
+/** Zip every file of a look as <set>/... */
+export function wholeLookZip(manager: OGrafManager, setId: string): Uint8Array {
   const dir = manager.getSetDirectory(setId) ?? fail(`The look "${setId}" is not installed`);
   const files: Zippable = {};
   collectFiles(dir, setId, files);
   // Already-compressed files (fonts, images) are stored as they are
+  return zipSync(files, { level: 6 });
+}
+
+/** The graphic folders added to a look */
+function additionFolders(manager: OGrafManager, lookId: string): string[] {
+  const userDir = manager.getUserDirectory();
+  if (!userDir || !isValidId(lookId)) return [];
+  const dir = path.join(userDir, ADDITIONS, lookId);
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith('.')).map((e) => e.name).sort();
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The .splitlook file for a look. An imported look travels whole. A built-in look travels as
+ * only what was added to it (set.json with "extends", the added graphics, overrides.json):
+ * the other computer has the rest.
+ */
+export function exportLookZip(manager: OGrafManager, setId: string): Uint8Array {
+  const set = manager.getTemplateSets().find((s) => s.id === setId) ?? fail(`The look "${setId}" is not installed`);
+  if (set.source === 'imported') return wholeLookZip(manager, setId);
+  const folders = additionFolders(manager, setId);
+  if (!folders.length) fail('This look has no additions to export');
+  const dir = path.join(manager.getUserDirectory()!, ADDITIONS, setId);
+  const files: Zippable = {
+    [`${setId}/set.json`]: strToU8(JSON.stringify({ id: setId, name: set.name, extends: setId }, null, 2) + '\n'),
+  };
+  for (const folder of folders) collectFiles(path.join(dir, folder), `${setId}/${folder}`, files);
+  const replaces = readOverrides(dir);
+  if (Object.keys(replaces).length) files[`${setId}/overrides.json`] = strToU8(JSON.stringify({ replaces }, null, 2) + '\n');
   return zipSync(files, { level: 6 });
 }
 
@@ -334,4 +454,10 @@ export async function removeImportedLook(manager: OGrafManager, setId: string): 
   if (!dir.startsWith(path.join(userDir!, 'sets') + path.sep)) fail('Invalid look');
   fs.rmSync(dir, { recursive: true, force: true });
   await rediscover(manager);
+}
+
+/** A look's name as a file name on every system ("IOF / Sprint" → "IOF - Sprint") */
+export function lookFileName(name: string): string {
+  const clean = name.replace(/\s*[<>:"/\\|?*\x00-\x1f][\s<>:"/\\|?*\x00-\x1f]*/g, ' - ').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '');
+  return clean.slice(0, 80) || 'look';
 }

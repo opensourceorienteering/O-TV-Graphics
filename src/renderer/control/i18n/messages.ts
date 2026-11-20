@@ -3260,9 +3260,17 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Spara temat som en zip-fil, för att dela det eller använda det på en annan dator",
     "nb": "Lagre temaet som en zip-fil, for å dele det eller bruke det på en annen datamaskin"
   },
-  "Import this zip?": {
-    "sv": "Importera den här zip-filen?",
-    "nb": "Importere denne zip-filen?"
+  "Import this file?": {
+    "sv": "Importera den här filen?",
+    "nb": "Importere denne filen?"
+  },
+  "adds graphics to this look": {
+    "sv": "lägger till grafik i det här temat",
+    "nb": "legger til grafikk i dette temaet"
+  },
+  "adds graphics to a look this computer doesn't have. They appear under Needs attention.": {
+    "sv": "lägger till grafik i ett tema som den här datorn inte har. Den visas under Behöver åtgärdas.",
+    "nb": "legger til grafikk i et tema denne datamaskinen ikke har. Den vises under Trenger oppfølging."
   },
   "new look": {
     "sv": "nytt tema",
