@@ -72,6 +72,7 @@ describe('looks as zip files', () => {
     const zip = exportLookZip(full, 'iof');
     expect(previewTemplateZip(manager, zip)).toEqual({
       internet: [],
+      internetRefused: [],
       looks: [{ id: 'iof', name: 'IOF', graphics: 17, replaces: undefined }],
       graphics: [],
     });
@@ -171,6 +172,7 @@ describe('looks as zip files', () => {
     files['mylook/gps/gps.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'gps-1', name: 'GPS', v_olgrafik_internet: ['https://Maps.Example.com', 'http://bad', 'https://tiles.example'] }));
     const zip = zipSync(files);
     expect(previewTemplateZip(manager, zip, ['https://tiles.example']).internet).toEqual(['https://maps.example.com']);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example']).internetRefused).toEqual([{ input: 'http://bad', reason: expect.any(String) }]);
     expect(previewTemplateZip(manager, zip, ['https://tiles.example', 'https://maps.example.com']).internet).toEqual([]);
   });
 

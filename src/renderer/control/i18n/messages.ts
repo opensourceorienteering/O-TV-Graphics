@@ -3471,5 +3471,9 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Saved as": {
     "sv": "Sparad som",
     "nb": "Lagret som"
+  },
+  "These addresses were asked for but can't be allowed, so graphics won't reach them:": {
+    "sv": "De här adresserna efterfrågades men kan inte tillåtas, så grafiken når dem inte:",
+    "nb": "Disse adressene ble etterspurt, men kan ikke tillates, så grafikken når dem ikke:"
   }
 };

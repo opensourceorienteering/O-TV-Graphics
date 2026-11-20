@@ -11,6 +11,7 @@ export interface ImportPreview {
   looks: Array<{ id: string; name: string; graphics: number; replaces?: "imported" | "built-in" }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
   internet?: string[];
+  internetRefused?: Array<{ input: string; reason: string }>;
 }
 
 /** One line per look or graphic, in plain words */
@@ -80,6 +81,18 @@ export function ImportConfirm({
               ))}
               <p className="muted">{tr("You can change this later in Settings → Internet access.")}</p>
             </fieldset>
+          )}
+          {(preview.internetRefused?.length ?? 0) > 0 && (
+            <div>
+              <p>{tr("These addresses were asked for but can't be allowed, so graphics won't reach them:")}</p>
+              <ul>
+                {preview.internetRefused!.map((r) => (
+                  <li key={r.input}>
+                    <code>{r.input}</code> — {tr(r.reason)}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
         <div className="modal-footer">
