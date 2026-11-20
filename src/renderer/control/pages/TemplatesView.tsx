@@ -130,6 +130,44 @@ export function TemplatesView() {
     }
   };
 
+  /** Which graphics replace which in the open look */
+  const [replaces, setReplaces] = useState<Record<string, string>>({});
+  const openLookId = open?.lookId;
+  useEffect(() => {
+    let alive = true;
+    setReplaces({});
+    if (!openLookId) return;
+    window.electronAPI
+      .invoke("templates:getReplacements", openLookId)
+      .then((result: { success?: boolean; data?: Record<string, string> }) => alive && result?.success && setReplaces(result.data ?? {}))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [openLookId, templates]);
+
+  const removeAddition = async (set: TemplateSetInfo, template: OGrafTemplateInfo) => {
+    const replacing = replaces[template.manifest.id];
+    const original = replacing ? templates.find((t) => t.manifest.id === replacing && t.setId === set.id) : undefined;
+    const fill = (text: string) =>
+      text.replace("{graphic}", template.manifest.name).replace("{look}", set.name).replace("{original}", original?.manifest.name ?? "");
+    const message = original
+      ? fill(tr("Remove {graphic} from {look}? Live uses {original} again."))
+      : fill(tr("Remove {graphic} from {look}?"));
+    if (!confirm(message)) return;
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:removeAddition", set.id, template.manifest.id);
+      if (!result.success) throw new Error(result.error);
+      toast.showToast("success", `${tr("Graphic removed")}: ${template.manifest.name}`);
+      await loadTemplates();
+    } catch (cause) {
+      toast.showToast("error", cause instanceof Error ? cause.message : String(cause), 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const removeLook = async (set: TemplateSetInfo) => {
     const usage = await window.electronAPI.invoke("templates:setUsage", set.id);
     const events: string[] = usage?.success ? usage.events : [];
@@ -255,8 +293,10 @@ export function TemplatesView() {
           initialTemplateId={open?.templateId}
           busy={busy}
           onBack={() => setOpen(null)}
+          replaces={replaces}
           onExport={() => void exportLook(openCard.set)}
           onRemove={() => void removeLook(openCard.set)}
+          onRemoveAddition={(template) => void removeAddition(openCard.set, template)}
         />
       ) : cards.length || needs.length ? (
         <LibraryHome

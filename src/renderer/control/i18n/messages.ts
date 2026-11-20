@@ -3256,9 +3256,45 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Exportera…",
     "nb": "Eksporter…"
   },
-  "Save this look as a zip file, to share it or use it on another computer": {
-    "sv": "Spara temat som en zip-fil, för att dela det eller använda det på en annan dator",
-    "nb": "Lagre temaet som en zip-fil, for å dele det eller bruke det på en annen datamaskin"
+  "Added to this look": {
+    "sv": "Tillagd i det här temat",
+    "nb": "Lagt til i dette temaet"
+  },
+  "Replaced by": {
+    "sv": "Ersatt av",
+    "nb": "Erstattet av"
+  },
+  "Remove this graphic from the look": {
+    "sv": "Ta bort den här grafiken från temat",
+    "nb": "Fjern denne grafikken fra temaet"
+  },
+  "Graphics added to this look": {
+    "sv": "Grafik som lagts till i det här temat",
+    "nb": "Grafikk som er lagt til i dette temaet"
+  },
+  "added": {
+    "sv": "tillagda",
+    "nb": "lagt til"
+  },
+  "Graphic removed": {
+    "sv": "Grafik borttagen",
+    "nb": "Grafikk fjernet"
+  },
+  "Remove {graphic} from {look}?": {
+    "sv": "Ta bort {graphic} från {look}?",
+    "nb": "Fjerne {graphic} fra {look}?"
+  },
+  "Remove {graphic} from {look}? Live uses {original} again.": {
+    "sv": "Ta bort {graphic} från {look}? Live använder {original} igen.",
+    "nb": "Fjerne {graphic} fra {look}? Live bruker {original} igjen."
+  },
+  "Save this look as a .splitlook file, to share it or use it on another computer": {
+    "sv": "Spara temat som en .splitlook-fil, för att dela det eller använda det på en annan dator",
+    "nb": "Lagre temaet som en .splitlook-fil, for å dele det eller bruke det på en annen datamaskin"
+  },
+  "Save the graphics added to this look as a .splitlook file, for another computer that has the look": {
+    "sv": "Spara grafiken som lagts till i temat som en .splitlook-fil, för en annan dator som har temat",
+    "nb": "Lagre grafikken som er lagt til i temaet som en .splitlook-fil, for en annen datamaskin som har temaet"
   },
   "Import this file?": {
     "sv": "Importera den här filen?",
