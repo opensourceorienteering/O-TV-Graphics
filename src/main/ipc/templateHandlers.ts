@@ -17,6 +17,7 @@ import { logger } from '../utils/logger';
 import { getConfig, saveConfig } from '../utils/config';
 import { normalizeAllowedOrigin } from '../security/csp';
 import { PickedFile } from '../security/callers';
+import { graphicsRulesChanged } from '../security/rulesReload';
 
 const pickedImport = new PickedFile();
 import { SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
@@ -196,6 +197,7 @@ export function registerTemplateHandlers(): void {
         const merged = [...new Set([...(current.graphicsAllowedOrigins ?? []), ...added])].sort();
         await saveConfig({ ...current, graphicsAllowedOrigins: merged });
         logger.info('Internet addresses allowed at import', { added });
+        graphicsRulesChanged();
       }
       logger.info('Looks imported', { filePath, looks: preview.looks.map((l) => l.id), graphics: preview.graphics.length });
       return { success: true, preview };

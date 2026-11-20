@@ -10,6 +10,7 @@ import path from 'path';
 import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 import { findTemplateManager } from '../templates/OGrafManager';
 import { normalizeAllowedOrigin } from '../security/csp';
+import { graphicsRulesChanged } from '../security/rulesReload';
 
 const logger = getLogger();
 
@@ -129,6 +130,7 @@ export function registerSettingsHandlers() {
       const sorted = [...saved].sort();
       await saveConfig({ ...getConfig(), graphicsAllowedOrigins: sorted });
       logger.info('Graphics internet allowlist saved', { count: sorted.length, rejected: rejected.length });
+      graphicsRulesChanged();
       return { success: true, data: { saved: sorted, rejected } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : String(error) };

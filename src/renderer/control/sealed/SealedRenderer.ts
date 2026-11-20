@@ -22,7 +22,15 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 type Request = FrameRequest extends infer R ? (R extends unknown ? Omit<R, "requestId"> : never) : never;
 
 export class SealedRenderer implements PreviewRenderer {
+  /** Bumped when the internet allowlist changes: frames loaded before it reload first */
+  private static rulesVersion = 0;
+
+  static rulesChanged(): void {
+    SealedRenderer.rulesVersion++;
+  }
+
   private iframe: HTMLIFrameElement;
+  private frameRules = 0;
   private ready!: Promise<void>;
   private markReady!: () => void;
   private pending = new Map<number, Pending>();
@@ -53,6 +61,7 @@ export class SealedRenderer implements PreviewRenderer {
   }
 
   private reload() {
+    this.frameRules = SealedRenderer.rulesVersion;
     this.ready = new Promise((resolve) => (this.markReady = resolve));
     this.loaded.clear();
     this.iframe.src = this.frameUrl;
@@ -86,7 +95,8 @@ export class SealedRenderer implements PreviewRenderer {
 
   async loadGraphic(id: string, manifest: OGrafManifest, directory: string, data: unknown): Promise<unknown> {
     // A different graphic gets a fresh page: everything the previous one loaded is freed
-    if (this.directory !== null && this.directory !== directory) this.reload();
+    // ...and so does a frame loaded before the internet allowlist last changed
+    if ((this.directory !== null && this.directory !== directory) || this.frameRules !== SealedRenderer.rulesVersion) this.reload();
     this.directory = directory;
     const result = await this.send({ op: "load", id, manifest, directory, data });
     this.loaded.add(id);
@@ -122,4 +132,11 @@ export class SealedRenderer implements PreviewRenderer {
     this.pending.clear();
     this.iframe.remove();
   }
+}
+
+// The main process announces allowlist changes to the operator UI
+if (typeof window !== "undefined") {
+  window.electronAPI?.receive?.("fromMain", (message: { type?: string }) => {
+    if (message?.type === "graphicsAccessChanged") SealedRenderer.rulesChanged();
+  });
 }

@@ -4,13 +4,14 @@
  */
 
 import { buildAppCsp, buildGraphicsCsp, isGraphicsPage } from './security/csp';
+import { RulesReloader, setRulesReloader } from './security/rulesReload';
 import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
 import { initLogger } from './utils/logger';
 import { loadConfig, getConfig, saveConfig } from './utils/config';
 import { findAvailablePort, PortInUseError } from './utils/portAvailability';
-import { WebSocketServer } from './data/WebSocketServer';
+import { WebSocketServer, SocketRoom } from './data/WebSocketServer';
 import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
 import { initTemplateManager } from './templates/OGrafManager';
@@ -262,6 +263,16 @@ async function initializeServices() {
     // Initialize playback engine
     const playbackEngine = initPlaybackEngine();
     playbackEngine.setWebSocketServer(wsServer!);
+
+    // A changed internet allowlist reaches graphics pages when they reload: output pages reload
+    // once nothing is on air, preview frames before their next graphic
+    setRulesReloader(new RulesReloader({
+      onAirCount: () => playbackEngine.getActiveGraphics().filter((g) => g.isPlaying).length,
+      reloadPages: () => wsServer?.broadcastToRoom(SocketRoom.PROGRAM_OUTPUT, { spxcmd: 'graphics:reloadPage' } as any),
+      notifyPreviews: () => BrowserWindow.getAllWindows().forEach((w) => {
+        if (!w.isDestroyed()) w.webContents.send('fromMain', { type: 'graphicsAccessChanged' });
+      }),
+    }));
 
     // Mark services as initialized to prevent duplicate initialization
     servicesInitialized = true;
