@@ -6,7 +6,7 @@ import { t as tr } from "../i18n";
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { OGrafRenderer } from '../../graphics/ograf-renderer';
+import { SealedRenderer, previewFrameUrl } from '../sealed/SealedRenderer';
 import { call } from '../events/api';
 
 /** Scale a 1920x1080 stage into its box */
@@ -70,18 +70,11 @@ export function PreviewVideo({ onStatus }: { onStatus?: (s: { name?: string; err
   useStageScale(box, stage, [url]);
   useEffect(() => {
     if (!url || !stage.current) return;
-    const root = stage.current;
-    const origin = new URL(url).origin;
-    // One host + renderer per prepared draft. A new draft hides the old one at once and
-    // disposes it in the background, so Preview never shows the previous graphic while
-    // its exit animation runs.
-    let current: { host: HTMLDivElement; renderer: OGrafRenderer } | null = null;
+    // One sealed frame for this monitor: graphic code runs there without access to the app.
+    // A new draft clears the previous graphic at once, then loads.
+    const sealed = new SealedRenderer(stage.current, previewFrameUrl(Number(new URL(url).port) || 5657));
     const retire = () => {
-      const old = current;
-      current = null;
-      if (!old) return;
-      old.host.style.visibility = 'hidden';
-      void old.renderer.clearAll().finally(() => old.host.remove());
+      void sealed.clearAll().catch(() => undefined);
     };
     let alive = true, busy = false, version = -1, failures = 0;
     const tick = async () => {
@@ -94,13 +87,9 @@ export function PreviewVideo({ onStatus }: { onStatus?: (s: { name?: string; err
         if (snap.payload) {
           setMessage('Loading preview…');
           const { template, data, name, page } = snap.payload;
-          const host = document.createElement('div');
-          root.appendChild(host);
-          const renderer = new OGrafRenderer(host, origin);
-          current = { host, renderer };
-          await renderer.loadGraphic('preview', template.manifest, template.directoryName, data);
-          await renderer.playGraphic('preview', { skipAnimation: true });
-          for (let p = 1; p < (page || 1); p++) await renderer.playGraphic('preview', { delta: 1, skipAnimation: true });
+          await sealed.loadGraphic('preview', template.manifest, template.directoryName, data);
+          await sealed.playGraphic('preview', { skipAnimation: true });
+          for (let p = 1; p < (page || 1); p++) await sealed.playGraphic('preview', { delta: 1, skipAnimation: true });
           if (!alive) return;
           setMessage('');
           onStatus?.({ name, version: snap.version });
@@ -128,7 +117,7 @@ export function PreviewVideo({ onStatus }: { onStatus?: (s: { name?: string; err
     return () => {
       alive = false;
       clearInterval(timer);
-      retire();
+      sealed.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url]);

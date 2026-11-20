@@ -5,7 +5,7 @@
 import { t as tr } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, SkipForward } from "lucide-react";
-import { OGrafRenderer } from "../../graphics/ograf-renderer";
+import { SealedRenderer, previewFrameUrl } from "../sealed/SealedRenderer";
 import { call } from "../events/api";
 import { createRace } from "../../../../site/preview/sim.js";
 import { changeClockSpeed, clockTime, sampleGraphicData, startClock } from "./sampleData";
@@ -20,7 +20,7 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
   const session = useRef<PreviewSession | null>(null);
   const race = useRef(createRace());
   const clock = useRef<PreviewClock | null>(null);
-  const [origin, setOrigin] = useState("");
+  const [webPort, setWebPort] = useState(0);
   const [speed, setSpeed] = useState(20);
   const [shown, setShown] = useState(false);
   const [error, setError] = useState("");
@@ -31,8 +31,8 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
   };
 
   useEffect(() => {
-    call<{ localhostUrl: string }>("output:getWebInfo")
-      .then((info) => setOrigin(new URL(info.localhostUrl).origin))
+    call<{ port: number }>("output:getWebInfo")
+      .then((info) => setWebPort(info.port))
       .catch((e) => setError((e as Error).message));
   }, []);
 
@@ -51,14 +51,11 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
     return () => resize.disconnect();
   }, []);
 
-  // A new renderer for each graphic; shown straight away
-  // A new session for each graphic; it shows the graphic once loaded
+  // A new sealed frame and session for each graphic; it shows the graphic once loaded.
+  // The frame runs the graphic's code without access to the app (see SealedRenderer).
   useEffect(() => {
-    if (!origin || !stage.current) return;
-    const host = document.createElement("div");
-    host.className = "monitor-graphics";
-    stage.current.appendChild(host);
-    const renderer = new OGrafRenderer(host, origin);
+    if (!webPort || !stage.current) return;
+    const renderer = new SealedRenderer(stage.current, previewFrameUrl(webPort));
     const s = new PreviewSession(renderer, template, data);
     session.current = s;
     let alive = true;
@@ -74,12 +71,11 @@ export function LibraryPreview({ template }: { template: OGrafTemplateInfo }) {
       alive = false;
       session.current = null;
       s.close();
-      // clearAll runs inside close(); remove the element once it has had a moment to finish
-      setTimeout(() => host.remove(), 0);
+      renderer.dispose();
     };
     // data() reads refs; the graphic changes only with the template
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [origin, template]);
+  }, [webPort, template]);
 
   // While shown, follow the race once a second
   useEffect(() => {

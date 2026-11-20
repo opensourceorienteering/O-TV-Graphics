@@ -1,7 +1,7 @@
 import { t as tr } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
-import { OGrafRenderer } from "../../graphics/ograf-renderer";
+import { SealedRenderer, previewFrameUrl } from "../sealed/SealedRenderer";
 import { call } from "./api";
 
 export function Monitor({
@@ -60,10 +60,8 @@ export function Monitor({
   useEffect(() => {
     if (kind !== "preview" || !url || (!detached && open) || !stage.current)
       return;
-    const host = document.createElement("div");
-    host.className = "monitor-graphics";
-    stage.current.appendChild(host);
-    const renderer = new OGrafRenderer(host, new URL(url).origin);
+    // Graphic code runs in a sealed frame without access to the app (see SealedRenderer)
+    const renderer = new SealedRenderer(stage.current, previewFrameUrl(Number(new URL(url).port) || 5657));
     let alive = true,
       busy = false,
       version = -1,
@@ -77,12 +75,12 @@ export function Monitor({
         await renderer.clearAll();
         if (snapshot.payload) {
           const { template, data, name } = snapshot.payload;
-          const result = await renderer.loadGraphic(
+          const result = (await renderer.loadGraphic(
             "preview",
             template.manifest,
             template.directoryName,
             data,
-          );
+          )) as { statusCode?: number } | undefined;
           if (
             result &&
             "statusCode" in result &&
@@ -115,8 +113,7 @@ export function Monitor({
     return () => {
       alive = false;
       clearInterval(timer);
-      void renderer.clearAll();
-      host.remove();
+      renderer.dispose();
     };
   }, [kind, url, open, detached]);
   const toggle = async () => {
