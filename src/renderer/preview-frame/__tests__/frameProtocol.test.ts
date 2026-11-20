@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleFrameRequest } from '../frameProtocol';
+import { createFrameHandler, handleFrameRequest } from '../frameProtocol';
 
 const renderer = () => ({
   loadGraphic: vi.fn(async () => ({ statusCode: 200 })),
@@ -26,5 +26,20 @@ describe('preview frame protocol', () => {
   });
   it('refuses something that is not a request', async () => {
     expect(await handleFrameRequest(renderer() as any, { requestId: 5, op: 'format-disk' } as any)).toMatchObject({ requestId: 5, ok: false });
+  });
+  it('handles requests one at a time, in order', async () => {
+    const order: string[] = [];
+    let finishClear!: () => void;
+    const r = renderer();
+    r.clearAll.mockImplementationOnce(() => new Promise<undefined>((res) => { finishClear = () => { order.push('clear done'); res(undefined); }; }));
+    r.loadGraphic.mockImplementationOnce(async () => { order.push('load'); return { statusCode: 200 }; });
+    const handle = createFrameHandler(r as any);
+    const cleared = handle({ requestId: 1, op: 'clear' });
+    const loaded = handle({ requestId: 2, op: 'load', id: 'g', manifest: {} as any, directory: 'd', data: {} });
+    await new Promise((res) => setTimeout(res, 0));
+    expect(order).toEqual([]);
+    finishClear();
+    await Promise.all([cleared, loaded]);
+    expect(order).toEqual(['clear done', 'load']);
   });
 });

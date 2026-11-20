@@ -4,7 +4,7 @@
  * from the window that embeds it and answers each one.
  */
 import { OGrafRenderer } from "../graphics/ograf-renderer";
-import { handleFrameRequest, type FrameRequest } from "./frameProtocol";
+import { createFrameHandler, type FrameRequest } from "./frameProtocol";
 
 const params = new URLSearchParams(window.location.search);
 const webPort = params.get("webPort") || window.location.port || "5657";
@@ -12,10 +12,11 @@ const webPort = params.get("webPort") || window.location.port || "5657";
 const templatesBase = `${window.location.protocol}//${window.location.hostname}:${webPort}`;
 
 const renderer = new OGrafRenderer(document.getElementById("graphics-container")!, templatesBase);
+const handle = createFrameHandler(renderer);
 
 window.addEventListener("message", (event) => {
   if (event.source !== window.parent) return;
-  void handleFrameRequest(renderer, event.data as FrameRequest).then((reply) => {
+  void handle(event.data as FrameRequest).then((reply) => {
     // The parent may be a file:// page (origin "null"), so the reply can't name it; it goes only to window.parent
     window.parent.postMessage(reply, "*");
   });

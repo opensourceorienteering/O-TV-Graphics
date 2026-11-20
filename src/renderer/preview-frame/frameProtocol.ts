@@ -53,3 +53,13 @@ export async function handleFrameRequest(renderer: FrameRenderer, req: FrameRequ
     return { requestId, ok: false, error: error instanceof Error ? error.message : String(error) };
   }
 }
+
+/** Handles requests one at a time, in the order they arrived (a clear must finish before the next load) */
+export function createFrameHandler(renderer: FrameRenderer): (req: FrameRequest) => Promise<FrameReply> {
+  let chain: Promise<unknown> = Promise.resolve();
+  return (req) => {
+    const reply = chain.then(() => handleFrameRequest(renderer, req));
+    chain = reply;
+    return reply;
+  };
+}
