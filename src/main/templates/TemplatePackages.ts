@@ -136,7 +136,9 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
     for (const file of lookFiles.keys()) {
       const parts = file.split('/');
       if (parts.length !== 2) continue;
-      byFolder.set(parts[0], [...(byFolder.get(parts[0]) ?? []), parts[1]]);
+      const names = byFolder.get(parts[0]);
+      if (names) names.push(parts[1]);
+      else byFolder.set(parts[0], [parts[1]]);
     }
     for (const [folder, names] of byFolder) {
       const pick = pickManifestFile(folder, names);

@@ -133,4 +133,27 @@ describe('PlaybackEngine and template sets', () => {
       vi.useRealTimers();
     }
   });
+
+  it('never disposes a graphic that is back on air when its removal comes due', async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseUpdate: () => void = () => {};
+      engine.sendCommand = vi.fn(async (cmd: string, p: any) => {
+        if (cmd === 'update' && p.id === 'p1-r1-strap') await new Promise<void>((r) => { releaseUpdate = r; });
+        return { success: true, result: { currentStep: 1 } };
+      });
+      await engine.playItem('p1', 'r1', 'strap');
+      const reshow = engine.playItem('p1', 'r1', 'strap'); // shown again: waits on its update
+      await vi.advanceTimersByTimeAsync(0);
+      await engine.playItem('p1', 'r1', 'table'); // meanwhile the table clears the strap
+      releaseUpdate();
+      await reshow; // the strap ends up on air
+      expect(engine.activeGraphics.get('p1-r1-strap')?.isPlaying).toBe(true);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).not.toContain('p1-r1-strap');
+      expect(engine.activeGraphics.has('p1-r1-strap')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
