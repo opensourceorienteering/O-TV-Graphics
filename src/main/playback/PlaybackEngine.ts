@@ -622,6 +622,31 @@ export class PlaybackEngine {
     };
   }
 
+  /**
+   * After a graphic goes off air: dispose it once its out animation has run, and forget it.
+   * Until then a Show of the same item resumes its step (undo). Every way off air must call
+   * this, or the graphic stays loaded and a later Show resumes a stale step with stale data.
+   */
+  private scheduleRemoval(graphicId: string): void {
+    const pending = this.removalTimeouts.get(graphicId);
+    if (pending) clearTimeout(pending);
+    const timeoutId = setTimeout(async () => {
+      try {
+        await this.sendCommand('dispose', { id: graphicId });
+        logger.debug('Graphic disposed after stop animation', { graphicId });
+      } catch (error) {
+        logger.warn('Failed to dispose graphic', {
+          graphicId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      this.activeGraphics.delete(graphicId);
+      this.removalTimeouts.delete(graphicId);
+      logger.info('Graphic removed from active graphics', { graphicId });
+    }, 1500); // Wait for stop animation + dispose
+    this.removalTimeouts.set(graphicId, timeoutId);
+  }
+
   /** Take graphics off air whose screen zone clashes with the one about to play */
   private async clearClashing(graphicId: string, zone: GraphicZone | undefined): Promise<void> {
     if (!zone) return;
@@ -632,6 +657,9 @@ export class PlaybackEngine {
       try {
         await this.sendCommand('stop', { id: g.id, skipAnimation: false });
         g.isPlaying = false;
+        this.cancelAutoPage(g.id);
+        // External OGraf controllers keep their instances loaded and may play them again
+        if (g.source !== 'api') this.scheduleRemoval(g.id);
         if (g.source !== 'api') {
           const r = await rundownManager.loadRundown(g.projectId, g.rundownId);
           const it = r.items.find(i => i.id === g.itemId);
@@ -765,6 +793,8 @@ export class PlaybackEngine {
               skipAnimation: false
             });
             graphic.isPlaying = false;
+            this.cancelAutoPage(graphic.id);
+            if (graphic.source !== 'api') this.scheduleRemoval(graphic.id);
 
             // Update rundown item state
             const graphicRundown = await rundownManager.loadRundown(graphic.projectId, graphic.rundownId);
@@ -852,18 +882,14 @@ export class PlaybackEngine {
         });
       } else {
         logger.info('Graphic already loaded', { graphicId });
-        // Graphic already loaded - update with fresh data if LiveResults is configured
-        if (template.dataSourceConfig && item.liveResultsData?.dataSourceValues) {
-          logger.info('Updating already-loaded graphic with fresh LiveResults data', {
-            graphicId,
-            dataKeys: Object.keys(graphicData)
-          });
-
-          await this.sendCommand('update', {
-            id: graphicId,
-            data: graphicData
-          });
-        }
+        // Graphic already loaded (shown again within the undo window): send it the new data,
+        // and keep it, so renderers that connect later load what is on air
+        await this.sendCommand('update', {
+          id: graphicId,
+          data: graphicData
+        });
+        const loaded = this.activeGraphics.get(graphicId);
+        if (loaded) loaded.data = graphicData;
       }
 
       // Determine which step to play
@@ -978,27 +1004,7 @@ export class PlaybackEngine {
         currentStep: undefined // Clear from UI, but preserved in activeGraphic for quick replay
       });
 
-      // Schedule removal from active graphics after animation completes
-      // Store the timeout ID so it can be cancelled if the graphic is played again
-      const timeoutId = setTimeout(async () => {
-        // Dispose the graphic to free memory
-        try {
-          await this.sendCommand('dispose', { id: graphicId });
-          logger.debug('Graphic disposed after stop animation', { graphicId });
-        } catch (error) {
-          logger.warn('Failed to dispose graphic', {
-            graphicId,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }
-
-        // Remove from tracking
-        this.activeGraphics.delete(graphicId);
-        this.removalTimeouts.delete(graphicId);
-        logger.info('Graphic removed from active graphics', { graphicId });
-      }, 1500); // Wait for stop animation + dispose
-
-      this.removalTimeouts.set(graphicId, timeoutId);
+      this.scheduleRemoval(graphicId);
 
       // Stop live polling that nothing on air needs any more
       await this.syncPolling();
