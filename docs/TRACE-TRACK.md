@@ -117,6 +117,16 @@ leader ("+1:01"), and a thin line under each row for the runner's course progres
 - The website preview's simulated race sends the same fields, so a look can style the tower
   without a Trace / Track server.
 
+**How Trace / Track ranks today (checked in its `packages/core/src/tracking-analysis.ts`,
+20 November 2026):** it compares every runner of a course (and relay leg) at **one** point, the
+distance the least advanced runner has reached, and withholds the whole class when any runner
+has no usable crossing of that point. In an interval-start race, a runner who has just started
+puts that point near the start, so the tower then ranks the first few hundred metres. For a
+tower of who is fastest right now, Trace / Track needs a per-runner comparison: each runner's
+time to their own current point against the best time anyone took to reach it, withholding only
+that runner when their crossing is missing. The preview's simulated race already works that way.
+Until then the tower shows Trace / Track's ranks as they are; check them on the test race.
+
 ## Checking it against a real Trace / Track server
 
 The tests use a stand-in that follows Trace / Track's data API. Before an event, check against a
