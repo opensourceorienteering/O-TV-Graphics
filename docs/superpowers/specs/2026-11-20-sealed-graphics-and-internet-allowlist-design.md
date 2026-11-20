@@ -55,6 +55,7 @@ OBS and vMix, where nothing is blocked at all.
 | Outside sources for graphics | Graphics load them directly (a provider's viewer, map tiles), limited to an allowlist |
 | Where the list lives | A Settings page where the operator adds and removes addresses |
 | Does the list also apply to the OBS and vMix web output? | Yes, the same list everywhere |
+| Network control interfaces (`/api/control`, `/ograf/v1`, WebSocket) | Not in this milestone; a remote-control password follows later |
 
 ## Approaches considered (sealing the monitors in the operator window)
 
@@ -184,13 +185,19 @@ Settings › Internet access for graphics
   `SealedRenderer` keeps its own record of what is loaded, so `isLoaded` stays synchronous.
 - **Plan's theme preview** is `<Monitor kind="preview" />`, so it needs no separate work.
 
-## Open: the network control interfaces
+## Network control interfaces: out of scope (decided)
 
-Graphics pages can reach the app's network interfaces, which every device on the venue network
-can already use without a password, for Companion and outside OGraf controllers: `/api/control`,
-`/ograf/v1` and the WebSocket. Through them a graphic could show, hide or clear graphics. It
-could not delete events, change settings, touch files or open the browser. Whether this
-milestone also closes that path is the operator's decision (see the conversation).
+Graphics pages can still reach the app's network interfaces: `/api/control`, `/ograf/v1` and the
+WebSocket. Every device on the venue network can already use these without a password, for
+Companion and outside OGraf controllers. Through them a graphic can show, hide or clear
+graphics. It cannot delete events, change settings, touch files or open the browser. **Decision:
+leave them as they are in this milestone.** A rogue look keeps only the power a phone on the venue
+network already has.
+
+**Follow-up milestone:** a password (token) for remote control, covering `/api/control`,
+`/ograf/v1` and the WebSocket. It protects against devices on the network and graphics alike.
+Goal 1 ("can't reach any app function") means the app's own functions through the preload
+bridge, not these network interfaces.
 
 ## What a reasonable operator expects (edge cases)
 
