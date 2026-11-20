@@ -156,4 +156,11 @@ describe('PlaybackEngine and template sets', () => {
       vi.useRealTimers();
     }
   });
+
+  it('tells each output page that connects the current content rules version', async () => {
+    const sent: any[] = [];
+    engine.wsServer = { sendToClient: (_id: string, msg: any) => sent.push(msg) };
+    await engine.syncGraphicsToNewClient('socket-1', 'program-output');
+    expect(sent[0]).toEqual({ spxcmd: 'graphics:rulesVersion', version: 0 });
+  });
 });

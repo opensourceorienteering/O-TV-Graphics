@@ -20,10 +20,13 @@ export class RulesReloader {
   private timer: ReturnType<typeof setInterval> | null = null;
   /** Checks in a row with nothing on air, since something last was */
   private quiet = 0;
+  /** Number of allowlist changes since start; sent to every output page that connects */
+  version = 0;
 
   constructor(private deps: RulesReloadDeps) {}
 
   changed(): void {
+    this.version++;
     this.deps.notifyPreviews();
     if (this.timer) return;
     // Idle right now (nothing loaded at all): reload at once
@@ -56,4 +59,9 @@ export function setRulesReloader(reloader: RulesReloader): void {
 /** Call after the allowlist changed (Settings, or allowed at import) */
 export function graphicsRulesChanged(): void {
   current?.changed();
+}
+
+/** The current rules version (0 before any change) */
+export function graphicsRulesVersion(): number {
+  return current?.version ?? 0;
 }

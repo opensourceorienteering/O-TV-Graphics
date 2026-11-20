@@ -4,6 +4,7 @@
  * Used by OBS Browser Source, vMix Web Input, and remote browsers
  */
 
+import { createRulesVersionGate } from "../graphics/rulesVersionGate";
 import { io, Socket } from "socket.io-client";
 import { RendererCommandQueue } from "../graphics/RendererCommandQueue";
 import { OGrafRenderer } from "../graphics/ograf-renderer";
@@ -11,6 +12,11 @@ import { OGrafManifest } from "../../shared/types/ograf";
 
 // Global renderer instance
 let renderer: OGrafRenderer | null = null;
+// Reloads this page for changed content rules once it shows nothing (see rulesVersionGate)
+const rulesGate = createRulesVersionGate({
+  reload: () => window.location.reload(),
+  showing: () => renderer?.getPlayingCount() ?? 0,
+});
 let socket: Socket | null = null;
 const commands = new RendererCommandQueue();
 let connectionVersion = 0;
@@ -207,10 +213,10 @@ function initWebSocket() {
       logger.log("[WebOutput] 📨 Message from server:", data);
     }
     if (data.command === "clear")
-      await commands.barrier(() => withRequestId(data, () => handleCommand(data)));
+      await commands.barrier(() => withRequestId(data, () => handleCommand(data)).finally(() => rulesGate.check()));
     else
       await commands.enqueue(data.payload?.id || "__control__", () =>
-        withRequestId(data, () => handleCommand(data)),
+        withRequestId(data, () => handleCommand(data)).finally(() => rulesGate.check()),
       );
   });
 }
@@ -222,6 +228,11 @@ async function handleCommand(data: any) {
   // The internet allowlist changed: reload to take the new content rules (sent only when nothing is on air)
   if (data.spxcmd === "graphics:reloadPage") {
     window.location.reload();
+    return;
+  }
+  // The current content rules version, on every connect: reload if this page missed a change
+  if (data.spxcmd === "graphics:rulesVersion") {
+    rulesGate.version(Number(data.version) || 0);
     return;
   }
 

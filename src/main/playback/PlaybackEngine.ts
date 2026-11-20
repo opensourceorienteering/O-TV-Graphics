@@ -1,3 +1,4 @@
+import { graphicsRulesVersion } from '../security/rulesReload';
 import { timingClasses } from '../data/timingScope';
 /**
  * Playback Engine
@@ -504,6 +505,9 @@ export class PlaybackEngine {
       logger.error('Cannot sync graphics: WebSocket server not attached');
       return;
     }
+
+    // First the content rules version: a page that missed an allowlist change reloads itself
+    this.wsServer.sendToClient(socketId, { spxcmd: 'graphics:rulesVersion', version: graphicsRulesVersion() } as any);
 
     const loadedGraphics = Array.from(this.activeGraphics.values());
 
