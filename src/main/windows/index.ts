@@ -1,3 +1,4 @@
+import { graphicsWindowPreferences, guardWindow } from "./guards";
 import { devIconPath } from "../utils/appIdentity";
 /**
  * Window Management
@@ -69,6 +70,8 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
+  guardWindow(window);
+
   // Load the app
   if (isDev) {
     window.loadURL("http://localhost:5175");
@@ -106,16 +109,12 @@ export function createGraphicsWindow(): BrowserWindow {
     icon: devIconPath(),
     frame: false,
     transparent: true,
-    webPreferences: {
-      preload: path.join(__dirname, "../preload/index.js"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-      offscreen: true,
-      backgroundThrottling: false,
-    },
+    // No preload: graphic code runs here and must not reach the app's functions
+    webPreferences: graphicsWindowPreferences(),
     show: false, // Hidden by default
   });
+
+  guardWindow(window);
 
   // Load graphics renderer
   if (isDev) {
