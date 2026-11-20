@@ -25,7 +25,7 @@ import { normalizeAllowedOrigin } from '../security/csp';
 const MAX_UNPACKED_BYTES = 200 * 1024 * 1024;
 const MAX_FILES = 5000;
 /** Folder names that are not looks */
-const RESERVED = new Set(['_core', 'sets', 'fonts', SYSTEM_TEMPLATE_SET, CUSTOM_TEMPLATE_SET]);
+const RESERVED = new Set(['_core', 'sets', 'fonts', ADDITIONS, SYSTEM_TEMPLATE_SET, CUSTOM_TEMPLATE_SET]);
 
 export interface ZipLook {
   id: string;
@@ -236,13 +236,17 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
 function checkIdClashes(manager: OGrafManager, contents: ZipContents): void {
   const replacing = new Set(contents.looks.map((l) => l.id));
   const replacedGraphicDirs = new Set(contents.graphics.map((g) => g.folder));
-  // Additions already installed from an earlier copy of this file are replaced, not clashes
-  const replacedAdditions = new Set(contents.extensions.flatMap((e) => e.graphics.map((g) => `${ADDITIONS}/${e.lookId}/${g.folder}`)));
+  // Graphics installed from an earlier copy of this file are replaced, not clashes
+  const replacedAdditions = new Set(
+    contents.extensions.flatMap((e) => e.graphics.map((g) => `${extensionFolder(manager, e.lookId)}/${g.folder}`)),
+  );
   const userDir = manager.getUserDirectory();
   const taken = new Map<string, string>();
   for (const t of manager.getAllTemplates()) {
-    if (replacing.has(t.setId)) continue;
-    if (t.addition && replacedAdditions.has(t.directoryName)) continue;
+    const inUserDir = !!userDir && t.manifestPath.startsWith(userDir);
+    if (inUserDir && replacedAdditions.has(t.directoryName)) continue;
+    // A look being replaced takes its own graphics with it, but not graphics added to it
+    if (!t.addition && replacing.has(t.setId)) continue;
     if (t.setId === CUSTOM_TEMPLATE_SET && userDir && t.manifestPath.startsWith(userDir) && replacedGraphicDirs.has(t.directoryName)) continue;
     taken.set(t.manifest.id, t.setId === CUSTOM_TEMPLATE_SET ? 'another graphic' : `the "${t.setId}" look`);
   }
@@ -365,11 +369,17 @@ export async function importTemplateZip(manager: OGrafManager, zip: Uint8Array):
   }
   for (const graphic of contents.graphics) replaceFolder(path.join(userDir, graphic.folder), graphic.files);
   for (const extension of contents.extensions) {
-    const dir = path.join(userDir, ADDITIONS, extension.lookId);
-    for (const graphic of extension.graphics) replaceFolder(path.join(dir, graphic.folder), graphic.files);
-    if (Object.keys(extension.replaces).length) {
-      writeOverrides(dir, { ...readOverrides(dir), ...extension.replaces });
+    const relative = extensionFolder(manager, extension.lookId);
+    const dir = path.join(userDir, ...relative.split('/'));
+    const replaces = readOverrides(dir);
+    for (const graphic of extension.graphics) {
+      // What the graphic (and whatever was in its folder before) replaced is now up to this file
+      const before = manager.getAllTemplates().find((t) => t.directoryName === `${relative}/${graphic.folder}` && t.manifestPath.startsWith(userDir));
+      if (before) delete replaces[before.manifest.id];
+      delete replaces[graphic.id];
+      replaceFolder(path.join(dir, graphic.folder), graphic.files);
     }
+    writeOverrides(dir, { ...replaces, ...extension.replaces });
   }
   await rediscover(manager);
   return preview;
@@ -388,7 +398,8 @@ function collectFiles(dir: string, prefix: string, out: Zippable): void {
 function readOverrides(dir: string): Record<string, string> {
   try {
     const replaces = JSON.parse(fs.readFileSync(path.join(dir, 'overrides.json'), 'utf-8'))?.replaces;
-    return replaces && typeof replaces === 'object' && !Array.isArray(replaces) ? { ...replaces } : {};
+    if (!replaces || typeof replaces !== 'object' || Array.isArray(replaces)) return {};
+    return Object.fromEntries(Object.entries(replaces).filter((e): e is [string, string] => typeof e[1] === 'string'));
   } catch {
     return {};
   }
@@ -402,6 +413,16 @@ function writeOverrides(dir: string, replaces: Record<string, string>): void {
   }
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(file, JSON.stringify({ replaces }, null, 2) + '\n');
+}
+
+/**
+ * Where graphics added to a look are installed, relative to the user templates folder: beside a
+ * built-in look (additions/<look>), or inside an imported look (sets/<look>), so they travel and
+ * are removed with it
+ */
+function extensionFolder(manager: OGrafManager, lookId: string): string {
+  const imported = manager.getTemplateSets().find((s) => s.id === lookId)?.source === 'imported';
+  return imported ? `sets/${lookId}` : `${ADDITIONS}/${lookId}`;
 }
 
 /** Zip every file of a look as <set>/... */
@@ -459,7 +480,9 @@ export async function removeImportedLook(manager: OGrafManager, setId: string): 
 /** A look's name as a file name on every system ("IOF / Sprint" → "IOF - Sprint") */
 export function lookFileName(name: string): string {
   const clean = name.replace(/\s*[<>:"/\\|?*\x00-\x1f][\s<>:"/\\|?*\x00-\x1f]*/g, ' - ').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '');
-  return clean.slice(0, 80) || 'look';
+  const file = clean.slice(0, 80) || 'look';
+  // Windows keeps these names for devices
+  return /^(con|prn|aux|nul|com\d|lpt\d)$/i.test(file) ? `${file} look` : file;
 }
 
 /**

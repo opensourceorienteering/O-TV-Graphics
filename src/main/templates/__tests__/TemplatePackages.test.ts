@@ -273,6 +273,7 @@ describe('additions travel as .splitlook files', () => {
   it('names the file after the look, safely on every system', () => {
     expect(lookFileName('IOF / Sprint: "final"')).toBe('IOF - Sprint - final');
     expect(lookFileName('...')).toBe('look');
+    expect(lookFileName('CON')).toBe('CON look');
   });
 
   it('removing an addition brings back the graphic it replaced', async () => {
@@ -288,6 +289,50 @@ describe('additions travel as .splitlook files', () => {
   it('only removes additions', async () => {
     await expect(removeAddition(manager, 'standard', 'standard-free-text')).rejects.toThrow('not a graphic added to this look');
     await expect(removeAddition(manager, '../sets', 'x')).rejects.toThrow();
+  });
+
+  it('never takes a graphic named "additions" (it would replace every addition)', async () => {
+    await addGuestStrap();
+    const zip = zipSync({
+      'additions/additions.ograf.json': strToU8(JSON.stringify({ id: 'evil', name: 'Evil', main: 'graphic.js' })),
+      'additions/graphic.js': strToU8('export default class {}'),
+    });
+    expect(() => previewTemplateZip(manager, zip)).toThrow();
+    expect(fs.existsSync(path.join(additionsDir(), 'guest-strap'))).toBe(true);
+  });
+
+  it('refuses a whole look whose graphic id is taken by an addition to that look', async () => {
+    writeGraphic(path.join(additionsDir(), 'dupe'), 'standard-results-2');
+    manager.clearCache();
+    await manager.discoverTemplates();
+    const files = unzipSync(wholeLookZip(full, 'standard'));
+    files['standard/x/x.ograf.json'] = strToU8(JSON.stringify({ id: 'standard-results-2', name: 'X', main: 'graphic.js' }));
+    expect(() => previewTemplateZip(manager, zipSync(files))).toThrow('already used');
+  });
+
+  it('a newer copy of the file updates what its graphics replace', async () => {
+    await addGuestStrap();
+    const changed = zipSync({
+      'standard/set.json': strToU8(JSON.stringify({ id: 'standard', extends: 'standard' })),
+      'standard/guest-strap/guest-strap.ograf.json': strToU8(JSON.stringify({ id: 'guest-strap', name: 'Guest strap', main: 'graphic.js' })),
+    });
+    await importTemplateZip(manager, changed);
+    expect(manager.getReplacements('standard')).toEqual({});
+  });
+
+  it('adds to an imported look inside that look, so it travels and goes with it', async () => {
+    await importTemplateZip(manager, wholeLookZip(full, 'cz'));
+    const zip = zipSync({
+      'cz/set.json': strToU8(JSON.stringify({ id: 'cz', extends: 'cz' })),
+      'cz/overrides.json': strToU8(JSON.stringify({ replaces: { 'cz-extra': 'cz-free-text' } })),
+      'cz/cz-extra/cz-extra.ograf.json': strToU8(JSON.stringify({ id: 'cz-extra', name: 'Extra', main: 'graphic.js' })),
+    });
+    await importTemplateZip(manager, zip);
+    expect(fs.existsSync(path.join(tmp, 'user', 'sets', 'cz', 'cz-extra', 'cz-extra.ograf.json'))).toBe(true);
+    expect(fs.existsSync(path.join(tmp, 'user', 'additions', 'cz'))).toBe(false);
+    expect(manager.getReplacements('cz')).toEqual({ 'cz-extra': 'cz-free-text' });
+    const exported = Object.keys(unzipSync(exportLookZip(manager, 'cz')));
+    expect(exported).toContain('cz/cz-extra/cz-extra.ograf.json');
   });
 
   it('refuses to export a built-in look with no additions', () => {

@@ -90,7 +90,10 @@ export function deskEntriesForLook(templates: OGrafTemplateInfo[], replaces: Rec
   const replaced = new Set<string>();
   const entries = new Map<string, DeskEntry>();
   // Replacements first, so they hold the replaced graphic's key whatever the folder order
+  // A graphic that is itself replaced replaces nothing (chains and cycles stay predictable)
+  const targets = new Set(Object.values(replaces));
   for (const [newId, oldId] of Object.entries(replaces)) {
+    if (targets.has(newId)) continue;
     const template = byId.get(newId);
     const old = byId.get(oldId);
     if (!template || !old || newId === oldId) continue;

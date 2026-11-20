@@ -449,8 +449,10 @@ function openLookFile(filePath: string) {
   logger.info('Look file opened from the system', { filePath });
   setPendingLookFile(filePath);
   const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
-  // Before the window has loaded, the operator UI asks for the file when it starts
-  if (window && !window.webContents.isLoading()) window.webContents.send('fromMain', { type: 'openLookFile' });
+  // The operator UI also asks when it starts, so a message it misses while loading does no harm
+  if (window) window.webContents.send('fromMain', { type: 'openLookFile' });
+  // macOS keeps the app running with no window: open one, which asks for the file
+  else if (instanceClaimed && app.isReady()) void createWindows();
 }
 
 // macOS hands files over in an event, also before the app is ready (opened while closed)

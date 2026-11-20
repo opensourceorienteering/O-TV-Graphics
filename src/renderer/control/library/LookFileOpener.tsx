@@ -11,6 +11,24 @@ import type { ImportPreview } from "./ImportConfirm";
 
 export type OpenedLookFile = { filePath: string; preview: ImportPreview };
 
+type Result = { success?: boolean; error?: string; data?: OpenedLookFile | null };
+
+/**
+ * The main process hands a file over once. One request at a time is shared, so a component
+ * mounted twice (React's development double run) still gets the file instead of losing it.
+ */
+let asking: Promise<Result> | null = null;
+function askForFile(): Promise<Result> {
+  asking ??= window.electronAPI.invoke("templates:pendingOpen").finally(() => {
+    asking = null;
+  });
+  return asking;
+}
+
+/** Called for each "a file arrived" message; one listener for the app's life */
+let onFileArrived: (() => void) | null = null;
+let listening = false;
+
 export function LookFileOpener() {
   const navigate = useNavigate();
   const toast = useToast();
@@ -19,22 +37,26 @@ export function LookFileOpener() {
     let alive = true;
     const check = async () => {
       try {
-        const result = await window.electronAPI.invoke("templates:pendingOpen");
+        const result = await askForFile();
         if (!alive) return;
         if (!result?.success) throw new Error(result?.error);
-        if (result.data) navigate("/templates", { state: { openLook: result.data as OpenedLookFile } });
+        if (result.data) navigate("/templates", { state: { openLook: result.data } });
       } catch (cause) {
         if (alive) toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
       }
     };
     void check();
-    window.electronAPI?.receive?.("fromMain", (message: { type?: string }) => {
-      if (alive && message?.type === "openLookFile") void check();
-    });
+    onFileArrived = () => void check();
+    if (!listening) {
+      listening = true;
+      window.electronAPI?.receive?.("fromMain", (message: { type?: string }) => {
+        if (message?.type === "openLookFile") onFileArrived?.();
+      });
+    }
     return () => {
       alive = false;
     };
-    // Once per app start: the listener stays for the app's life
+    // Once per app start
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
