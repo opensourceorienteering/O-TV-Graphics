@@ -48,3 +48,14 @@ export function graphicDetails(template: OGrafTemplateInfo): Array<[string, stri
     ...(author?.name ? [['Author', author.name] as [string, string]] : []),
   ];
 }
+
+/** Replaced graphic id → the name of the graphic in the look that replaces it (overrides.json) */
+export function replacedBy(templates: OGrafTemplateInfo[], replaces: Record<string, string>): Map<string, string> {
+  const byId = new Map(templates.map((t) => [t.manifest.id, t]));
+  const out = new Map<string, string>();
+  for (const [newId, oldId] of Object.entries(replaces)) {
+    const replacing = byId.get(newId);
+    if (replacing && byId.has(oldId) && newId !== oldId) out.set(oldId, replacing.manifest.name);
+  }
+  return out;
+}

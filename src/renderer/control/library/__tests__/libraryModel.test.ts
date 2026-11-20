@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { graphicDetails, lookCards, needsAttention, searchGraphics } from '../libraryModel';
+import { graphicDetails, lookCards, needsAttention, replacedBy, searchGraphics } from '../libraryModel';
 import type { OGrafTemplateInfo, TemplateSetInfo } from '../../../../shared/types/ograf';
 
 const set = (id: string, name: string, source: 'built-in' | 'imported' = 'built-in'): TemplateSetInfo =>
@@ -38,5 +38,16 @@ describe('library model', () => {
     const full = g('std-strap', 'Name strap', 'standard', { manifest: { id: 'std-strap', name: 'Name strap', main: 'm.js', version: '1.2.0', author: { name: 'Split Control' } } as any });
     expect(graphicDetails(full)).toEqual([['ID', 'std-strap'], ['Version', '1.2.0'], ['Author', 'Split Control']]);
     expect(graphicDetails(g('loose', 'Loose', 'custom'))).toEqual([['ID', 'loose']]);
+  });
+});
+
+describe('replacements in a look', () => {
+  it('names the graphic that replaces each replaced one', () => {
+    const look = [g('standard-free-text', 'Free text', 'standard'), g('guest-strap', 'Guest strap', 'standard', { addition: true })];
+    expect(replacedBy(look, { 'guest-strap': 'standard-free-text' })).toEqual(new Map([['standard-free-text', 'Guest strap']]));
+  });
+  it('ignores replacements whose graphics are not in the look', () => {
+    const look = [g('standard-free-text', 'Free text', 'standard')];
+    expect(replacedBy(look, { gone: 'standard-free-text', 'standard-free-text': 'missing' }).size).toBe(0);
   });
 });

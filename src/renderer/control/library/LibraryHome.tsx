@@ -88,6 +88,11 @@ export function LibraryHome({
               <span>
                 {graphics.length} {graphics.length === 1 ? tr("graphic") : tr("graphics")}
               </span>
+              {(set.additions ?? 0) > 0 && (
+                <span className="look-source" title={tr("Graphics added to this look")}>
+                  +{set.additions} {tr("added")}
+                </span>
+              )}
             </span>
             {(set.colors?.length || set.fonts) && (
               <span className="look-card-style">
