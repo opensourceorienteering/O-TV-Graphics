@@ -60,6 +60,9 @@ async function readLookLogo(setDir: string, file: unknown): Promise<string | und
   }
 }
 
+/** Folder (in the user templates folder) of graphics added to looks */
+export const ADDITIONS = 'additions';
+
 export class OGrafManager {
   private templatesDir: string;
   /** Writable folder for imported looks and graphics (same layout as templatesDir) */
@@ -139,7 +142,7 @@ export class OGrafManager {
       for (const root of roots) {
         const entries = await fs.readdir(root.dir, { withFileTypes: true });
         for (const entry of entries) {
-          if (!entry.isDirectory() || entry.name === 'sets' || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
+          if (!entry.isDirectory() || entry.name === 'sets' || entry.name === ADDITIONS || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
           candidates.push({ dir: path.join(root.dir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET, root: root.dir });
         }
         const setsDir = path.join(root.dir, 'sets');
@@ -175,6 +178,19 @@ export class OGrafManager {
           for (const g of await fs.readdir(setDir, { withFileTypes: true })) {
             if (!g.isDirectory() || g.name === 'fonts' || g.name.startsWith('_') || g.name.startsWith('.')) continue;
             candidates.push({ dir: path.join(setDir, g.name), name: g.name, setId: setEntry.name, root: root.dir });
+          }
+        }
+      }
+      // Graphics added to a look (Graphics library, import helper, .splitlook "extends" files):
+      // <user>/additions/<lookId>/<graphic>/. A look this computer doesn't have: not in a look.
+      const additionsDir = this.userDir ? path.join(this.userDir, ADDITIONS) : null;
+      if (additionsDir && fsSync.existsSync(additionsDir)) {
+        for (const look of await fs.readdir(additionsDir, { withFileTypes: true })) {
+          if (!look.isDirectory() || look.name.startsWith('.') || look.name.startsWith('_')) continue;
+          const setId = this.sets.has(look.name) ? look.name : CUSTOM_TEMPLATE_SET;
+          for (const g of await fs.readdir(path.join(additionsDir, look.name), { withFileTypes: true })) {
+            if (!g.isDirectory() || g.name.startsWith('.') || g.name.startsWith('_')) continue;
+            candidates.push({ dir: path.join(additionsDir, look.name, g.name), name: g.name, setId, root: this.userDir! });
           }
         }
       }
@@ -250,6 +266,7 @@ export class OGrafManager {
       for (const entry of this.cache.values()) {
         const set = this.sets.get(entry.templateInfo.setId);
         if (set) set.templateCount++;
+        if (set && entry.templateInfo.addition) set.additions = (set.additions ?? 0) + 1;
       }
       if ([...this.cache.values()].some(e => e.templateInfo.setId === CUSTOM_TEMPLATE_SET)) {
         this.sets.set(CUSTOM_TEMPLATE_SET, {
@@ -450,8 +467,29 @@ export class OGrafManager {
       directoryName, // URL path below templates/
       dataSourceConfig, // Add datasource config (null if not found)
       setId,
-      zone
+      zone,
+      ...(root === this.userDir && directoryName.startsWith(`${ADDITIONS}/`) ? { addition: true as const } : {})
     };
+  }
+
+  /**
+   * Graphics used instead of others in a look: new graphic id -> replaced graphic id. From
+   * <user>/additions/<look>/overrides.json and, for an imported look, <user>/sets/<look>/overrides.json.
+   */
+  getReplacements(setId: string): Record<string, string> {
+    if (!this.userDir) return {};
+    const out: Record<string, string> = {};
+    for (const file of [path.join(this.userDir, ADDITIONS, setId, 'overrides.json'), path.join(this.userDir, 'sets', setId, 'overrides.json')]) {
+      try {
+        const replaces = JSON.parse(fsSync.readFileSync(file, 'utf-8'))?.replaces;
+        if (replaces && typeof replaces === 'object') {
+          for (const [k, v] of Object.entries(replaces)) if (typeof v === 'string') out[k] = v;
+        }
+      } catch {
+        // no overrides for this look
+      }
+    }
+    return out;
   }
 
   /**
