@@ -14,6 +14,8 @@ import * as path from 'path';
 import { unzipSync, zipSync, type Zippable } from 'fflate';
 import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 import type { OGrafManager } from './OGrafManager';
+import { pickManifestFile } from './manifestFile';
+import { normalizeAllowedOrigin } from '../security/csp';
 
 /** Refuse zips that unpack to more than this (fonts and images included) */
 const MAX_UNPACKED_BYTES = 200 * 1024 * 1024;
@@ -45,6 +47,10 @@ export interface ZipContents {
 
 /** What an import would do, for the operator to confirm */
 export interface ImportPreview {
+  /** Internet addresses the graphics ask for that aren't on the allowlist yet */
+  internet: string[];
+  /** Addresses the graphics ask for that can't be allowed, with the reason */
+  internetRefused: Array<{ input: string; reason: string }>;
   looks: Array<{ id: string; name: string; graphics: number; replaces?: 'imported' | 'built-in' }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
 }
@@ -131,13 +137,26 @@ export function readTemplateZip(zip: Uint8Array): ZipContents {
     if (!isValidId(id)) fail(`"${id}" can't be used as a look id: use letters, digits, - and _`);
     if (looks.some((l) => l.id === id)) fail(`The zip contains the look "${id}" twice`);
     const graphicIds: string[] = [];
-    for (const [file, data] of lookFiles) {
-      const m = /^([^/]+)\/\1\.ograf\.json$/.exec(file);
-      if (!m) continue;
-      const manifest = readJson(data, file);
+    const byFolder = new Map<string, string[]>();
+    for (const file of lookFiles.keys()) {
+      const parts = file.split('/');
+      if (parts.length !== 2) continue;
+      const names = byFolder.get(parts[0]);
+      if (names) names.push(parts[1]);
+      else byFolder.set(parts[0], [parts[1]]);
+    }
+    for (const [folder, names] of byFolder) {
+      const pick = pickManifestFile(folder, names);
+      if (!pick) continue;
+      if ('ambiguous' in pick) {
+        fail(`The graphic folder "${folder}" in the look "${id}" has several manifests (${pick.ambiguous.join(', ')}): keep one .ograf.json, or name it after the folder`);
+        continue;
+      }
+      if (pick.file === 'manifest.json') continue;
+      const manifest = readJson(lookFiles.get(`${folder}/${pick.file}`), `${folder}/${pick.file}`);
       if (manifest?.id) graphicIds.push(String(manifest.id));
     }
-    if (!graphicIds.length) fail(`The look "${id}" has no graphics (no <graphic>/<graphic>.ograf.json)`);
+    if (!graphicIds.length) fail(`The look "${id}" has no graphics (no graphic folder with an .ograf.json)`);
     looks.push({ id, name: String(meta.name || id), description: meta.description, files: lookFiles, graphicIds });
   }
 
@@ -183,16 +202,43 @@ function checkIdClashes(manager: OGrafManager, contents: ZipContents): void {
   }
 }
 
-/** What importing this zip would add or replace */
-export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array): ImportPreview {
-  return previewContents(manager, readTemplateZip(zip));
+/** What importing this zip would add or replace; `allowed` is the current internet allowlist */
+export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array, allowed: string[] = []): ImportPreview {
+  return previewContents(manager, readTemplateZip(zip), allowed);
 }
 
-function previewContents(manager: OGrafManager, contents: ZipContents): ImportPreview {
+/**
+ * Internet addresses the zip's graphics declare (v_olgrafik_internet): those not allowed yet,
+ * and those that can never be allowed (with the reason), so the operator sees both
+ */
+function declaredInternet(contents: ZipContents, allowed: string[]): { asked: string[]; refused: Array<{ input: string; reason: string }> } {
+  const asked = new Set<string>();
+  const refused = new Map<string, string>();
+  const manifests = [...contents.looks.flatMap((l) => [...l.files]), ...contents.graphics.flatMap((g) => [...g.files])]
+    .filter(([name]) => name.endsWith('.ograf.json'));
+  for (const [name, data] of manifests) {
+    let manifest: { v_olgrafik_internet?: unknown };
+    try { manifest = readJson(data, name) ?? {}; } catch { continue; }
+    for (const entry of Array.isArray(manifest.v_olgrafik_internet) ? manifest.v_olgrafik_internet : []) {
+      const result = normalizeAllowedOrigin(String(entry));
+      if (!result.ok) refused.set(String(entry), result.reason);
+      else if (!allowed.includes(result.value)) asked.add(result.value);
+    }
+  }
+  return {
+    asked: [...asked].sort(),
+    refused: [...refused].sort(([a], [b]) => a.localeCompare(b)).map(([input, reason]) => ({ input, reason })),
+  };
+}
+
+function previewContents(manager: OGrafManager, contents: ZipContents, allowed: string[] = []): ImportPreview {
   checkIdClashes(manager, contents);
+  const internet = declaredInternet(contents, allowed);
   const sets = new Map(manager.getTemplateSets().map((s) => [s.id, s]));
   const userDir = manager.getUserDirectory();
   return {
+    internet: internet.asked,
+    internetRefused: internet.refused,
     looks: contents.looks.map((l) => {
       const existing = sets.get(l.id);
       return {

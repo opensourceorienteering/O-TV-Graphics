@@ -3319,5 +3319,185 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "This look is not installed. Import it in Graphics library, or choose another look.": {
     "sv": "Temat är inte installerat. Importera det i Grafikbibliotek, eller välj ett annat tema.",
     "nb": "Temaet er ikke installert. Importer det i Grafikkbibliotek, eller velg et annet tema."
+  },
+  "Sample race speed": {
+    "sv": "Fart för exempelloppet",
+    "nb": "Fart for eksempelløpet"
+  },
+  "Sample race": {
+    "sv": "Exempellopp",
+    "nb": "Eksempelløp"
+  },
+  "Data used": {
+    "sv": "Data som används",
+    "nb": "Data som brukes"
+  },
+  "typed fields only": {
+    "sv": "bara inskrivna fält",
+    "nb": "bare innskrevne felt"
+  },
+  "graphic": {
+    "sv": "grafik",
+    "nb": "grafikk"
+  },
+  "Fix…": {
+    "sv": "Åtgärda…",
+    "nb": "Fiks…"
+  },
+  "The import helper comes in a later version": {
+    "sv": "Importhjälpen kommer i en senare version",
+    "nb": "Importhjelpen kommer i en senere versjon"
+  },
+  "Not in a look": {
+    "sv": "Inte i något tema",
+    "nb": "Ikke i noe tema"
+  },
+  "Not in a look yet: see Needs attention": {
+    "sv": "Inte i något tema än: se Behöver åtgärdas",
+    "nb": "Ikke i noe tema ennå: se Trenger oppfølging"
+  },
+  "Try another name.": {
+    "sv": "Prova ett annat namn.",
+    "nb": "Prøv et annet navn."
+  },
+  "Looks": {
+    "sv": "Teman",
+    "nb": "Temaer"
+  },
+  "steps": {
+    "sv": "steg",
+    "nb": "steg"
+  },
+  "look": {
+    "sv": "tema",
+    "nb": "tema"
+  },
+  "looks": {
+    "sv": "teman",
+    "nb": "temaer"
+  },
+  "Version": {
+    "sv": "Version",
+    "nb": "Versjon"
+  },
+  "Internet access": {
+    "sv": "Internetåtkomst",
+    "nb": "Internettilgang"
+  },
+  "Addresses graphics may use": {
+    "sv": "Adresser som grafiken får använda",
+    "nb": "Adresser grafikken kan bruke"
+  },
+  "Internet access for graphics": {
+    "sv": "Internetåtkomst för grafik",
+    "nb": "Internettilgang for grafikk"
+  },
+  "Let graphics load from addresses on the internet, such as a GPS viewer or map tiles. Applies to every output: the app, NDI, the previews and the OBS/vMix web output.": {
+    "sv": "Låt grafiken hämta från adresser på internet, till exempel en GPS-visare eller kartbilder. Gäller alla utgångar: appen, NDI, förhandsvisningarna och webbutgången för OBS/vMix.",
+    "nb": "La grafikken hente fra adresser på internett, for eksempel en GPS-visning eller kartfliser. Gjelder alle utganger: appen, NDI, forhåndsvisningene og nettutgangen for OBS/vMix."
+  },
+  "Graphics can only load from this computer, plus the addresses below.": {
+    "sv": "Grafiken kan bara hämta från den här datorn och adresserna nedan.",
+    "nb": "Grafikken kan bare hente fra denne datamaskinen og adressene nedenfor."
+  },
+  "Allowed addresses can show anything in your graphics and see what graphics send them.": {
+    "sv": "Tillåtna adresser kan visa vad som helst i grafiken och se vad grafiken skickar till dem.",
+    "nb": "Tillatte adresser kan vise hva som helst i grafikken og se hva grafikken sender til dem."
+  },
+  "Address": {
+    "sv": "Adress",
+    "nb": "Adresse"
+  },
+  "Add address": {
+    "sv": "Lägg till adress",
+    "nb": "Legg til adresse"
+  },
+  "Allowed address": {
+    "sv": "Tillåten adress",
+    "nb": "Tillatt adresse"
+  },
+  "No addresses allowed: graphics use only this computer.": {
+    "sv": "Inga adresser tillåtna: grafiken använder bara den här datorn.",
+    "nb": "Ingen adresser tillatt: grafikken bruker bare denne datamaskinen."
+  },
+  "Applies to graphics loaded from now on. A graphic already on air keeps its rules until it is shown again.": {
+    "sv": "Gäller grafik som laddas från och med nu. Grafik som redan är i sändning behåller sina regler tills den visas igen.",
+    "nb": "Gjelder grafikk som lastes fra nå av. Grafikk som allerede er på lufta beholder reglene til den vises igjen."
+  },
+  "Could not save the addresses": {
+    "sv": "Kunde inte spara adresserna",
+    "nb": "Kunne ikke lagre adressene"
+  },
+  "Start the address with https://": {
+    "sv": "Börja adressen med https://",
+    "nb": "Start adressen med https://"
+  },
+  "Only https:// addresses can be allowed": {
+    "sv": "Bara https://-adresser kan tillåtas",
+    "nb": "Bare https://-adresser kan tillates"
+  },
+  "Add a host name after https://": {
+    "sv": "Skriv ett värdnamn efter https://",
+    "nb": "Skriv et vertsnavn etter https://"
+  },
+  "Leave out the path: just https:// and the host name": {
+    "sv": "Utelämna sökvägen: bara https:// och värdnamnet",
+    "nb": "Utelat stien: bare https:// og vertsnavnet"
+  },
+  "Leave out the port": {
+    "sv": "Utelämna porten",
+    "nb": "Utelat porten"
+  },
+  "That is not a host name, e.g. https://www.example.com or https://*.example.com": {
+    "sv": "Det är inget värdnamn, t.ex. https://www.example.com eller https://*.example.com",
+    "nb": "Det er ikke et vertsnavn, f.eks. https://www.example.com eller https://*.example.com"
+  },
+  "Looks contain code. Only import looks from people you trust.": {
+    "sv": "Teman innehåller kod. Importera bara teman från personer du litar på.",
+    "nb": "Temaer inneholder kode. Importer bare temaer fra personer du stoler på."
+  },
+  "These graphics ask for internet access. Allow these addresses for graphics:": {
+    "sv": "Den här grafiken vill ha internetåtkomst. Tillåt de här adresserna för grafik:",
+    "nb": "Denne grafikken ber om internettilgang. Tillat disse adressene for grafikk:"
+  },
+  "You can change this later in Settings → Internet access.": {
+    "sv": "Du kan ändra det senare i Inställningar → Internetåtkomst.",
+    "nb": "Du kan endre dette senere i Innstillinger → Internettilgang."
+  },
+  "Import": {
+    "sv": "Importera",
+    "nb": "Importer"
+  },
+  "Saved as": {
+    "sv": "Sparad som",
+    "nb": "Lagret som"
+  },
+  "These addresses were asked for but can't be allowed, so graphics won't reach them:": {
+    "sv": "De här adresserna efterfrågades men kan inte tillåtas, så grafiken når dem inte:",
+    "nb": "Disse adressene ble etterspurt, men kan ikke tillates, så grafikken når dem ikke:"
+  },
+  "Blocked recently": {
+    "sv": "Nyligen blockerade",
+    "nb": "Nylig blokkert"
+  },
+  "Graphics tried to reach these addresses and were refused. Allow only what you trust.": {
+    "sv": "Grafiken försökte nå de här adresserna och nekades. Tillåt bara det du litar på.",
+    "nb": "Grafikken prøvde å nå disse adressene og ble nektet. Tillat bare det du stoler på."
+  },
+  "Last": {
+    "sv": "Senast",
+    "nb": "Sist"
+  },
+  "Allow": {
+    "sv": "Tillåt",
+    "nb": "Tillat"
+  },
+  "Clear list": {
+    "sv": "Töm listan",
+    "nb": "Tøm listen"
+  },
+  "Nothing blocked right now. Show a graphic in a preview to see what it tries to reach.": {
+    "sv": "Inget blockerat just nu. Visa en grafik i en förhandsvisning för att se vad den försöker nå.",
+    "nb": "Ingenting blokkert akkurat nå. Vis en grafikk i en forhåndsvisning for å se hva den prøver å nå."
   }
 };

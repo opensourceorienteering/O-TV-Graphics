@@ -3,6 +3,8 @@
  * Initializes the OGRAF renderer and handles playback commands via WebSocket
  */
 
+import { createBlockReporter } from "./blockReporter";
+import { createRulesVersionGate } from "./rulesVersionGate";
 import { io, Socket } from "socket.io-client";
 import { RendererCommandQueue } from "./RendererCommandQueue";
 import { OGrafRenderer } from "./ograf-renderer";
@@ -10,6 +12,19 @@ import { OGrafManifest } from "../../shared/types/ograf";
 
 // Global renderer instance
 let renderer: OGrafRenderer | null = null;
+// Reloads this page for changed content rules once it shows nothing (see rulesVersionGate)
+const rulesGate = createRulesVersionGate({
+  reload: () => window.location.reload(),
+  showing: () => renderer?.getPlayingCount() ?? 0,
+});
+// What the content rules block here is listed in Settings → Internet access, with an Allow button
+document.addEventListener(
+  "securitypolicyviolation",
+  createBlockReporter(
+    (blocked) => socket?.emit("SPXMessage2Server", { spxcmd: "graphics:blocked", ...blocked }),
+    () => renderer?.getLoadedGraphics().map((g) => g.manifest.name) ?? [],
+  ),
+);
 let socket: Socket | null = null;
 const commands = new RendererCommandQueue();
 let connectionVersion = 0;
@@ -120,10 +135,10 @@ function initWebSocket() {
   // Listen for playback commands (all messages come through SPXMessage2Client)
   socket.on("SPXMessage2Client", async (data) => {
     if (data.command === "clear")
-      await commands.barrier(() => withRequestId(data, () => handlePlaybackCommand(data)));
+      await commands.barrier(() => withRequestId(data, () => handlePlaybackCommand(data)).finally(() => rulesGate.check()));
     else
       await commands.enqueue(data.payload?.id || "__control__", () =>
-        withRequestId(data, () => handlePlaybackCommand(data)),
+        withRequestId(data, () => handlePlaybackCommand(data)).finally(() => rulesGate.check()),
       );
   });
   console.log("[Graphics] 👂 Listening for SPXMessage2Client events");
@@ -134,6 +149,17 @@ function initWebSocket() {
  */
 async function handlePlaybackCommand(data: any) {
   console.log("[Graphics] 📨 Received message:", JSON.stringify(data, null, 2));
+
+  // The internet allowlist changed: reload to take the new content rules (sent only when nothing is on air)
+  if (data.spxcmd === "graphics:reloadPage") {
+    window.location.reload();
+    return;
+  }
+  // The current content rules version, on every connect: reload if this page missed a change
+  if (data.spxcmd === "graphics:rulesVersion") {
+    rulesGate.version(Number(data.version) || 0);
+    return;
+  }
 
   // Filter for graphics commands only
   if (data.spxcmd !== "graphics:command") {

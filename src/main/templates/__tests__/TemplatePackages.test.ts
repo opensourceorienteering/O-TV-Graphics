@@ -71,6 +71,8 @@ describe('looks as zip files', () => {
   it('imports a look into the templates folder and serves it next to the built-in ones', async () => {
     const zip = exportLookZip(full, 'iof');
     expect(previewTemplateZip(manager, zip)).toEqual({
+      internet: [],
+      internetRefused: [],
       looks: [{ id: 'iof', name: 'IOF', graphics: 17, replaces: undefined }],
       graphics: [],
     });
@@ -136,6 +138,42 @@ describe('looks as zip files', () => {
     await importTemplateZip(manager, zipSync(files));
     const plate = manager.getTemplateById('my-plate')!;
     expect(plate).toMatchObject({ setId: 'custom', directoryName: 'my-plate' });
+  });
+
+  it('finds a graphic whose manifest is not named after its folder', async () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) files[`mylook/strap/${f}`] = fs.readFileSync(path.join(pattern, f));
+    files['mylook/strap/project-1-rt.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'project-1-rt', name: 'Strap', v_olgrafik_set: 'mylook' }));
+    await importTemplateZip(manager, zipSync(files));
+    expect(manager.getAllTemplates().some((t) => t.directoryName === 'sets/mylook/strap')).toBe(true);
+  });
+
+  it('refuses a look whose graphic folder has two manifests, neither named after the folder', () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) {
+      files[`mylook/ok/${f}`] = fs.readFileSync(path.join(pattern, f));
+      files[`mylook/twice/${f}`] = fs.readFileSync(path.join(pattern, f));
+    }
+    files['mylook/ok/ok.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'ok-1', name: 'Ok' }));
+    files['mylook/twice/a.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-a', name: 'A' }));
+    files['mylook/twice/b.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-b', name: 'B' }));
+    expect(() => previewTemplateZip(manager, zipSync(files))).toThrow(/"twice" in the look "mylook" has several manifests \(a\.ograf\.json, b\.ograf\.json\)/);
+  });
+
+  it('lists the internet addresses a look asks for that are not allowed yet', () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) files[`mylook/gps/${f}`] = fs.readFileSync(path.join(pattern, f));
+    files['mylook/gps/gps.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'gps-1', name: 'GPS', v_olgrafik_internet: ['https://Maps.Example.com', 'http://bad', 'https://tiles.example'] }));
+    const zip = zipSync(files);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example']).internet).toEqual(['https://maps.example.com']);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example']).internetRefused).toEqual([{ input: 'http://bad', reason: expect.any(String) }]);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example', 'https://maps.example.com']).internet).toEqual([]);
   });
 
   it('rejects unsafe paths, damaged files and zips without graphics', () => {

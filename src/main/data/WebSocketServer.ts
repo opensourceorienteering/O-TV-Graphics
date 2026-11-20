@@ -3,6 +3,7 @@
  * Socket.io server for real-time communication
  */
 
+import { recordBlocked } from '../security/blocked';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer, Server as HTTPServer } from 'http';
 import { getLogger } from '../utils/logger';
@@ -220,6 +221,11 @@ export class WebSocketServer {
         logger[level](`TemplateLog [${ref}] --> ${data.message}`);
         break;
       }
+
+      case 'graphics:blocked':
+        // An output page reports what the content rules blocked (Settings → Internet access)
+        recordBlocked(data);
+        break;
 
       case 'graphics:response':
         // Graphics renderer response to a command

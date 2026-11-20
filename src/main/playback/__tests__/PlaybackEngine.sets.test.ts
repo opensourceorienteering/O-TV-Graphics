@@ -88,4 +88,79 @@ describe('PlaybackEngine and template sets', () => {
     await engine.playItem('p1', 'r1', 'table');
     expect(commands('stop')).toHaveLength(0);
   });
+
+  it('a graphic taken off air by a clash is disposed, and starts on its first page when shown again', async () => {
+    vi.useFakeTimers();
+    try {
+      await engine.playItem('p1', 'r1', 'table');
+      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 3 } });
+      await engine.nextItem('p1', 'r1', 'table');
+      await engine.playItem('p1', 'r1', 'strap'); // lower clashes with main: the table goes off air
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).toContain('p1-r1-table');
+      engine.sendCommand.mockClear();
+      await engine.playItem('p1', 'r1', 'table');
+      expect(commands('load').map((c: any) => c.id)).toEqual(['p1-r1-table']);
+      expect(commands('play').find((c: any) => c.id === 'p1-r1-table').options.goto).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a graphic shown again keeps the new data for renderers that connect later', async () => {
+    await engine.playItem('p1', 'r1', 'strap');
+    await engine.stopItem('p1', 'r1', 'strap');
+    rundown.items[0].fields = { name: 'Simona Aebersold' };
+    await engine.playItem('p1', 'r1', 'strap'); // within the undo window: the loaded graphic is reused
+    const sent: any[] = [];
+    engine.wsServer = { sendToClient: (_id: string, msg: any) => sent.push(msg) };
+    await engine.syncGraphicsToNewClient('socket-1', 'program-output');
+    const load = sent.find((m) => m.command === 'load' && m.payload.id === 'p1-r1-strap');
+    expect(load.payload.data.name).toBe('Simona Aebersold');
+  });
+
+  it('keeps a graphic loaded by an external OGraf controller when a solo graphic takes it off air', async () => {
+    vi.useFakeTimers();
+    try {
+      const { graphicInstanceId } = await engine.apiLoad('iof-name-strap', { name: 'Guest' });
+      await engine.apiPlay(graphicInstanceId, {});
+      rundown.items[2].playbackMode = 'solo'; // a solo graphic takes everything else off air
+      await engine.playItem('p1', 'r1', 'table');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).not.toContain(graphicInstanceId);
+      expect(engine.listGraphicInstances().map((g: any) => g.graphicInstanceId)).toContain(graphicInstanceId);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never disposes a graphic that is back on air when its removal comes due', async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseUpdate: () => void = () => {};
+      engine.sendCommand = vi.fn(async (cmd: string, p: any) => {
+        if (cmd === 'update' && p.id === 'p1-r1-strap') await new Promise<void>((r) => { releaseUpdate = r; });
+        return { success: true, result: { currentStep: 1 } };
+      });
+      await engine.playItem('p1', 'r1', 'strap');
+      const reshow = engine.playItem('p1', 'r1', 'strap'); // shown again: waits on its update
+      await vi.advanceTimersByTimeAsync(0);
+      await engine.playItem('p1', 'r1', 'table'); // meanwhile the table clears the strap
+      releaseUpdate();
+      await reshow; // the strap ends up on air
+      expect(engine.activeGraphics.get('p1-r1-strap')?.isPlaying).toBe(true);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).not.toContain('p1-r1-strap');
+      expect(engine.activeGraphics.has('p1-r1-strap')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tells each output page that connects the current content rules version', async () => {
+    const sent: any[] = [];
+    engine.wsServer = { sendToClient: (_id: string, msg: any) => sent.push(msg) };
+    await engine.syncGraphicsToNewClient('socket-1', 'program-output');
+    expect(sent[0]).toEqual({ spxcmd: 'graphics:rulesVersion', version: 0 });
+  });
 });

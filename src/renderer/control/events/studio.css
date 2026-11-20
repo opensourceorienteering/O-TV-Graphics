@@ -241,6 +241,17 @@ button:disabled {
   margin-bottom: 16px;
   overflow-wrap: anywhere;
 }
+.studio-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #3f3524;
+  border: 1px solid #a9874a;
+  color: #ffe7b8;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0 14px;
+}
 .studio-error button {
   margin-left: 12px;
   padding: 4px;

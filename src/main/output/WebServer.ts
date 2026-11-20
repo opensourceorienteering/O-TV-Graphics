@@ -18,6 +18,7 @@ import { createControlApiRouter } from './ControlApi';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from '../utils/config';
 import { PortInUseError } from '../utils/portAvailability';
+import { graphicsCspMiddleware } from '../security/cspMiddleware';
 
 const logger = getLogger();
 const isDev = process.env.NODE_ENV === 'development';
@@ -43,6 +44,13 @@ export class WebServer {
 
   private setupMiddleware(): void {
     const config = getConfig();
+
+    // Graphics pages (OBS/vMix web output, preview frame, template preview) get the same
+    // content rules as in the app, including the internet allowlist
+    this.app.use(graphicsCspMiddleware(() => {
+      const current = getConfig();
+      return { dev: isDev, webPort: current.general.port, wsPort: current.general.wsPort, allowed: current.graphicsAllowedOrigins ?? [] };
+    }));
 
     // CORS
     if (config.output.web.cors) {
@@ -145,6 +153,19 @@ export class WebServer {
     // Health check
     this.app.get('/health', (_req, res) => {
       res.json({ status: 'ok', timestamp: Date.now() });
+    });
+
+    // Sealed preview frame for the operator window's previews: always on 127.0.0.1, a different
+    // origin from the operator UI, and never given the app's preload bridge
+    this.app.get('/preview-frame', (req, res) => {
+      const query = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      if (isDev) {
+        res.redirect(`http://127.0.0.1:5175/preview-frame.html${query}`);
+        return;
+      }
+      const htmlPath = path.join(__dirname, '../../dist/preview-frame.html');
+      if (fs.existsSync(htmlPath)) res.sendFile(htmlPath);
+      else res.status(404).send('Preview frame not found. Please build the application first.');
     });
 
     // Template preview page

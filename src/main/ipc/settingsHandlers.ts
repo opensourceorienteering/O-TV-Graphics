@@ -9,6 +9,9 @@ import { getConfig, saveConfig, AppConfig } from '../utils/config';
 import path from 'path';
 import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 import { findTemplateManager } from '../templates/OGrafManager';
+import { normalizeAllowedOrigin } from '../security/csp';
+import { graphicsRulesChanged } from '../security/rulesReload';
+import { blockedList, clearBlocked, recordBlocked } from '../security/blocked';
 
 const logger = getLogger();
 
@@ -98,6 +101,8 @@ function mergeConfig(current: AppConfig, updates: Partial<AppConfig>): AppConfig
     eventor: updates.eventor !== undefined ? updates.eventor : current.eventor,
     // Changed only through clubNames:set, so a settings page saving a stale copy cannot drop names
     clubNames: current.clubNames,
+    // Changed only through graphicsAccess:set, for the same reason
+    graphicsAllowedOrigins: current.graphicsAllowedOrigins,
     output: {
       ndi: { ...current.output.ndi, ...updates.output?.ndi },
       web: { ...current.output.web, ...updates.output?.web }
@@ -109,6 +114,42 @@ function mergeConfig(current: AppConfig, updates: Partial<AppConfig>): AppConfig
  * Register settings IPC handlers
  */
 export function registerSettingsHandlers() {
+  // Settings → Internet access for graphics: addresses graphics may load from
+  ipcMain.handle('graphicsAccess:get', async (): Promise<IPCResponse<string[]>> => {
+    return { success: true, data: getConfig().graphicsAllowedOrigins ?? [] };
+  });
+
+  // What graphics tried to reach and were refused (Settings → Internet access → Blocked recently)
+  ipcMain.handle('graphicsAccess:blocked', async () => ({ success: true, data: blockedList(getConfig().graphicsAllowedOrigins ?? []) }));
+  // Preview frames report through the operator UI, which has the IPC bridge
+  ipcMain.handle('graphicsAccess:reportBlocked', async (_event, report: unknown) => {
+    recordBlocked(report);
+    return { success: true };
+  });
+  ipcMain.handle('graphicsAccess:clearBlocked', async () => {
+    clearBlocked();
+    return { success: true };
+  });
+
+  ipcMain.handle('graphicsAccess:set', async (_event, list: unknown): Promise<IPCResponse<{ saved: string[]; rejected: Array<{ input: string; reason: string }> }>> => {
+    try {
+      const saved = new Set<string>();
+      const rejected: Array<{ input: string; reason: string }> = [];
+      for (const input of Array.isArray(list) ? list : []) {
+        const result = normalizeAllowedOrigin(String(input));
+        if (result.ok) saved.add(result.value);
+        else rejected.push({ input: String(input), reason: result.reason });
+      }
+      const sorted = [...saved].sort();
+      await saveConfig({ ...getConfig(), graphicsAllowedOrigins: sorted });
+      logger.info('Graphics internet allowlist saved', { count: sorted.length, rejected: rejected.length });
+      graphicsRulesChanged();
+      return { success: true, data: { saved: sorted, rejected } };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
   /**
    * Get current configuration
    */
