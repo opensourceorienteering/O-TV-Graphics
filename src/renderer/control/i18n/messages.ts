@@ -3379,5 +3379,77 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "Version": {
     "sv": "Version",
     "nb": "Versjon"
+  },
+  "Internet access": {
+    "sv": "Internetåtkomst",
+    "nb": "Internettilgang"
+  },
+  "Addresses graphics may use": {
+    "sv": "Adresser som grafiken får använda",
+    "nb": "Adresser grafikken kan bruke"
+  },
+  "Internet access for graphics": {
+    "sv": "Internetåtkomst för grafik",
+    "nb": "Internettilgang for grafikk"
+  },
+  "Let graphics load from addresses on the internet, such as a GPS viewer or map tiles. Applies to every output: the app, NDI, the previews and the OBS/vMix web output.": {
+    "sv": "Låt grafiken hämta från adresser på internet, till exempel en GPS-visare eller kartbilder. Gäller alla utgångar: appen, NDI, förhandsvisningarna och webbutgången för OBS/vMix.",
+    "nb": "La grafikken hente fra adresser på internett, for eksempel en GPS-visning eller kartfliser. Gjelder alle utganger: appen, NDI, forhåndsvisningene og nettutgangen for OBS/vMix."
+  },
+  "Graphics can only load from this computer, plus the addresses below.": {
+    "sv": "Grafiken kan bara hämta från den här datorn och adresserna nedan.",
+    "nb": "Grafikken kan bare hente fra denne datamaskinen og adressene nedenfor."
+  },
+  "Allowed addresses can show anything in your graphics and see what graphics send them.": {
+    "sv": "Tillåtna adresser kan visa vad som helst i grafiken och se vad grafiken skickar till dem.",
+    "nb": "Tillatte adresser kan vise hva som helst i grafikken og se hva grafikken sender til dem."
+  },
+  "Address": {
+    "sv": "Adress",
+    "nb": "Adresse"
+  },
+  "Add address": {
+    "sv": "Lägg till adress",
+    "nb": "Legg til adresse"
+  },
+  "Allowed address": {
+    "sv": "Tillåten adress",
+    "nb": "Tillatt adresse"
+  },
+  "No addresses allowed: graphics use only this computer.": {
+    "sv": "Inga adresser tillåtna: grafiken använder bara den här datorn.",
+    "nb": "Ingen adresser tillatt: grafikken bruker bare denne datamaskinen."
+  },
+  "Applies to graphics loaded from now on. A graphic already on air keeps its rules until it is shown again.": {
+    "sv": "Gäller grafik som laddas från och med nu. Grafik som redan är i sändning behåller sina regler tills den visas igen.",
+    "nb": "Gjelder grafikk som lastes fra nå av. Grafikk som allerede er på lufta beholder reglene til den vises igjen."
+  },
+  "Could not save the addresses": {
+    "sv": "Kunde inte spara adresserna",
+    "nb": "Kunne ikke lagre adressene"
+  },
+  "Start the address with https://": {
+    "sv": "Börja adressen med https://",
+    "nb": "Start adressen med https://"
+  },
+  "Only https:// addresses can be allowed": {
+    "sv": "Bara https://-adresser kan tillåtas",
+    "nb": "Bare https://-adresser kan tillates"
+  },
+  "Add a host name after https://": {
+    "sv": "Skriv ett värdnamn efter https://",
+    "nb": "Skriv et vertsnavn etter https://"
+  },
+  "Leave out the path: just https:// and the host name": {
+    "sv": "Utelämna sökvägen: bara https:// och värdnamnet",
+    "nb": "Utelat stien: bare https:// og vertsnavnet"
+  },
+  "Leave out the port": {
+    "sv": "Utelämna porten",
+    "nb": "Utelat porten"
+  },
+  "That is not a host name, e.g. https://www.example.com or https://*.example.com": {
+    "sv": "Det är inget värdnamn, t.ex. https://www.example.com eller https://*.example.com",
+    "nb": "Det er ikke et vertsnavn, f.eks. https://www.example.com eller https://*.example.com"
   }
 };
