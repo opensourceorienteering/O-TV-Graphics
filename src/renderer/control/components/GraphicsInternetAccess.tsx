@@ -19,6 +19,7 @@ export function GraphicsInternetAccess() {
   const [list, setList] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     invoke<string[]>("graphicsAccess:get").then(setList).catch((e) => setError((e as Error).message));
@@ -39,10 +40,17 @@ export function GraphicsInternetAccess() {
     const value = draft.trim();
     if (!value) return;
     setError("");
+    setNote("");
+    const before = list;
     const result = await save([...list, value]);
     const refused = result?.rejected.find((r) => r.input === value);
     if (refused) setError(tr(refused.reason));
-    else if (result) setDraft("");
+    else if (result) {
+      setDraft("");
+      // http:// and bare host names are stored as https://: say so
+      const added = result.saved.find((o) => !before.includes(o));
+      if (added && added !== value) setNote(`${tr("Saved as")} ${added}`);
+    }
   };
 
   return (
@@ -74,6 +82,11 @@ export function GraphicsInternetAccess() {
           {tr("Add address")}
         </button>
       </form>
+      {note && (
+        <p role="status" className="muted">
+          {note}
+        </p>
+      )}
       {error && (
         <p id="graphics-internet-error" role="alert" className="studio-error">
           {error}
