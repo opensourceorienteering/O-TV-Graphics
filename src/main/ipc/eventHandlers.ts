@@ -1,4 +1,5 @@
 import { guardWindow } from "../windows/guards";
+import { registerOperatorWindow } from "../security/callers";
 import { timingClasses, mapTimingClasses } from '../data/timingScope';
 import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
@@ -598,6 +599,7 @@ export function registerEventHandlers(): void {
       );
     });
     guardWindow(win);
+    registerOperatorWindow(win);
     monitors.set(kind, win);
     try {
       if (!app.isPackaged)
