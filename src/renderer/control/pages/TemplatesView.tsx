@@ -12,6 +12,7 @@ import { LibraryHome } from "../library/LibraryHome";
 import { LookPage } from "../library/LookPage";
 import { lookCards, needsAttention, searchGraphics } from "../library/libraryModel";
 import "../library/library.css";
+import { ImportConfirm, type ImportPreview } from "../library/ImportConfirm";
 import { useToast } from "../contexts/ToastContext";
 import type {
   OGrafTemplateInfo,
@@ -20,28 +21,6 @@ import type {
 
 /** Every look as a zip, on the website */
 const LOOKS_URL = "https://opensourceorienteering.github.io/O-TV-Graphics/looks.html";
-
-interface ImportPreview {
-  looks: Array<{ id: string; name: string; graphics: number; replaces?: "imported" | "built-in" }>;
-  graphics: Array<{ id: string; name: string; replaces?: boolean }>;
-}
-
-/** The confirmation shown before an import, in plain words */
-function importQuestion(preview: ImportPreview): string {
-  const lines = [
-    ...preview.looks.map((look) =>
-      look.replaces === "built-in"
-        ? `${look.name}: ${tr("replaces the built-in look")}`
-        : look.replaces === "imported"
-          ? `${look.name}: ${tr("replaces the imported look")}`
-          : `${look.name}: ${tr("new look")} (${look.graphics} ${tr("graphics")})`,
-    ),
-    ...preview.graphics.map(
-      (g) => `${g.name}: ${g.replaces ? tr("replaces the imported graphic") : tr("new graphic")}`,
-    ),
-  ];
-  return `${tr("Import this zip?")}\n\n${lines.join("\n")}`;
-}
 
 export function TemplatesView() {
   const [templates, setTemplates] = useState<OGrafTemplateInfo[]>([]);
@@ -88,14 +67,28 @@ export function TemplatesView() {
     void loadTemplates();
   }, []);
 
+  /** The picked file waiting for the operator's confirmation */
+  const [pending, setPending] = useState<{ filePath: string; preview: ImportPreview } | null>(null);
+
   const importLook = async () => {
     setBusy(true);
     try {
       const picked = await window.electronAPI.invoke("templates:pickImport");
       if (!picked.success) throw new Error(picked.error);
       if (picked.cancelled) return;
-      if (!confirm(importQuestion(picked.preview))) return;
-      const result = await window.electronAPI.invoke("templates:import", picked.filePath);
+      setPending({ filePath: picked.filePath, preview: picked.preview });
+    } catch (cause) {
+      toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmImport = async (filePath: string, allow: string[]) => {
+    setPending(null);
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:import", filePath, allow);
       if (!result.success) throw new Error(result.error);
       const names = [
         ...result.preview.looks.map((l: { name: string }) => l.name),
@@ -272,6 +265,13 @@ export function TemplatesView() {
             {tr("Scan library")}
           </button>
         </div>
+      )}
+      {pending && (
+        <ImportConfirm
+          preview={pending.preview}
+          onCancel={() => setPending(null)}
+          onConfirm={(allow) => void confirmImport(pending.filePath, allow)}
+        />
       )}
     </div>
   );

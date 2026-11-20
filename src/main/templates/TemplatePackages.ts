@@ -15,6 +15,7 @@ import { unzipSync, zipSync, type Zippable } from 'fflate';
 import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 import type { OGrafManager } from './OGrafManager';
 import { pickManifestFile } from './manifestFile';
+import { normalizeAllowedOrigin } from '../security/csp';
 
 /** Refuse zips that unpack to more than this (fonts and images included) */
 const MAX_UNPACKED_BYTES = 200 * 1024 * 1024;
@@ -46,6 +47,8 @@ export interface ZipContents {
 
 /** What an import would do, for the operator to confirm */
 export interface ImportPreview {
+  /** Internet addresses the graphics ask for that aren't on the allowlist yet */
+  internet: string[];
   looks: Array<{ id: string; name: string; graphics: number; replaces?: 'imported' | 'built-in' }>;
   graphics: Array<{ id: string; name: string; replaces?: boolean }>;
 }
@@ -197,16 +200,33 @@ function checkIdClashes(manager: OGrafManager, contents: ZipContents): void {
   }
 }
 
-/** What importing this zip would add or replace */
-export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array): ImportPreview {
-  return previewContents(manager, readTemplateZip(zip));
+/** What importing this zip would add or replace; `allowed` is the current internet allowlist */
+export function previewTemplateZip(manager: OGrafManager, zip: Uint8Array, allowed: string[] = []): ImportPreview {
+  return previewContents(manager, readTemplateZip(zip), allowed);
 }
 
-function previewContents(manager: OGrafManager, contents: ZipContents): ImportPreview {
+/** Internet addresses the zip's graphics declare (v_olgrafik_internet) that aren't allowed yet */
+function declaredInternet(contents: ZipContents, allowed: string[]): string[] {
+  const out = new Set<string>();
+  const manifests = [...contents.looks.flatMap((l) => [...l.files]), ...contents.graphics.flatMap((g) => [...g.files])]
+    .filter(([name]) => name.endsWith('.ograf.json'));
+  for (const [name, data] of manifests) {
+    let manifest: { v_olgrafik_internet?: unknown };
+    try { manifest = readJson(data, name) ?? {}; } catch { continue; }
+    for (const entry of Array.isArray(manifest.v_olgrafik_internet) ? manifest.v_olgrafik_internet : []) {
+      const result = normalizeAllowedOrigin(String(entry));
+      if (result.ok && !allowed.includes(result.value)) out.add(result.value);
+    }
+  }
+  return [...out].sort();
+}
+
+function previewContents(manager: OGrafManager, contents: ZipContents, allowed: string[] = []): ImportPreview {
   checkIdClashes(manager, contents);
   const sets = new Map(manager.getTemplateSets().map((s) => [s.id, s]));
   const userDir = manager.getUserDirectory();
   return {
+    internet: declaredInternet(contents, allowed),
     looks: contents.looks.map((l) => {
       const existing = sets.get(l.id);
       return {
