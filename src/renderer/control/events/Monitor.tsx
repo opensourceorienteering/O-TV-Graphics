@@ -1,7 +1,7 @@
 import { t as tr } from "../i18n";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
-import { SealedRenderer, previewFrameUrl } from "../sealed/SealedRenderer";
+import { SealedRenderer, previewFrameUrl, sealedOutputUrl } from "../sealed/SealedRenderer";
 import { call } from "./api";
 
 export function Monitor({
@@ -132,7 +132,8 @@ export function Monitor({
   };
   const programUrl = (() => {
     if (!url) return "";
-    const parsed = new URL(url);
+    // On 127.0.0.1: never the operator UI's own origin, so on-air graphics can't reach it
+    const parsed = new URL(sealedOutputUrl(url));
     parsed.searchParams.set("alphaPreview", "1");
     return parsed.toString();
   })();

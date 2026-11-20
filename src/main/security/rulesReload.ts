@@ -14,24 +14,36 @@ export interface RulesReloadDeps {
 }
 
 const CHECK_EVERY_MS = 2000;
+const QUIET_CHECKS = 2;
 
 export class RulesReloader {
   private timer: ReturnType<typeof setInterval> | null = null;
+  /** Checks in a row with nothing on air, since something last was */
+  private quiet = 0;
 
   constructor(private deps: RulesReloadDeps) {}
 
   changed(): void {
     this.deps.notifyPreviews();
-    if (this.tryReload() || this.timer) return;
-    this.timer = setInterval(() => this.tryReload(), CHECK_EVERY_MS);
+    if (this.timer) return;
+    // Idle right now (nothing loaded at all): reload at once
+    if (this.deps.onAirCount() === 0) {
+      this.reload();
+      return;
+    }
+    // Otherwise wait until air has been clear for two checks in a row, so an out-animation
+    // or a graphic just being loaded is never cut by the reload
+    this.quiet = 0;
+    this.timer = setInterval(() => {
+      this.quiet = this.deps.onAirCount() === 0 ? this.quiet + 1 : 0;
+      if (this.quiet >= QUIET_CHECKS) this.reload();
+    }, CHECK_EVERY_MS);
   }
 
-  private tryReload(): boolean {
-    if (this.deps.onAirCount() > 0) return false;
+  private reload(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     this.deps.reloadPages();
-    return true;
   }
 }
 

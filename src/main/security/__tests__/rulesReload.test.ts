@@ -25,8 +25,24 @@ describe('applying a changed internet allowlist', () => {
     expect(deps.reloadPages).not.toHaveBeenCalled();
     state.onAir = 0;
     vi.advanceTimersByTime(2000);
+    expect(deps.reloadPages).not.toHaveBeenCalled(); // quiet for one check only: an out-animation may still run
+    vi.advanceTimersByTime(2000);
     expect(deps.reloadPages).toHaveBeenCalledTimes(1);
     vi.advanceTimersByTime(10000);
+    expect(deps.reloadPages).toHaveBeenCalledTimes(1);
+  });
+  it('starts the quiet period again when something goes on air in between', () => {
+    vi.useFakeTimers();
+    const { state, deps, reloader } = setup(1);
+    reloader.changed();
+    state.onAir = 0;
+    vi.advanceTimersByTime(2000);
+    state.onAir = 1;
+    vi.advanceTimersByTime(2000);
+    state.onAir = 0;
+    vi.advanceTimersByTime(2000);
+    expect(deps.reloadPages).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2000);
     expect(deps.reloadPages).toHaveBeenCalledTimes(1);
   });
   it('reloads once for several changes made while on air', () => {
@@ -35,7 +51,7 @@ describe('applying a changed internet allowlist', () => {
     reloader.changed();
     reloader.changed();
     state.onAir = 0;
-    vi.advanceTimersByTime(2000);
+    vi.advanceTimersByTime(4000);
     expect(deps.reloadPages).toHaveBeenCalledTimes(1);
   });
 });

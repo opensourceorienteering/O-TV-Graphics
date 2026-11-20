@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { SealedRenderer, previewFrameUrl } from '../SealedRenderer';
+import { SealedRenderer, previewFrameUrl, sealedOutputUrl } from '../SealedRenderer';
 
 /** A fake page: the iframe records what the parent posts; tests deliver replies by hand */
 function fakeEnv() {
   const listeners: Array<(e: any) => void> = [];
   const posted: any[] = [];
-  const frameWindow = { postMessage: (m: any) => posted.push(m) };
+  const targets: string[] = [];
+  const frameWindow = { postMessage: (m: any, target: string) => { posted.push(m); targets.push(target); } };
   const iframe: any = { style: {}, attrs: {} as Record<string, string>, setAttribute(k: string, v: string) { this.attrs[k] = v; }, contentWindow: frameWindow, remove() {}, srcSets: 0 };
   Object.defineProperty(iframe, 'src', { set(v) { iframe._src = v; iframe.srcSets++; }, get() { return iframe._src; } });
   const win: any = { addEventListener: (_t: string, l: any) => listeners.push(l), removeEventListener: () => {} };
   const doc: any = { createElement: () => iframe };
   const host: any = { appendChild: () => {} };
-  const deliver = (data: any, source: any = frameWindow) => listeners.forEach((l) => l({ data, source }));
-  return { win, doc, host, iframe, posted, deliver, frameWindow };
+  const deliver = (data: any, source: any = frameWindow, origin = 'http://127.0.0.1:5657') => listeners.forEach((l) => l({ data, source, origin }));
+  return { win, doc, host, iframe, posted, targets, deliver, frameWindow };
 }
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -88,5 +89,17 @@ describe('sealed renderer', () => {
     await tick();
     env.deliver({ requestId: env.posted.at(-1).requestId, ok: true });
     await again;
+  });
+  it('sends to the origin the frame ended up on (in development it is redirected)', async () => {
+    const env = fakeEnv();
+    const r = new SealedRenderer(env.host, previewFrameUrl(5657), { win: env.win, doc: env.doc });
+    env.deliver({ ready: true }, env.frameWindow, 'http://127.0.0.1:5175');
+    void r.playGraphic('x', {}).catch(() => undefined);
+    await tick();
+    expect(env.targets.at(-1)).toBe('http://127.0.0.1:5175');
+  });
+  it("moves the program monitor's web output to 127.0.0.1, away from the operator UI's origin", () => {
+    expect(sealedOutputUrl('http://localhost:5657/output?wsPort=5656&webPort=5657')).toBe('http://127.0.0.1:5657/output?wsPort=5656&webPort=5657');
+    expect(sealedOutputUrl('http://192.168.1.20:5657/output')).toBe('http://192.168.1.20:5657/output');
   });
 });

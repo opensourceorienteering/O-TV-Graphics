@@ -45,4 +45,8 @@ describe('content rules', () => {
     expect(directive(buildAppCsp({ dev: false, webPort: 5657, wsPort: 5656 }), 'frame-src')).toContain('http://127.0.0.1:5657');
     expect(directive(buildAppCsp({ dev: true, webPort: 5657, wsPort: 5656 }), 'frame-src')).toContain('http://127.0.0.1:5175');
   });
+  it("lets graphics pages on 127.0.0.1 reach the app's socket", () => {
+    const g = buildGraphicsCsp({ dev: false, webPort: 5657, wsPort: 5656, wsHost: 'localhost', allowed: [] });
+    expect(directive(g, 'connect-src')).toContain('ws://127.0.0.1:5656');
+  });
 });
