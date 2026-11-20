@@ -14,6 +14,8 @@ import {
 } from '../templates/TemplatePackages';
 import { listEvents } from '../events/EventService';
 import { logger } from '../utils/logger';
+import { getConfig, saveConfig } from '../utils/config';
+import { normalizeAllowedOrigin } from '../security/csp';
 import { SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
@@ -168,7 +170,7 @@ export function registerTemplateHandlers(): void {
       const pick = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
       if (pick.canceled || !pick.filePaths[0]) return { success: true, cancelled: true };
       const filePath = pick.filePaths[0];
-      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath));
+      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath), getConfig().graphicsAllowedOrigins ?? []);
       return { success: true, filePath, preview };
     } catch (error) {
       logger.warn('Look import check failed', { error: errorMessage(error) });
@@ -176,9 +178,19 @@ export function registerTemplateHandlers(): void {
     }
   });
 
-  ipcMain.handle('templates:import', async (_event, filePath: string) => {
+  ipcMain.handle('templates:import', async (_event, filePath: string, allow?: unknown) => {
     try {
       const preview = await importTemplateZip(getTemplateManager(), fs.readFileSync(filePath));
+      // Internet addresses the operator agreed to in the import confirmation
+      const added = (Array.isArray(allow) ? allow : [])
+        .map((entry) => normalizeAllowedOrigin(String(entry)))
+        .flatMap((r) => (r.ok ? [r.value] : []));
+      if (added.length) {
+        const current = getConfig();
+        const merged = [...new Set([...(current.graphicsAllowedOrigins ?? []), ...added])].sort();
+        await saveConfig({ ...current, graphicsAllowedOrigins: merged });
+        logger.info('Internet addresses allowed at import', { added });
+      }
       logger.info('Looks imported', { filePath, looks: preview.looks.map((l) => l.id), graphics: preview.graphics.length });
       return { success: true, preview };
     } catch (error) {

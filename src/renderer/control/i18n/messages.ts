@@ -3451,5 +3451,21 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "That is not a host name, e.g. https://www.example.com or https://*.example.com": {
     "sv": "Det är inget värdnamn, t.ex. https://www.example.com eller https://*.example.com",
     "nb": "Det er ikke et vertsnavn, f.eks. https://www.example.com eller https://*.example.com"
+  },
+  "Looks contain code. Only import looks from people you trust.": {
+    "sv": "Teman innehåller kod. Importera bara teman från personer du litar på.",
+    "nb": "Temaer inneholder kode. Importer bare temaer fra personer du stoler på."
+  },
+  "These graphics ask for internet access. Allow these addresses for graphics:": {
+    "sv": "Den här grafiken vill ha internetåtkomst. Tillåt de här adresserna för grafik:",
+    "nb": "Denne grafikken ber om internettilgang. Tillat disse adressene for grafikk:"
+  },
+  "You can change this later in Settings → Internet access.": {
+    "sv": "Du kan ändra det senare i Inställningar → Internetåtkomst.",
+    "nb": "Du kan endre dette senere i Innstillinger → Internettilgang."
+  },
+  "Import": {
+    "sv": "Importera",
+    "nb": "Importer"
   }
 };

@@ -71,6 +71,7 @@ describe('looks as zip files', () => {
   it('imports a look into the templates folder and serves it next to the built-in ones', async () => {
     const zip = exportLookZip(full, 'iof');
     expect(previewTemplateZip(manager, zip)).toEqual({
+      internet: [],
       looks: [{ id: 'iof', name: 'IOF', graphics: 17, replaces: undefined }],
       graphics: [],
     });
@@ -160,6 +161,17 @@ describe('looks as zip files', () => {
     files['mylook/twice/a.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-a', name: 'A' }));
     files['mylook/twice/b.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'twice-b', name: 'B' }));
     expect(() => previewTemplateZip(manager, zipSync(files))).toThrow(/"twice" in the look "mylook" has several manifests \(a\.ograf\.json, b\.ograf\.json\)/);
+  });
+
+  it('lists the internet addresses a look asks for that are not allowed yet', () => {
+    const pattern = path.join(REPO_TEMPLATES, 'system', 'output-test-pattern');
+    const manifest = JSON.parse(fs.readFileSync(path.join(pattern, 'output-test-pattern.ograf.json'), 'utf8'));
+    const files: Record<string, Uint8Array> = { 'mylook/set.json': strToU8(JSON.stringify({ id: 'mylook', name: 'My look' })) };
+    for (const f of fs.readdirSync(pattern)) if (!f.endsWith('.ograf.json')) files[`mylook/gps/${f}`] = fs.readFileSync(path.join(pattern, f));
+    files['mylook/gps/gps.ograf.json'] = strToU8(JSON.stringify({ ...manifest, id: 'gps-1', name: 'GPS', v_olgrafik_internet: ['https://Maps.Example.com', 'http://bad', 'https://tiles.example'] }));
+    const zip = zipSync(files);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example']).internet).toEqual(['https://maps.example.com']);
+    expect(previewTemplateZip(manager, zip, ['https://tiles.example', 'https://maps.example.com']).internet).toEqual([]);
   });
 
   it('rejects unsafe paths, damaged files and zips without graphics', () => {
