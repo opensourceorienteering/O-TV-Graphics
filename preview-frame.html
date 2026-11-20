@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Split Control preview frame</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+      #graphics-container { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+      #graphics-container > * { position: absolute; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="graphics-container"></div>
+    <script type="module" src="/src/renderer/preview-frame/main.ts"></script>
+  </body>
+</html>
