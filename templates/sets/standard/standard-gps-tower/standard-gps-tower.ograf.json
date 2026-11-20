@@ -1,0 +1,62 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "version": "1.0.0",
+  "description": "F1-style tower: the class in Trace / Track's estimated order from GPS, gap to the estimated leader, course progress, official finishers marked. Estimates, never results; needs Trace / Track with Virtual standings on.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "rows": {
+        "type": "number",
+        "title": "Rows",
+        "description": "Runners on the tower",
+        "default": 10
+      }
+    }
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_kind": "gps-tower",
+  "v_olgrafik_zone": "side",
+  "v_olgrafik_desk": {
+    "label": "GPS tower",
+    "short": "GPS tower",
+    "inputs": [
+      "class",
+      "runner"
+    ],
+    "required": [
+      "class"
+    ],
+    "fields": [
+      "rows"
+    ],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": [],
+    "sourceFields": [
+      "results[].x.trace-track.virtualRank",
+      "results[].x.trace-track.virtualGap"
+    ]
+  },
+  "id": "standard-gps-tower",
+  "name": "Standard – GPS tower",
+  "v_olgrafik_set": "standard"
+}

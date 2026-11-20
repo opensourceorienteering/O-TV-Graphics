@@ -98,6 +98,22 @@ them ([GRAPHIC-CAPABILITIES.md](GRAPHIC-CAPABILITIES.md)):
 
 The runner rows (`results`) already carry the fields; map `results` in `.datasource.json` as usual.
 
+## GPS tower
+
+**GPS tower** is a ready-made graphic for the virtual standings, in every look except IOF and ČO:
+an F1-style tower with the class in Trace / Track's estimated order, the gap to the estimated
+leader ("+1:01"), and a thin line under each row for the runner's course progress.
+
+- It needs Trace / Track as an additional source with **Virtual standings** on; its desk entry
+  lists `virtualRank` and `virtualGap` as source fields, so the Live desk says when they're missing.
+- Rows: `virtualRank` order. The leader reads **Leader**; runners with `progressState`
+  `timing-finished` carry the finish mark (F); runners whose `signal` is `lost` and whose rank
+  Trace / Track withholds go to the bottom, dimmed, marked **GPS**.
+- **Rows** sets the length (10); a runner picked in Live stays on the tower, highlighted.
+- The header and footer say **Estimated**. It is an estimate from GPS, never a result.
+- The website preview's simulated race sends the same fields, so a look can style the tower
+  without a Trace / Track server.
+
 ## Checking it against a real Trace / Track server
 
 The tests use a stand-in that follows Trace / Track's data API. Before an event, check against a

@@ -530,6 +530,43 @@ const views = {
   },
 
   /**
+   * GPS tower (F1 style): the class in Trace / Track's estimated order right now, from GPS
+   * (results[].x['trace-track'] virtual standings). Estimates, never results: official finishers
+   * are marked, runners whose GPS is lost are dimmed at the bottom, and the selected runner is
+   * always shown. Each row carries the runner's course progress.
+   */
+  'gps-tower'(data, ctx) {
+    const all = (Array.isArray(data.results) ? data.results : []).map(r => ({ r, g: r?.x?.['trace-track'] })).filter(x => x.g);
+    const ranked = all.filter(x => Number.isFinite(Number(x.g.virtualRank))).sort((a, b) => a.g.virtualRank - b.g.virtualRank);
+    const lost = all.filter(x => !Number.isFinite(Number(x.g.virtualRank)) && x.g.signal === 'lost');
+    const max = int(data.rows, 10);
+    const focus = findRunner(all.map(x => x.r), data);
+    let shown = [...ranked, ...lost].slice(0, max);
+    // the selected runner stays on the tower, in place of the last row
+    const f = focus && [...ranked, ...lost].find(x => x.r === focus);
+    if (f && !shown.includes(f)) shown = [...shown.slice(0, Math.max(0, max - 1)), f];
+    const rows = shown.map(({ r, g }, i) => {
+      const isLost = !Number.isFinite(Number(g.virtualRank));
+      const official = g.progressState === 'timing-finished';
+      const cls = ['row', r === focus ? 'row--hl' : '', isLost ? 'is-lost' : '', official ? 'is-official' : '', i === 0 && !isLost ? 'row--leader' : ''].filter(Boolean).join(' ');
+      const gap = isLost ? '' : Number(g.virtualRank) === 1 ? L(ctx, 'leader', 'Leader') : clock(Math.round(Number(g.virtualGap) / 1000) || 0, { sign: true });
+      const mark = isLost ? L(ctx, 'gps', 'GPS') : official ? L(ctx, 'finishShort', 'F') : '';
+      const progress = Math.max(0, Math.min(100, Number(g.progressPercent) || 0));
+      return `<div class="${cls}" style="--i:${i}" data-key="${rowKey(r)}">` +
+        `<span class="c-place">${isLost ? '' : esc(String(g.virtualRank))}</span>` +
+        `<span class="c-label">${nameHtml(r.name, 'family')}</span>` +
+        `<span class="c-change">${esc(mark)}</span>` +
+        `<span class="c-time">${esc(gap)}</span>` +
+        `<span class="c-progress" style="--p:${progress}"></span></div>`;
+    }).join('') || emptyRow(L(ctx, 'noResults', 'No results yet'));
+    return {
+      steps: 1,
+      html: `<div class="panel panel--side panel--splits panel--tower">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'estimated', 'Estimated')), data)}` +
+        `<div class="rows">${rows}</div>${footer(esc(`${L(ctx, 'gps', 'GPS')} · ${L(ctx, 'estimated', 'Estimated')}`), data)}</div>`
+    };
+  },
+
+  /**
    * Position history: time behind the leader at every radio control and the finish (SVG chart).
    * The leader at each point runs along the top; the biggest gap at each point is labelled;
    * end labels are pushed apart so they never overlap. Runners: the top N at the finish, or the

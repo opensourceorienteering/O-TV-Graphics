@@ -46,6 +46,7 @@
 .gfx--relay-team .panel,
 .gfx--course-info .panel,
 .gfx--weather .panel      { right: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--side-w, 440px); }
+.gfx--gps-tower .panel    { left: var(--margin-x, 96px); top: var(--tower-top, var(--margin-y, 96px)); width: var(--tower-w, 440px); }
 .gfx--clock .panel        { right: var(--margin-x, 96px); top: var(--margin-y, 96px); flex-direction: row; align-items: stretch; }
 .gfx--event-title .panel  { left: var(--title-x, 320px); right: var(--title-x, 320px); bottom: var(--margin-y, 96px); }
 
@@ -280,3 +281,15 @@
 /* Sponsor branding stays on the title card, leaving race tables unobstructed. */
 .title-sponsors { display: flex; gap: 32px; align-items: center; justify-content: center; padding: 20px 36px; background: #fff; }
 .title-sponsors img { width: 200px; height: 72px; object-fit: contain; }
+
+/* GPS tower: a thin course-progress line under each row; lost GPS dimmed; marks small */
+/* its own columns: rank, name, mark, gap (split panels put the name first) */
+.panel.panel--tower > .rows { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.panel.panel--tower .c-place { min-width: 1.6em; text-align: center; }
+/* the mark column (F for finished, GPS when lost) only takes room when a row has a mark */
+.panel.panel--tower .c-change { width: auto; min-width: 0; padding: 0 .35em; }
+.panel--tower .row { position: relative; }
+.panel--tower .c-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 1%); background: currentColor; opacity: .35; pointer-events: none; }
+.panel--tower .row.is-lost { opacity: .5; }
+.panel--tower .row.is-lost .c-progress { display: none; }
+.panel--tower .c-change { font-size: .7em; font-weight: 700; letter-spacing: .06em; }

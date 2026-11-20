@@ -118,6 +118,12 @@ function raceData(race, at, controlCode) {
     if (isFinish && r.status === 'dnf' && elapsed(r) >= dnfAfter(r)) return { ...base, statusCode: 2 };
     return base;
   });
+  // GPS estimates as Trace / Track's virtual standings send them (results[].x['trace-track'])
+  const gps = gpsStandings(race, at);
+  for (const row of results) {
+    const g = gps.get(row.name);
+    if (g) row.x = { 'trace-track': g };
+  }
   // ranked first, then final statuses, then runners still out, in start order
   const rank = (r) => (r.position ? 0 : r.statusCode ? 1 : 2);
   results.sort((a, b) => rank(a) - rank(b) || (Number(a.position) || 0) - (Number(b.position) || 0) || a.startTimeMs - b.startTimeMs);
@@ -131,6 +137,46 @@ function raceData(race, at, controlCode) {
     results,
     competitionDate: new Date(race.firstStart).toISOString().slice(0, 10),
   };
+}
+
+/**
+ * Simulated Trace / Track virtual standings: every runner out on the course gets an estimated
+ * rank and gap at a common course point. Progress follows the runner's own splits (each leg at an
+ * even pace); the gap is the runner's time to their current point minus the best time anyone
+ * took to reach it. Finished runners compare at the finish. Values Trace / Track would withhold
+ * (lost GPS, no estimate yet) are left out, as the real source does.
+ */
+function gpsStandings(race, at) {
+  const marks = (r) => [0, ...race.controls.map((c) => c.at), 1].map((p, i) => ({ p, t: i === 0 ? 0 : i <= race.controls.length ? r.splitsMs[i - 1] : r.finishMs }));
+  const progressAt = (r, ms) => {
+    const m = marks(r);
+    for (let i = 1; i < m.length; i++) if (ms <= m[i].t) return m[i - 1].p + (m[i].p - m[i - 1].p) * (ms - m[i - 1].t) / (m[i].t - m[i - 1].t);
+    return 1;
+  };
+  const timeTo = (r, p) => {
+    const m = marks(r);
+    for (let i = 1; i < m.length; i++) if (p <= m[i].p) return m[i - 1].t + (m[i].t - m[i - 1].t) * (p - m[i - 1].p) / (m[i].p - m[i - 1].p);
+    return r.finishMs;
+  };
+  const out = new Map();
+  const live = race.runners.filter((r) => at >= r.startTimeMs && r.status !== 'dnf' && r.status !== 'mp');
+  const state = live.map((r) => {
+    const ms = at - r.startTimeMs, finished = ms >= r.finishMs;
+    return { r, finished, p: finished ? 1 : progressAt(r, ms), ms: finished ? r.finishMs : ms };
+  });
+  for (const s of state) {
+    // the best time to this point among everyone who has got this far
+    const best = Math.min(...state.filter((o) => o.p >= s.p).map((o) => timeTo(o.r, s.p)));
+    s.gap = Math.max(0, Math.round((s.ms - best) / 1000) * 1000);
+  }
+  const ranked = state.filter((s) => s.p > 0.02).sort((a, b) => a.gap - b.gap);
+  ranked.forEach((s, i) => {
+    const lost = s.r.bib === '6' && !s.finished && s.p > 0.3 && s.p < 0.45; // one runner's tracker drops out for a while
+    const base = { signal: lost ? 'lost' : 'live', progressPercent: Math.round(s.p * 1000) / 10,
+      progressState: s.finished ? 'timing-finished' : 'tracking', virtualFieldSize: ranked.length };
+    out.set(s.r.name, lost ? base : { ...base, virtualRank: i + 1, virtualGap: s.gap });
+  });
+  return out;
 }
 
 /** What happened between two moments, for the event log ("Venla Harju, R2, 3rd") */
