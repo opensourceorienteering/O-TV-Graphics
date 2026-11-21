@@ -27,10 +27,15 @@ export type FieldMap = Record<string, string | { from: string; items: Record<str
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
+/** Names that would reach an object's prototype instead of its data */
+const UNSAFE = new Set(['__proto__', 'constructor', 'prototype']);
+const hasOwn = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
+/** Our data at a dotted key: own properties only, never anything inherited */
 function read(data: Record<string, unknown>, key: string): unknown {
   let value: unknown = data;
   for (const part of key.split('.')) {
-    if (!isObject(value)) return undefined;
+    if (!isObject(value) || UNSAFE.has(part) || !hasOwn(value, part)) return undefined;
     value = value[part];
   }
   return value;
@@ -50,7 +55,7 @@ export function parseClock(value: unknown): number | null {
 function rowValue(row: Record<string, unknown>, key: string): unknown {
   if (key === 'timeSeconds') return parseClock(row.time);
   if (key === 'diffSeconds') return row.diff === '' || row.diff === undefined ? null : parseClock(row.diff);
-  return row[key];
+  return hasOwn(row, key) ? row[key] : undefined;
 }
 
 /** Our data with the graphic's mapped fields set; unchanged when there is no usable map */
@@ -58,6 +63,7 @@ export function applyFieldMap<T extends Record<string, unknown>>(map: unknown, d
   if (!isObject(map)) return data;
   const out: Record<string, unknown> = { ...data };
   for (const [target, source] of Object.entries(map)) {
+    if (UNSAFE.has(target)) continue;
     if (typeof source === 'string') {
       const value = read(data, source);
       if (value !== undefined && value !== null && value !== '') out[target] = value;
@@ -67,7 +73,7 @@ export function applyFieldMap<T extends Record<string, unknown>>(map: unknown, d
       const items = Object.entries(source.items).filter((e): e is [string, string] => typeof e[1] === 'string');
       out[target] = rows.map((row) => {
         const r = isObject(row) ? row : {};
-        return Object.fromEntries(items.map(([to, from]) => [to, rowValue(r, from) ?? null]));
+        return Object.fromEntries(items.filter(([to]) => !UNSAFE.has(to)).map(([to, from]) => [to, rowValue(r, from) ?? null]));
       });
     }
   }
@@ -82,7 +88,11 @@ export function fieldMapWarnings(map: unknown, schema: unknown): string[] {
   const warnings: string[] = [];
   const known = new Set<string>(OUR_KEYS);
   for (const [target, source] of Object.entries(map)) {
-    const field = properties[target];
+    if (UNSAFE.has(target)) {
+      warnings.push(`"${target}" can't be used as a field name`);
+      continue;
+    }
+    const field = hasOwn(properties, target) ? properties[target] : undefined;
     if (!isObject(field)) warnings.push(`"${target}" is not a field of the graphic`);
     if (typeof source === 'string') {
       if (!known.has(source)) warnings.push(`"${target}": "${source}" is not Split Control data`);
@@ -97,4 +107,14 @@ export function fieldMapWarnings(map: unknown, schema: unknown): string[] {
     }
   }
   return warnings;
+}
+
+/**
+ * What a mapped graphic shows from our lists, to tell whether held data changed; null when the
+ * map has no lists (the app's own comparison applies then)
+ */
+export function mappedListsSignature(map: unknown, mapped: Record<string, unknown>): string | null {
+  if (!isObject(map)) return null;
+  const lists = Object.entries(map).filter(([target, source]) => isObject(source) && !UNSAFE.has(target)).map(([target]) => target);
+  return lists.length ? JSON.stringify(lists.map((target) => mapped[target] ?? null)) : null;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFieldMap, fieldMapWarnings, parseClock } from '../fieldMap';
+import { applyFieldMap, fieldMapWarnings, mappedListsSignature, parseClock } from '../fieldMap';
 
 const data = {
   runnerName: 'Tove Alexandersson', runnerClub: 'Stora Tuna OK', headline: 'typed',
@@ -54,5 +54,27 @@ describe('field map checks', () => {
 describe('clock times as seconds', () => {
   it.each([['15:52', 952], ['1:02:03', 3723], ['+1:23', 83], ['-0:05', -5], ['-', null], ['', null], [61, 61], ['12.5', 12.5], [undefined, null]])('%s → %s', (input, out) => {
     expect(parseClock(input)).toBe(out);
+  });
+});
+
+describe('field map with hostile names', () => {
+  it('reads only real data and never sets a prototype', () => {
+    const out = applyFieldMap({ a: 'constructor', b: 'toString', __proto__x: 'runnerName', ['__proto__']: 'runnerName' } as never, { runnerName: 'X' });
+    expect(out.a).toBeUndefined();
+    expect(out.b).toBeUndefined();
+    expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+    expect(fieldMapWarnings({ ['__proto__']: 'runnerName' } as never, { properties: {} }).length).toBeGreaterThan(0);
+  });
+});
+
+describe('what a mapped graphic shows from lists', () => {
+  it('changes when a mapped row changes, and not for data the graphic does not show', () => {
+    const map = { rows: { from: 'results', items: { athlete: 'name', rank: 'position' } } };
+    const a = applyFieldMap(map, { results: [{ name: 'A', position: 1, time: '10:00' }], clockOffsetMs: 1 });
+    const b = applyFieldMap(map, { results: [{ name: 'A', position: 1, time: '10:05' }], clockOffsetMs: 2 });
+    const c = applyFieldMap(map, { results: [{ name: 'B', position: 1, time: '10:05' }] });
+    expect(mappedListsSignature(map, a)).toBe(mappedListsSignature(map, b));
+    expect(mappedListsSignature(map, a)).not.toBe(mappedListsSignature(map, c));
+    expect(mappedListsSignature({ x: 'runnerName' }, a)).toBeNull();
   });
 });

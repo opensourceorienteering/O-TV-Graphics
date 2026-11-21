@@ -232,6 +232,8 @@ export interface OGrafTemplateInfo {
   zone?: GraphicZone;
   /** Added to its look by the operator (stored in the user's additions folder) */
   addition?: true;
+  /** The id of the graphic this one is used instead of in Live (overrides.json) */
+  replaces?: string;
 }
 
 export type GraphicZone = 'main' | 'lower' | 'side' | 'corner' | 'full';

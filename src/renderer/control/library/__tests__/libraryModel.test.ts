@@ -67,4 +67,7 @@ describe('needs attention', () => {
     expect(list.map((t) => t.manifest.id)).toContain('std-lower');
     expect(list.map((t) => t.manifest.id)).not.toContain('pattern');
   });
+  it('does not list a graphic that replaces another (it takes over its Live entry)', () => {
+    expect(needsAttention([g('guest', 'Guest', 'standard', { replaces: 'std-strap' })])).toEqual([]);
+  });
 });

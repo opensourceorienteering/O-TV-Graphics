@@ -248,7 +248,7 @@ export function conflicts({
   if ('newLookName' in target) {
     const name = target.newLookName.trim();
     if (!name) out.push('Give the new look a name');
-    else if (looks.some((l) => l.name.toLowerCase() === name.toLowerCase() || l.id === slug(name)))
+    else if (looks.some((l) => l.name.toLowerCase() === name.toLowerCase()))
       out.push(`A look called "${name}" already exists: choose another name, or add to that look`);
   } else if (wanted) {
     const look = looks.find((l) => l.id === target.lookId);

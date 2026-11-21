@@ -32,7 +32,8 @@ export function lookCards(sets: TemplateSetInfo[], templates: OGrafTemplateInfo[
 export function needsAttention(templates: OGrafTemplateInfo[]): OGrafTemplateInfo[] {
   return templates
     .filter((t) => t.setId !== SYSTEM_TEMPLATE_SET)
-    .filter((t) => t.setId === CUSTOM_TEMPLATE_SET || (t.deskWarnings?.length ?? 0) > 0 || !t.desk)
+    // A graphic used instead of another takes that graphic's Live entry, so it works without its own
+    .filter((t) => t.setId === CUSTOM_TEMPLATE_SET || (t.deskWarnings?.length ?? 0) > 0 || (!t.desk && !t.replaces))
     .sort(byName);
 }
 

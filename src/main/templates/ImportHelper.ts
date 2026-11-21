@@ -37,7 +37,7 @@ const ZONES = ['main', 'lower', 'side', 'corner', 'full'];
 
 /** Live entry, field map and position as the manifest carries them; refused if Live couldn't use them */
 function deskSettings(base: OGrafManifest, request: FinishRequest): Record<string, unknown> {
-  if (!/^[a-z0-9][a-z0-9_-]{0,80}$/i.test(String(request.kind))) fail('Invalid kind');
+  if (!/^[a-z0-9][a-z0-9_-]{0,127}$/i.test(String(request.kind))) fail('Invalid kind');
   if (request.zone !== undefined && !ZONES.includes(request.zone)) fail('Invalid position');
   const settings: Record<string, unknown> = {
     v_olgrafik_kind: request.kind,
@@ -85,11 +85,29 @@ async function rediscover(manager: OGrafManager) {
   await manager.discoverTemplates();
 }
 
+/** What this graphic replaces in Live: set, or cleared when nothing is chosen */
 function saveReplacement(dir: string, newId: string, replaces: string | null | undefined) {
-  if (!replaces) return;
-  if (typeof replaces !== 'string' || replaces === newId) fail('Invalid replacement');
-  writeOverrides(dir, { ...readOverrides(dir), [newId]: replaces });
+  if (replaces !== null && replaces !== undefined && (typeof replaces !== 'string' || replaces === newId)) fail('Invalid replacement');
+  const current = readOverrides(dir);
+  if (replaces) current[newId] = replaces;
+  else delete current[newId];
+  writeOverrides(dir, current);
 }
+
+/** A kind no other graphic of the look has: two graphics with one kind would push one out of Live */
+function checkKindFree(manager: OGrafManager, lookId: string, kind: string, selfId: string) {
+  const clash = manager.getAllTemplates().find((t) => t.setId === lookId && t.manifest.id !== selfId && (t.desk?.kind === kind || t.desk?.key === kind));
+  if (clash) fail(`The kind "${kind}" is already used by ${clash.manifest.name} in this look`);
+}
+
+/** Write a file in a temporary place, then swap it in, so a failed write leaves the old one */
+function writeAtomic(file: string, text: string) {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, text);
+  fs.renameSync(temp, file);
+}
+
+const MAX_ID = 64;
 
 export async function finishGraphic(manager: OGrafManager, request: FinishRequest): Promise<{ id: string; setId: string }> {
   const userDir = manager.getUserDirectory() ?? fail('There is no templates folder to write to');
@@ -101,60 +119,83 @@ export async function finishGraphic(manager: OGrafManager, request: FinishReques
   if (graphic.setId !== CUSTOM_TEMPLATE_SET) {
     if (graphic.setId === SYSTEM_TEMPLATE_SET) fail('The test pattern is not offered in Live');
     if (!('lookId' in request.target) || request.target.lookId !== graphic.setId) fail('A graphic already in a look stays in its own look');
+    // Its own kind stays: other parts of the app find graphics by kind
+    const ownKind = typeof graphic.manifest.v_olgrafik_kind === 'string' ? graphic.manifest.v_olgrafik_kind : '';
+    if (ownKind && request.kind !== ownKind) fail(`A look's graphic keeps its kind ("${ownKind}")`);
+    if (!ownKind) checkKindFree(manager, graphic.setId, request.kind, graphic.manifest.id);
     const settings = deskSettings(graphic.manifest, request);
+    if (ownKind) delete settings.v_olgrafik_kind;
     const dir = path.join(userDir, ...extensionFolder(manager, graphic.setId).split('/'));
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, 'desk.json');
     let patches: Record<string, unknown> = {};
     try {
-      patches = JSON.parse(fs.readFileSync(file, 'utf-8')) ?? {};
+      const read = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      if (read && typeof read === 'object' && !Array.isArray(read)) patches = read;
     } catch {
       // first patch for this look
     }
-    fs.writeFileSync(file, JSON.stringify({ ...patches, [graphic.manifest.id]: settings }, null, 2) + '\n');
+    writeAtomic(file, JSON.stringify({ ...patches, [graphic.manifest.id]: settings }, null, 2) + '\n');
     saveReplacement(dir, graphic.manifest.id, request.replaces);
     await rediscover(manager);
     return { id: graphic.manifest.id, setId: graphic.setId };
   }
 
-  // Outside any look: move it into one
+  // Outside any look: everything is checked before anything is written
   const source = path.dirname(graphic.manifestPath);
   if (!source.startsWith(userDir + path.sep)) fail('Only imported graphics can be moved into a look');
+  const settings = deskSettings(graphic.manifest, request);
   let lookId: string;
+  let newLookName: string | null = null;
   if ('lookId' in request.target) {
     lookId = String(request.target.lookId);
     if (!isValidId(lookId) || !sets.some((s) => s.id === lookId)) fail('Choose a look');
+    checkKindFree(manager, lookId, request.kind, graphic.manifest.id);
   } else {
-    const name = String(request.target.newLookName ?? '').trim() || fail('Give the new look a name');
-    if (sets.some((s) => s.name.toLowerCase() === name.toLowerCase() && s.id !== slug(name))) fail(`A look called "${name}" already exists`);
-    lookId = slug(name);
-    for (let n = 2; !isValidId(lookId) || sets.some((s) => s.id === lookId) || fs.existsSync(path.join(userDir, 'sets', lookId)); n++) lookId = `${slug(name)}-${n}`;
-    fs.mkdirSync(path.join(userDir, 'sets', lookId), { recursive: true });
-    fs.writeFileSync(path.join(userDir, 'sets', lookId, 'set.json'), JSON.stringify({ id: lookId, name }, null, 2) + '\n');
+    newLookName = String(request.target.newLookName ?? '').trim() || fail('Give the new look a name');
+    if (newLookName.length > 80) fail('Use a shorter name for the look');
+    const wanted = newLookName.toLowerCase();
+    // The same name must be changed; the same id just gets -2, -3 ...
+    if (sets.some((s) => s.name.toLowerCase() === wanted)) fail(`A look called "${newLookName}" already exists`);
+    const base = slug(newLookName);
+    lookId = base;
+    for (let n = 2; !isValidId(lookId) || sets.some((s) => s.id === lookId) || fs.existsSync(path.join(userDir, 'sets', lookId)); n++) lookId = `${base}-${n}`;
   }
-  const settingsCheck = deskSettings(graphic.manifest, request);
-  const lookDir = path.join(userDir, ...(sets.some((s) => s.id === lookId && s.source !== 'imported') ? `additions/${lookId}` : `sets/${lookId}`).split('/'));
+  const builtIn = sets.some((s) => s.id === lookId && s.source !== 'imported');
+  const lookDir = path.join(userDir, ...(builtIn ? `additions/${lookId}` : `sets/${lookId}`).split('/'));
 
   // A unique id and folder: the graphic's own, else with -2, -3 ...
   const taken = (id: string) => fs.existsSync(path.join(lookDir, id)) || (id !== graphic.manifest.id && !!manager.getTemplateById(id));
-  const base = isValidId(graphic.manifest.id) ? graphic.manifest.id : slug(graphic.manifest.id);
+  const base = (isValidId(graphic.manifest.id) ? graphic.manifest.id : slug(graphic.manifest.id)).slice(0, MAX_ID - 4);
   let id = base;
   for (let n = 2; taken(id); n++) id = `${base}-${n}`;
+  if (!isValidId(id)) fail('Invalid graphic id');
   const target = path.join(lookDir, id);
   if (!target.startsWith(userDir + path.sep)) fail('Invalid look');
-
-  fs.mkdirSync(lookDir, { recursive: true });
-  fs.renameSync(source, target);
-  const names = fs.readdirSync(target);
+  const names = fs.readdirSync(source);
   const pick = pickManifestFile(path.basename(source), names);
   const manifestFile = pick && 'file' in pick ? pick.file : path.basename(graphic.manifestPath);
   // The operator's name for it in Live is its name in the library too
-  const manifest = { ...JSON.parse(fs.readFileSync(path.join(target, manifestFile), 'utf-8')), ...settingsCheck, id, name: request.desk.label.trim() };
-  fs.rmSync(path.join(target, manifestFile));
-  fs.writeFileSync(path.join(target, `${id}.ograf.json`), JSON.stringify(manifest, null, 2) + '\n');
-  for (const old of names.filter((n) => n.endsWith('.datasource.json'))) fs.rmSync(path.join(target, old));
+  const manifest = { ...JSON.parse(fs.readFileSync(path.join(source, manifestFile), 'utf-8')), ...settings, id, name: request.desk.label.trim() };
+
+  // Now write: the new look, then the move, then the manifest swapped in
+  if (newLookName !== null) {
+    fs.mkdirSync(path.join(userDir, 'sets', lookId), { recursive: true });
+    fs.writeFileSync(path.join(userDir, 'sets', lookId, 'set.json'), JSON.stringify({ id: lookId, name: newLookName }, null, 2) + '\n');
+  }
+  try {
+    fs.mkdirSync(lookDir, { recursive: true });
+    fs.renameSync(source, target);
+  } catch (error) {
+    if (newLookName !== null) fs.rmSync(path.join(userDir, 'sets', lookId), { recursive: true, force: true });
+    throw error;
+  }
+  writeAtomic(path.join(target, `${id}.ograf.json`), JSON.stringify(manifest, null, 2) + '\n');
+  if (manifestFile !== `${id}.ograf.json`) fs.rmSync(path.join(target, manifestFile), { force: true });
   const dataSource = dataSourceFor(request);
-  if (dataSource) fs.writeFileSync(path.join(target, `${id}.datasource.json`), JSON.stringify(dataSource, null, 2) + '\n');
+  for (const old of names.filter((n) => n.endsWith('.datasource.json') && n !== `${id}.datasource.json`)) fs.rmSync(path.join(target, old), { force: true });
+  if (dataSource) writeAtomic(path.join(target, `${id}.datasource.json`), JSON.stringify(dataSource, null, 2) + '\n');
+  else fs.rmSync(path.join(target, `${id}.datasource.json`), { force: true });
   saveReplacement(lookDir, id, request.replaces);
   await rediscover(manager);
   return { id, setId: lookId };
