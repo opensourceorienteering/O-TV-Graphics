@@ -1,5 +1,6 @@
 import { DESK_BEHAVIOURS, DESK_FEEDS, DESK_PARAMS, previewDataForKind, type PreviewData } from './capabilities';
 import { DESK_TEMPLATES, type DeskTemplate } from './desk';
+import { fieldMapWarnings } from './fieldMap';
 import type { OGrafManifest, OGrafTemplateInfo } from './types/ograf';
 
 /** Optional manifest contract. Omitted properties inherit the known kind's defaults. */
@@ -19,6 +20,13 @@ export interface DeskDeclaration {
 
 /** Invalid declarations fall back as a whole; they never prevent a graphic from loading. */
 export function resolveDeskDeclaration(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: string[] } {
+  const result = resolveDesk(manifest);
+  const mapWarnings = fieldMapWarnings((manifest as { v_olgrafik_fieldMap?: unknown }).v_olgrafik_fieldMap, manifest.schema)
+    .map((w) => `v_olgrafik_fieldMap: ${w}`);
+  return mapWarnings.length ? { ...result, warnings: [...result.warnings, ...mapWarnings] } : result;
+}
+
+function resolveDesk(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: string[] } {
   const kind = typeof manifest.v_olgrafik_kind === 'string' ? manifest.v_olgrafik_kind : '';
   const known = DESK_TEMPLATES.find(t => t.kind === kind)
     ?? DESK_TEMPLATES.find(t => t.fallbackIds?.includes(manifest.id));

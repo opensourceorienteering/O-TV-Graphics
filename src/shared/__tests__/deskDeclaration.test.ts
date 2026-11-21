@@ -67,3 +67,13 @@ describe('desk entries for a look', () => {
     expect(cycle.get('results')?.template.manifest.id).toBe('b');
   });
 });
+
+describe('field map in the desk declaration', () => {
+  it('reports a bad field map as a warning, so the graphic shows under Needs attention', () => {
+    const m = manifest({ v_olgrafik_kind: 'results', schema: { properties: { headline: { type: 'string' } } }, v_olgrafik_fieldMap: { headline: 'shoeSize' } });
+    const result = resolveDeskDeclaration(m);
+    expect(result.desk).toBeDefined();
+    expect(result.warnings).toEqual([expect.stringMatching(/^v_olgrafik_fieldMap: .*shoeSize/)]);
+    expect(resolveDeskDeclaration(manifest({ v_olgrafik_kind: 'results', schema: { properties: { headline: {} } }, v_olgrafik_fieldMap: { headline: 'runnerName' } })).warnings).toEqual([]);
+  });
+});
