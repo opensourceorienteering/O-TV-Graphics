@@ -29,12 +29,15 @@ export function LibraryHome({
   needs,
   results,
   onOpen,
+  onFix,
 }: {
   cards: LookCard[];
   needs: OGrafTemplateInfo[];
   /** Search results; null when nothing is searched */
   results: Array<{ template: OGrafTemplateInfo; lookName: string }> | null;
   onOpen: (lookId: string, templateId?: string) => void;
+  /** Open the import helper on these graphics */
+  onFix: (graphics: OGrafTemplateInfo[]) => void;
 }) {
   if (results) {
     return results.length ? (
@@ -69,9 +72,18 @@ export function LibraryHome({
             <strong>
               {tr("Needs attention")}: {needs.length} {needs.length === 1 ? tr("graphic") : tr("graphics")}
             </strong>
-            <p className="muted">{needs.map((t) => t.manifest.name).join(", ")}</p>
+            <p className="library-attention-list">
+              {needs.map((t, i) => (
+                <span key={`${t.setId}/${t.manifest.id}`}>
+                  {i > 0 && ", "}
+                  <button className="link-button" onClick={() => onFix([t])} title={tr("Set up this graphic")}>
+                    {t.manifest.name}
+                  </button>
+                </span>
+              ))}
+            </p>
           </div>
-          <button className="studio-button" disabled title={tr("The import helper comes in a later version")}>
+          <button className="studio-button" onClick={() => onFix(needs)} title={tr("Match their fields to Split Control data, or keep them typed in Live, and give them a place in a look")}>
             {tr("Fix…")}
           </button>
         </section>

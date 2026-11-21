@@ -160,3 +160,89 @@
   gap: 4px;
   margin-left: auto;
 }
+
+/* Import helper */
+.modal-content.import-helper {
+  width: min(1100px, 94vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.import-helper .modal-body {
+  overflow: auto;
+}
+.import-helper-steps {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 8px 20px;
+  list-style: none;
+  border-bottom: 1px solid var(--color-border, #333);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.import-helper-steps .is-current {
+  color: var(--color-text-primary, #fff);
+  font-weight: 600;
+}
+.import-helper-bar {
+  justify-content: space-between;
+  align-items: center;
+}
+.import-helper table select {
+  max-width: 260px;
+}
+.import-helper-item th {
+  padding-left: 24px;
+  font-weight: normal;
+}
+.import-helper-note {
+  font-size: 12px;
+  font-weight: normal;
+}
+.import-helper-warn {
+  color: var(--status-warning-text, #f0b429);
+  font-size: 12px;
+}
+ul.import-helper-warn {
+  padding-left: 1.2em;
+}
+.import-helper-check .library-preview {
+  position: static;
+}
+.import-helper-where {
+  display: grid;
+  gap: 14px;
+}
+.import-helper-where label {
+  display: grid;
+  gap: 4px;
+}
+.import-helper-where label.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.import-helper-where fieldset {
+  display: grid;
+  gap: 8px;
+}
+
+.library-attention-list {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+}
+.library-attention-list .link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.library-attention-list .link-button:hover,
+.library-attention-list .link-button:focus-visible {
+  color: var(--color-text-primary, #fff);
+}

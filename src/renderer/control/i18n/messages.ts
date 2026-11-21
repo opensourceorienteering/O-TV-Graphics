@@ -3376,6 +3376,254 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Kopiera",
     "nb": "Kopier"
   },
+  "(a graphic already in a look stays there)": {
+    "sv": "(en grafik som redan finns i ett tema stannar där)",
+    "nb": "(en grafikk som allerede er i et tema, blir der)"
+  },
+  "Add to look": {
+    "sv": "Lägg till i tema",
+    "nb": "Legg til i tema"
+  },
+  "Behind": {
+    "sv": "Efter",
+    "nb": "Etter"
+  },
+  "Behind in seconds": {
+    "sv": "Efter i sekunder",
+    "nb": "Etter i sekunder"
+  },
+  "Check": {
+    "sv": "Kontroll",
+    "nb": "Kontroll"
+  },
+  "Choose…": {
+    "sv": "Välj…",
+    "nb": "Velg…"
+  },
+  "Class and timing point": {
+    "sv": "Klass och tidpunkt",
+    "nb": "Klasse og tidspunkt"
+  },
+  "Corner": {
+    "sv": "Hörn",
+    "nb": "Hjørne"
+  },
+  "Country": {
+    "sv": "Land",
+    "nb": "Land"
+  },
+  "Course length": {
+    "sv": "Banlängd",
+    "nb": "Løypelengde"
+  },
+  "Data for": {
+    "sv": "Data för",
+    "nb": "Data for"
+  },
+  "Event location": {
+    "sv": "Tävlingsplats",
+    "nb": "Arrangementssted"
+  },
+  "Event title": {
+    "sv": "Tävlingens titel",
+    "nb": "Arrangementets tittel"
+  },
+  "Example in graphic": {
+    "sv": "Exempel i grafiken",
+    "nb": "Eksempel i grafikken"
+  },
+  "Full screen": {
+    "sv": "Helskärm",
+    "nb": "Fullskjerm"
+  },
+  "Full width (tables)": {
+    "sv": "Full bredd (tabeller)",
+    "nb": "Full bredde (tabeller)"
+  },
+  "In the graphic": {
+    "sv": "I grafiken",
+    "nb": "I grafikken"
+  },
+  "Keep all typed in Live": {
+    "sv": "Skriv in allt i Live",
+    "nb": "Skriv inn alt i Live"
+  },
+  "Keep the graphic's own": {
+    "sv": "Behåll grafikens eget",
+    "nb": "Behold grafikkens eget"
+  },
+  "Label in Live": {
+    "sv": "Namn i Live",
+    "nb": "Navn i Live"
+  },
+  "Look": {
+    "sv": "Tema",
+    "nb": "Tema"
+  },
+  "Lower third": {
+    "sv": "Nedre tredjedel",
+    "nb": "Nedre tredjedel"
+  },
+  "Match the graphic's fields to Split Control data. Fields typed in Live are filled in by the operator.": {
+    "sv": "Koppla grafikens fält till Split Controls data. Fält som skrivs in i Live fylls i av operatören.",
+    "nb": "Koble grafikkens felt til Split Controls data. Felt som skrives inn i Live, fylles ut av operatøren."
+  },
+  "Match their fields to Split Control data, or keep them typed in Live, and give them a place in a look": {
+    "sv": "Koppla fälten till Split Controls data, eller skriv in dem i Live, och ge grafiken en plats i ett tema",
+    "nb": "Koble feltene til Split Controls data, eller skriv dem inn i Live, og gi grafikken en plass i et tema"
+  },
+  "Matched": {
+    "sv": "Kopplat",
+    "nb": "Koblet"
+  },
+  "Matched automatically": {
+    "sv": "Kopplat automatiskt",
+    "nb": "Koblet automatisk"
+  },
+  "Name": {
+    "sv": "Namn",
+    "nb": "Navn"
+  },
+  "Needs a choice": {
+    "sv": "Behöver ett val",
+    "nb": "Trenger et valg"
+  },
+  "New look": {
+    "sv": "Nytt tema",
+    "nb": "Nytt tema"
+  },
+  "New look name": {
+    "sv": "Namn på nytt tema",
+    "nb": "Navn på nytt tema"
+  },
+  "Place": {
+    "sv": "Placering",
+    "nb": "Plassering"
+  },
+  "Position": {
+    "sv": "Position",
+    "nb": "Posisjon"
+  },
+  "Ready in Live": {
+    "sv": "Klar i Live",
+    "nb": "Klar i Live"
+  },
+  "Render requirements": {
+    "sv": "Krav vid rendering",
+    "nb": "Krav ved gjengivelse"
+  },
+  "Runner bib": {
+    "sv": "Löparens nummerlapp",
+    "nb": "Løperens startnummer"
+  },
+  "Runner club": {
+    "sv": "Löparens klubb",
+    "nb": "Løperens klubb"
+  },
+  "Runner name": {
+    "sv": "Löparens namn",
+    "nb": "Løperens navn"
+  },
+  "Runners at a timing point": {
+    "sv": "Löpare vid en tidpunkt",
+    "nb": "Løpere ved et tidspunkt"
+  },
+  "Series": {
+    "sv": "Serie",
+    "nb": "Serie"
+  },
+  "Set up": {
+    "sv": "Ställ in",
+    "nb": "Sett opp"
+  },
+  "Set up this graphic": {
+    "sv": "Ställ in den här grafiken",
+    "nb": "Sett opp denne grafikken"
+  },
+  "Short label": {
+    "sv": "Kort namn",
+    "nb": "Kort navn"
+  },
+  "Side": {
+    "sv": "Sida",
+    "nb": "Side"
+  },
+  "Skip": {
+    "sv": "Hoppa över",
+    "nb": "Hopp over"
+  },
+  "Split Control data": {
+    "sv": "Split Control-data",
+    "nb": "Split Control-data"
+  },
+  "Start time": {
+    "sv": "Starttid",
+    "nb": "Starttid"
+  },
+  "Status": {
+    "sv": "Status",
+    "nb": "Status"
+  },
+  "The graphic on the sample race, with these matches. Show it, step it and hide it.": {
+    "sv": "Grafiken på exempeltävlingen, med de här kopplingarna. Visa, stega och dölj den.",
+    "nb": "Grafikken på eksempelløpet, med disse koblingene. Vis, bla og skjul den."
+  },
+  "The operator fills in every field in Live; no automatic data": {
+    "sv": "Operatören fyller i alla fält i Live; ingen automatisk data",
+    "nb": "Operatøren fyller ut alle felt i Live; ingen automatiske data"
+  },
+  "This graphic has no fields: Live shows it as it is.": {
+    "sv": "Grafiken har inga fält: Live visar den som den är.",
+    "nb": "Grafikken har ingen felt: Live viser den som den er."
+  },
+  "Time": {
+    "sv": "Tid",
+    "nb": "Tid"
+  },
+  "Time in seconds": {
+    "sv": "Tid i sekunder",
+    "nb": "Tid i sekunder"
+  },
+  "Timing point name": {
+    "sv": "Tidpunktens namn",
+    "nb": "Tidspunktets navn"
+  },
+  "Typed in Live": {
+    "sv": "Skrivs in i Live",
+    "nb": "Skrives inn i Live"
+  },
+  "Use instead of": {
+    "sv": "Använd i stället för",
+    "nb": "Bruk i stedet for"
+  },
+  "Where": {
+    "sv": "Var",
+    "nb": "Hvor"
+  },
+  "Where and name": {
+    "sv": "Var och namn",
+    "nb": "Hvor og navn"
+  },
+  "also asks for the same in Live. This graphic takes its place, with its command number and favourites. Choose nothing to add it alongside.": {
+    "sv": "frågar också efter samma sak i Live. Den här grafiken tar dess plats, med kommandonummer och favoriter. Välj ingenting för att lägga till den bredvid.",
+    "nb": "spør også etter det samme i Live. Denne grafikken tar plassen, med kommandonummer og favoritter. Velg ingenting for å legge den til ved siden av."
+  },
+  "fields have a choice": {
+    "sv": "fält har ett val",
+    "nb": "felt har et valg"
+  },
+  "list": {
+    "sv": "lista",
+    "nb": "liste"
+  },
+  "nothing (add alongside)": {
+    "sv": "ingenting (lägg till bredvid)",
+    "nb": "ingenting (legg til ved siden av)"
+  },
+  "rows": {
+    "sv": "rader",
+    "nb": "rader"
+  },
   "Import this file?": {
     "sv": "Importera den här filen?",
     "nb": "Importere denne filen?"

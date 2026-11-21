@@ -148,7 +148,8 @@ export async function finishGraphic(manager: OGrafManager, request: FinishReques
   const names = fs.readdirSync(target);
   const pick = pickManifestFile(path.basename(source), names);
   const manifestFile = pick && 'file' in pick ? pick.file : path.basename(graphic.manifestPath);
-  const manifest = { ...JSON.parse(fs.readFileSync(path.join(target, manifestFile), 'utf-8')), ...settingsCheck, id };
+  // The operator's name for it in Live is its name in the library too
+  const manifest = { ...JSON.parse(fs.readFileSync(path.join(target, manifestFile), 'utf-8')), ...settingsCheck, id, name: request.desk.label.trim() };
   fs.rmSync(path.join(target, manifestFile));
   fs.writeFileSync(path.join(target, `${id}.ograf.json`), JSON.stringify(manifest, null, 2) + '\n');
   for (const old of names.filter((n) => n.endsWith('.datasource.json'))) fs.rmSync(path.join(target, old));

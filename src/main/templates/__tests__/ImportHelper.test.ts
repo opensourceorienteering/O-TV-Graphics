@@ -46,6 +46,7 @@ describe('finishing a loose graphic', () => {
       graphicId: 'studio-strap', target: { lookId: 'standard' }, kind: 'standard-guest-strap', zone: 'lower', desk, fieldMap,
     });
     expect(done).toEqual({ id: 'studio-strap', setId: 'standard' });
+    expect(manager.getTemplateById('studio-strap')!.manifest.name).toBe('Guest strap');
     expect(fs.existsSync(user('studio-strap'))).toBe(false);
     const t = manager.getTemplateById('studio-strap')!;
     expect(t).toMatchObject({ setId: 'standard', addition: true, zone: 'lower', directoryName: 'additions/standard/studio-strap' });
