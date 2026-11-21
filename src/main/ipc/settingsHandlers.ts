@@ -103,6 +103,8 @@ function mergeConfig(current: AppConfig, updates: Partial<AppConfig>): AppConfig
     clubNames: current.clubNames,
     // Changed only through graphicsAccess:set, for the same reason
     graphicsAllowedOrigins: current.graphicsAllowedOrigins,
+    // Changed only through remoteAccess:set / remoteAccess:regenerate
+    remoteAccess: current.remoteAccess,
     output: {
       ndi: { ...current.output.ndi, ...updates.output?.ndi },
       web: { ...current.output.web, ...updates.output?.web }
