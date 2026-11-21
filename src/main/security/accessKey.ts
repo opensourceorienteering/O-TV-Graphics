@@ -56,3 +56,11 @@ export function cleanRemoteAccess(raw: unknown): { value: RemoteAccessSettings; 
     created: !validKey || typeof r.requireKey !== 'boolean',
   };
 }
+
+/** A link another computer can open as it is: with ?key= while the key is required */
+export function linkWithKey(url: string, settings: RemoteAccessSettings): string {
+  if (!settings.requireKey || !settings.key) return url;
+  const u = new URL(url);
+  u.searchParams.set('key', settings.key);
+  return u.toString();
+}

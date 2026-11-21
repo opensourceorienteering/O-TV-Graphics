@@ -176,3 +176,33 @@ test("Companion records failed HTTP actions without treating them as successful 
     await new Promise((r) => server.close(r));
   }
 });
+
+test("Companion sends the access key with every request and with the live connection", async () => {
+  const headers = [];
+  const server = createServer((req, res) => {
+    headers.push(req.headers.authorization);
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end('{"ok":true}');
+  });
+  const io = new Server(server);
+  const keys = [];
+  io.of("/control").use((socket, next) => {
+    keys.push(socket.handshake.auth.key);
+    next();
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const port = server.address().port;
+  const { instance, output } = harness();
+  try {
+    await instance.init({ host: "127.0.0.1", port, wsPort: port, key: " secret-key " });
+    for (let i = 0; i < 100 && !keys.length; i++) await new Promise((r) => setTimeout(r, 10));
+    await output.actions.hide_all.callback({ options: {} });
+    assert.deepEqual(keys, ["secret-key"]);
+    assert.deepEqual(headers, ["Bearer secret-key"]);
+    assert.ok(instance.getConfigFields().some((f) => f.id === "key"));
+  } finally {
+    await instance.destroy();
+    await new Promise((r) => io.close(r));
+  }
+});

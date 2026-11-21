@@ -110,8 +110,12 @@
   const tod = (ms) => { try { return new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', ...(timeZone ? { timeZone } : {}) }).format(ms); } catch { return new Date(ms).toTimeString().slice(0, 8); } };
   const clock = (sec) => { const neg = sec < 0; sec = Math.abs(Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return (neg ? '-' : '') + m + ':' + String(s).padStart(2, '0'); };
 
+  // On another computer the link carries the access key (?key=); every request sends it on
+  const accessKey = params.get('key') || '';
+  const keyHeader = accessKey ? { 'x-split-key': accessKey } : {};
+
   async function api(path) {
-    const r = await fetch('/api/director/' + path);
+    const r = await fetch('/api/director/' + path, { headers: keyHeader });
     const body = await r.json();
     if (!r.ok) throw new Error(body.error || r.statusText);
     return body;
@@ -189,7 +193,7 @@
     if (ctx?.event) {
       const [, cls, name, club] = k.split('|');
       try {
-        await fetch('/api/director/favourite', { method: 'POST', headers: { 'content-type': 'application/json' },
+        await fetch('/api/director/favourite', { method: 'POST', headers: { 'content-type': 'application/json', ...keyHeader },
           body: JSON.stringify({ event: ctx.event, className: cls, name, club, favourite: on }) });
       } catch {}
     }

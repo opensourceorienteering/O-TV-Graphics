@@ -8,7 +8,7 @@ npm install
 npm run package
 ```
 
-Load the resulting package into Companion using its developer module workflow. In Split Control, enter Live first, then configure the connection with the Split Control host and ports. Presets are generated from its cue pages with on-air feedback.
+Load the resulting package into Companion using its developer module workflow. In Split Control, enter Live first, then configure the connection with the Split Control host and ports, and the access key from Settings → Remote access when Companion runs on another computer. Presets are generated from its cue pages with on-air feedback.
 
 For a setup without a dedicated module, use Companion Generic HTTP: Plan → Control exports a JSON catalogue of button recipes. It is a recipe catalogue, not a native Companion page backup. See [the control protocol](../docs/CONTROL-API.md).
 

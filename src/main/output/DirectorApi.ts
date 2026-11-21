@@ -9,6 +9,8 @@
  *   GET /api/director/starts?source=&comp=&class=   start times (epoch ms) + server clock offset
  */
 
+import { linkWithKey } from '../security/accessKey';
+import { remoteAccessSettings } from '../security/remoteAccess';
 import express from 'express';
 import os from 'os';
 import { ipcMain } from 'electron';
@@ -119,7 +121,7 @@ export function registerDirectorHandlers(): void {
     try {
       const port = getConfig().general.port || 5657;
       const q = sourceId && competitionId ? `?source=${encodeURIComponent(sourceId)}&comp=${competitionId}` : '';
-      return { success: true, data: { local: `http://localhost:${port}/director${q}`, lan: `http://${lanAddress()}:${port}/director${q}` } };
+      return { success: true, data: { local: `http://localhost:${port}/director${q}`, lan: linkWithKey(`http://${lanAddress()}:${port}/director${q}`, remoteAccessSettings()) } };
     } catch (error) {
       logger.warn('director:getUrl failed', { error: String(error) });
       return { success: false, error: error instanceof Error ? error.message : String(error) };
