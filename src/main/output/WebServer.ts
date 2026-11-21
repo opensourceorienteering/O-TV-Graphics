@@ -4,6 +4,8 @@
  */
 
 import { additionFallbackPath } from '../templates/additionPaths';
+import { requireAccessKey } from '../security/accessGuard';
+import { remoteAccessSettings } from '../security/remoteAccess';
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -26,6 +28,9 @@ const isDev = process.env.NODE_ENV === 'development';
 
 // Singleton instance
 let webServerInstance: WebServer | null = null;
+
+/** An address for the log, without the access key */
+const withoutKey = (url: string) => url.replace(/([?&]key=)[^&]*/g, '$1…');
 
 export class WebServer {
   private app: Express;
@@ -57,6 +62,13 @@ export class WebServer {
     if (config.output.web.cors) {
       this.app.use(cors());
     }
+
+    // Other computers need the access key to control the app or read live data
+    // (Settings → Remote access); this computer never does
+    this.app.use(
+      ['/api/control', '/ograf/v1', '/api/director', '/director', '/output', '/preview', '/api/output/info', '/api/graphics'],
+      requireAccessKey(remoteAccessSettings),
+    );
 
     // JSON body parser
     this.app.use(express.json());
@@ -183,7 +195,7 @@ export class WebServer {
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
         const viteUrl = `http://${hostname}:5175/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server for preview', { viteUrl, originalHost: host });
+        logger.debug('Redirecting to Vite dev server for preview', { viteUrl: withoutKey(viteUrl), originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -209,7 +221,7 @@ export class WebServer {
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
         const viteUrl = `http://${hostname}:5175/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server', { viteUrl, originalHost: host });
+        logger.debug('Redirecting to Vite dev server', { viteUrl: withoutKey(viteUrl), originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -240,7 +252,7 @@ export class WebServer {
         const queryParams = new URLSearchParams(req.query as any);
         queryParams.set('id', id);
         const viteUrl = `http://${hostname}:5175/web-output.html?${queryParams.toString()}`;
-        logger.debug('Redirecting to Vite dev server with ID', { viteUrl, originalHost: host, id });
+        logger.debug('Redirecting to Vite dev server with ID', { viteUrl: withoutKey(viteUrl), originalHost: host, id });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory (ID will be in URL for client to read)
