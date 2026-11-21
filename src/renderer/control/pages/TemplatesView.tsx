@@ -13,6 +13,7 @@ import { LookPage } from "../library/LookPage";
 import { lookCards, needsAttention, searchGraphics } from "../library/libraryModel";
 import "../library/library.css";
 import { ImportConfirm, type ImportPreview } from "../library/ImportConfirm";
+import { ImportHelper } from "../library/ImportHelper";
 import type { OpenedLookFile } from "../library/LookFileOpener";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
@@ -54,6 +55,7 @@ export function TemplatesView() {
         throw new Error(result.error || "Unable to load the graphics library.");
       setTemplates(result.templates || []);
       if (setResult?.success) setSets(setResult.sets || []);
+      return (result.templates || []) as OGrafTemplateInfo[];
     } catch (cause) {
       const detail =
         cause instanceof Error
@@ -68,6 +70,9 @@ export function TemplatesView() {
   useEffect(() => {
     void loadTemplates();
   }, []);
+
+  /** Graphics the import helper is going through (Fix…, or right after an import) */
+  const [helperQueue, setHelperQueue] = useState<OGrafTemplateInfo[] | null>(null);
 
   /** The picked file waiting for the operator's confirmation */
   const [pending, setPending] = useState<{ filePath: string; preview: ImportPreview } | null>(null);
@@ -109,7 +114,12 @@ export function TemplatesView() {
         ...(result.preview.additions ?? []).map((a: { lookId: string; lookName: string | null; graphics: number }) => `${a.lookName ?? a.lookId} (+${a.graphics})`),
       ].join(", ");
       toast.showToast("success", `${tr("Imported")}: ${names}`);
-      await loadTemplates();
+      const loaded = await loadTemplates();
+      // Graphics from this file that Live can't offer yet: straight into the helper
+      const ids = new Set<string>(result.preview.graphics.map((g: { id: string }) => g.id));
+      const lookIds = new Set<string>(result.preview.looks.map((l: { id: string }) => l.id));
+      const waiting = needsAttention(loaded ?? []).filter((t) => ids.has(t.manifest.id) || lookIds.has(t.setId));
+      if (waiting.length) setHelperQueue(waiting);
     } catch (cause) {
       toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
     } finally {
@@ -303,6 +313,7 @@ export function TemplatesView() {
           cards={cards}
           needs={needs}
           results={results}
+          onFix={(list) => setHelperQueue(list)}
           onOpen={(lookId, templateId) => {
             setQuery("");
             setOpen({ lookId, templateId });
@@ -319,6 +330,19 @@ export function TemplatesView() {
             {tr("Scan library")}
           </button>
         </div>
+      )}
+      {helperQueue && helperQueue.length > 0 && (
+        <ImportHelper
+          queue={helperQueue}
+          templates={templates}
+          sets={sets}
+          onFinished={async (done) => {
+            toast.showToast("success", tr("Ready in Live"));
+            await loadTemplates();
+            if (!open) setOpen({ lookId: done.setId, templateId: done.id });
+          }}
+          onClose={() => setHelperQueue(null)}
+        />
       )}
       {pending && (
         <ImportConfirm
