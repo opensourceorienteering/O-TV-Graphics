@@ -3,6 +3,8 @@
  * Handles IPC communication for web output and NDI output
  */
 
+import { linkWithKey } from '../security/accessKey';
+import { remoteAccessSettings } from '../security/remoteAccess';
 import { ipcMain } from "electron";
 import { getLogger } from "../utils/logger";
 import { getWebServer } from "../output/WebServer";
@@ -99,7 +101,8 @@ export function registerOutputHandlers() {
           isRunning: webServer.isRunning(),
           localUrls: addresses.map((addr) => ({
             address: addr,
-            url: `http://${addr}:${port}/output`,
+            // Another computer's link carries the access key (Settings → Remote access)
+            url: linkWithKey(`http://${addr}:${port}/output`, remoteAccessSettings()),
             wsUrl: `http://${addr}:${wsPort}`,
           })),
           localhostUrl: `http://localhost:${port}/output`,

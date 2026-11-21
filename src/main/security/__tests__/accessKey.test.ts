@@ -40,3 +40,12 @@ describe('remote access key', () => {
     expect(cleanRemoteAccess({ requireKey: 'no', key: 'short' }).created).toBe(true);
   });
 });
+
+import { linkWithKey } from '../accessKey';
+describe('links for other computers', () => {
+  it('carry the key while it is required', () => {
+    expect(linkWithKey('http://10.0.0.5:5657/output', settings)).toBe(`http://10.0.0.5:5657/output?key=${settings.key}`);
+    expect(linkWithKey('http://10.0.0.5:5657/director?source=lr&comp=1', settings)).toBe(`http://10.0.0.5:5657/director?source=lr&comp=1&key=${settings.key}`);
+    expect(linkWithKey('http://10.0.0.5:5657/output', { ...settings, requireKey: false })).toBe('http://10.0.0.5:5657/output');
+  });
+});

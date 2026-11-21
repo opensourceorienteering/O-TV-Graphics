@@ -159,6 +159,8 @@ function initWebSocket() {
   // Connect to WebSocket server
   socket = io(wsUrl, {
     transports: ["websocket"],
+    // On another computer the link carries the access key (?key=); the live connection needs it too
+    auth: { key: urlParams.get("key") ?? "" },
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: Infinity,
