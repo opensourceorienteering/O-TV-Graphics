@@ -5,7 +5,7 @@
 
 import { recordBlocked } from '../security/blocked';
 import { socketAccessGuard, socketStillAllowed } from '../security/accessGuard';
-import { remoteAccessSettings } from '../security/remoteAccess';
+import { localContext, remoteAccessSettings } from '../security/remoteAccess';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer, Server as HTTPServer } from 'http';
 import { getLogger } from '../utils/logger';
@@ -59,8 +59,8 @@ export class WebSocketServer {
     });
 
     // Other computers need the access key (Settings → Remote access)
-    this.io.use(socketAccessGuard(remoteAccessSettings));
-    this.io.of('/control').use(socketAccessGuard(remoteAccessSettings));
+    this.io.use(socketAccessGuard(remoteAccessSettings, localContext));
+    this.io.of('/control').use(socketAccessGuard(remoteAccessSettings, localContext));
 
     this.setupHandlers();
     // Dedicated feedback namespace: no graphic acknowledgements or program-room membership.

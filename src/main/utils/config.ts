@@ -166,7 +166,8 @@ export async function loadConfig(configPath?: string): Promise<AppConfig> {
       config = mergeConfig(getDefaultConfig(), loadedConfig);
       // A new access key must be the same on the next start: save it now
       if (config.remoteAccess?.key !== loadedConfig.remoteAccess?.key || config.remoteAccess?.requireKey !== loadedConfig.remoteAccess?.requireKey) {
-        await saveConfig(config, cfgPath);
+        // A read-only settings file must not stop the app: the key then changes on each start
+        await saveConfig(config, cfgPath).catch((error) => logger.warn('Could not save the new access key', { error: String(error) }));
       }
 
       logger.info('Configuration loaded from file', { path: cfgPath });
