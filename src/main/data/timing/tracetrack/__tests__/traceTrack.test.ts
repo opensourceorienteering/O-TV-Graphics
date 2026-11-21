@@ -102,6 +102,8 @@ describe('Trace / Track plugin', () => {
       heartRate: 172
     });
     expect(tt.requests.find(r => r.path.endsWith('/classes/w21/virtual-standings'))!.query.get('timeline')).toBe('live');
+    // ranked where each runner is now (the GPS tower's who-is-fastest-now), not at one common point
+    expect(tt.requests.find(r => r.path.endsWith('/classes/w21/virtual-standings'))!.query.get('comparison')).toBe('own-point');
 
     // Standings failing: the runner metrics still go out
     tt.failStandings = true;

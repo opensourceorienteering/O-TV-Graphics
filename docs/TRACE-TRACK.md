@@ -72,8 +72,8 @@ on recorded races before on-air use, and a value is left out whenever Trace / Tr
 
 | Field | Type | Unit | Meaning |
 |---|---|---|---|
-| `virtualRank` | number |  | Estimated rank at a common course point (experimental) |
-| `virtualGap` | number | ms | Estimated time behind at that point (experimental) |
+| `virtualRank` | number |  | Estimated rank: behind the best time to where the runner is now (experimental) |
+| `virtualGap` | number | ms | Estimated time behind the best to where the runner is now (experimental) |
 | `virtualFieldSize` | number |  | Runners compared for the estimated rank |
 | `progressPercent` | number | % | Course progress, straight control to control (experimental) |
 | `progressState` | string |  | tracking, gps-finished, timing-finished or unavailable |
@@ -117,15 +117,15 @@ leader ("+1:01"), and a thin line under each row for the runner's course progres
 - The website preview's simulated race sends the same fields, so a look can style the tower
   without a Trace / Track server.
 
-**How Trace / Track ranks today (checked in its `packages/core/src/tracking-analysis.ts`,
-20 November 2026):** it compares every runner of a course (and relay leg) at **one** point, the
-distance the least advanced runner has reached, and withholds the whole class when any runner
-has no usable crossing of that point. In an interval-start race, a runner who has just started
-puts that point near the start, so the tower then ranks the first few hundred metres. For a
-tower of who is fastest right now, Trace / Track needs a per-runner comparison: each runner's
-time to their own current point against the best time anyone took to reach it, withholding only
-that runner when their crossing is missing. The preview's simulated race already works that way.
-Until then the tower shows Trace / Track's ranks as they are; check them on the test race.
+**How the ranks are made.** Split Control asks Trace / Track for `comparison=own-point`: each
+runner is ranked where they are now (the finish once finished), against the best time any runner
+took to reach that point, and only a runner without a usable GPS crossing of their own point is
+left out. A runner furthest out leads where they are until someone reaches that point faster,
+like the first runner through a radio control. Trace / Track servers from before this option
+(added with the GPS tower, November 2026) ignore it and rank everyone at one common point, the
+least advanced runner's, which in an interval start means near the start: update Trace / Track
+before using the tower. The response's `model.standings` says which one was used
+(`behind-best-at-own-progress` or `elapsed-at-common-progress`).
 
 ## Checking it against a real Trace / Track server
 

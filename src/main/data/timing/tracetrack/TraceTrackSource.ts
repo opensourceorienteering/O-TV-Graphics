@@ -80,8 +80,8 @@ export const TRACE_TRACK_FIELDS: { key: string; type: 'number' | 'string' | 'boo
   { key: 'color', type: 'string', label: 'The runner\'s colour on the map' },
   { key: 'time', type: 'number', label: 'The moment the values describe', unit: 'epoch ms' },
   // Experimental virtual standings: estimates from GPS, never results
-  { key: 'virtualRank', type: 'number', label: 'Estimated rank at a common course point (experimental)', standings: true },
-  { key: 'virtualGap', type: 'number', label: 'Estimated time behind at that point (experimental)', unit: 'ms', standings: true },
+  { key: 'virtualRank', type: 'number', label: 'Estimated rank: behind the best time to where the runner is now (experimental)', standings: true },
+  { key: 'virtualGap', type: 'number', label: 'Estimated time behind the best to where the runner is now (experimental)', unit: 'ms', standings: true },
   { key: 'virtualFieldSize', type: 'number', label: 'Runners compared for the estimated rank', standings: true },
   { key: 'progressPercent', type: 'number', label: 'Course progress, straight control to control (experimental)', unit: '%', standings: true },
   { key: 'progressState', type: 'string', label: 'tracking, gps-finished, timing-finished or unavailable', standings: true },
@@ -225,7 +225,9 @@ export class TraceTrackSource implements TimingSource {
     let standings = new Map<string, TtStandingRow>();
     if (this.options.virtualStandings && runners.length) {
       try {
-        const res = await this.get<{ rows?: TtStandingRow[] }>(`/classes/${encodeURIComponent(classId)}/virtual-standings`);
+        // own-point: each runner ranked where they are now, against the best time to that point (who is
+        // fastest right now). Trace / Track servers without the option ignore it and rank at a common point.
+        const res = await this.get<{ rows?: TtStandingRow[] }>(`/classes/${encodeURIComponent(classId)}/virtual-standings`, { comparison: 'own-point' });
         standings = new Map((res.rows ?? []).map(row => [row.id, row]));
       } catch (error) {
         // The standings are an extra: runner metrics still go out without them
