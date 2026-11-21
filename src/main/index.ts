@@ -391,15 +391,17 @@ async function createWindows() {
     windowsCreated = false; // Allow recreation if window is closed
   });
 
-  // Create graphics output window (hidden by default)
-  graphicsWindow = createGraphicsWindow();
-
-  graphicsWindow.on('closed', () => {
-    graphicsWindow = null;
-  });
-
-  // Set graphics window reference for IPC handlers
-  setGraphicsWindow(graphicsWindow);
+  // Graphics output window (hidden by default). When only the main window was closed (macOS keeps
+  // the app running; a look file reopens it), the graphics window is still on air: keep it, or a
+  // second renderer would join the program output
+  if (!graphicsWindow || graphicsWindow.isDestroyed()) {
+    graphicsWindow = createGraphicsWindow();
+    graphicsWindow.on('closed', () => {
+      graphicsWindow = null;
+    });
+    // Set graphics window reference for IPC handlers
+    setGraphicsWindow(graphicsWindow);
+  }
 
   windowsCreated = true;
   logger.info('Application windows created');

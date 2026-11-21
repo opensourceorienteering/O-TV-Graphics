@@ -167,7 +167,10 @@ export async function loadConfig(configPath?: string): Promise<AppConfig> {
       // A new access key must be the same on the next start: save it now
       if (config.remoteAccess?.key !== loadedConfig.remoteAccess?.key || config.remoteAccess?.requireKey !== loadedConfig.remoteAccess?.requireKey) {
         // A read-only settings file must not stop the app: the key then changes on each start
-        await saveConfig(config, cfgPath).catch((error) => logger.warn('Could not save the new access key', { error: String(error) }));
+        await saveConfig(config, cfgPath).catch((error) => {
+          accessKeyUnsaved = true;
+          logger.warn('Could not save the new access key', { error: String(error) });
+        });
       }
 
       logger.info('Configuration loaded from file', { path: cfgPath });
@@ -210,6 +213,13 @@ export function getConfig(): AppConfig {
     throw new Error('Configuration not loaded. Call loadConfig() first.');
   }
   return config;
+}
+
+let accessKeyUnsaved = false;
+
+/** The access key made at this start could not be saved: it will be different next start */
+export function isAccessKeyUnsaved(): boolean {
+  return accessKeyUnsaved;
 }
 
 /** The allowlist as stored, checked again: a hand-edited entry must never reach the content rules */

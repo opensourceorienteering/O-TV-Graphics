@@ -11,6 +11,7 @@ const ws = vi.hoisted(() => ({ dropUnauthorised: vi.fn(() => 0) }));
 vi.mock('../../data/WebSocketServer', () => ({ getWebSocketServer: () => ws }));
 vi.mock('../../utils/config', () => ({
   getConfig: () => mock.config,
+  isAccessKeyUnsaved: () => false,
   saveConfig: vi.fn(async (cfg: any) => { mock.config = cfg; mock.saved.push(cfg); }),
 }));
 import { registerSettingsHandlers } from '../settingsHandlers';

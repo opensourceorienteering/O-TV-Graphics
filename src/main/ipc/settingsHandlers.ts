@@ -5,7 +5,7 @@
 
 import { ipcMain } from 'electron';
 import { getLogger } from '../utils/logger';
-import { getConfig, saveConfig, AppConfig } from '../utils/config';
+import { getConfig, isAccessKeyUnsaved, saveConfig, AppConfig } from '../utils/config';
 import { cleanRemoteAccess, generateAccessKey, type RemoteAccessSettings } from '../security/accessKey';
 import { getWebSocketServer } from '../data/WebSocketServer';
 import path from 'path';
@@ -168,7 +168,7 @@ export function registerSettingsHandlers() {
   };
   const currentRemoteAccess = () => cleanRemoteAccess(getConfig().remoteAccess).value;
 
-  ipcMain.handle('remoteAccess:get', async () => ({ success: true, data: currentRemoteAccess() }));
+  ipcMain.handle('remoteAccess:get', async () => ({ success: true, data: { ...currentRemoteAccess(), ...(isAccessKeyUnsaved() ? { unsaved: true } : {}) } }));
 
   ipcMain.handle('remoteAccess:set', async (_event, update: { requireKey?: unknown }) => {
     try {
