@@ -1,3 +1,4 @@
+import { applyFieldMap } from '../../shared/fieldMap';
 import { graphicsRulesVersion } from '../security/rulesReload';
 import { timingClasses } from '../data/timingScope';
 /**
@@ -19,7 +20,7 @@ import { applyStartList } from '../events/EventService';
 import { clubNameLibrary } from '../data/clubNames';
 import { assertTemplateInProjectSet } from '../templates/templateSets';
 import { presentationForGraphics } from '../../shared/branding';
-import { isMultiStep, zonesClash, type GraphicZone } from '../../shared/types/ograf';
+import { isMultiStep, zonesClash, type GraphicZone, type OGrafManifest } from '../../shared/types/ograf';
 import type { ProjectPresentation, SPXRundown } from '../../shared/types/spx';
 
 const logger = getLogger();
@@ -421,7 +422,7 @@ export class PlaybackEngine {
           logger.warn('Live update skipped: mapper returned no data', { graphicId });
           continue;
         }
-        mappedData = await this.decorateData(graphic.projectId, rundown, { ...(item.fields || {}), ...mappedData });
+        mappedData = await this.decorateData(graphic.projectId, rundown, { ...(item.fields || {}), ...mappedData }, graphic.manifest);
         // The graphic may have been stopped and disposed while we were fetching
         if (!this.activeGraphics.has(graphicId)) continue;
         // Operator chose to hold this graphic's data on air: only note that what it would show changed
@@ -476,7 +477,7 @@ export class PlaybackEngine {
         rundown.dataSource?.sourceId
       ).then(mapped => ({ ...(item.fields || {}), ...mapped }));
     }
-    data = await this.decorateData(projectId, rundown, data);
+    data = await this.decorateData(projectId, rundown, data, template.manifest);
     await this.sendCommand('update', { id: graphicId, data });
     graphic.data = data;
     graphic.newData = false;
@@ -599,7 +600,12 @@ export class PlaybackEngine {
    * (club/flag rule, logos) and event info from the rundown. Template sets read
    * data.presentation and data.event; other graphics ignore them.
    */
-  private async decorateData(projectId: string, rundown: SPXRundown, data: Record<string, any>): Promise<Record<string, any>> {
+  private async decorateData(projectId: string, rundown: SPXRundown, data: Record<string, any>, manifest?: OGrafManifest): Promise<Record<string, any>> {
+    // A graphic made elsewhere gets our data under its own field names (v_olgrafik_fieldMap)
+    return applyFieldMap((manifest as { v_olgrafik_fieldMap?: unknown } | undefined)?.v_olgrafik_fieldMap, await this.decorateOwn(projectId, rundown, data));
+  }
+
+  private async decorateOwn(projectId: string, rundown: SPXRundown, data: Record<string, any>): Promise<Record<string, any>> {
     let presentation: ProjectPresentation = {};
     let info: import('../../shared/types/event').EventInfo = {};
     try {
@@ -782,7 +788,7 @@ export class PlaybackEngine {
         }
       }
 
-      graphicData = await this.decorateData(projectId, rundown, graphicData);
+      graphicData = await this.decorateData(projectId, rundown, graphicData, template.manifest);
 
       // Check playback mode - if solo, stop all currently playing graphics
       // Priority: rundown item > template manifest > default to stackable
@@ -1052,7 +1058,7 @@ export class PlaybackEngine {
 
       // Keep the presentation/event context the graphic was loaded with
       const rundown = await getRundownManager().loadRundown(projectId, rundownId);
-      const decorated = await this.decorateData(projectId, rundown, data ?? {});
+      const decorated = await this.decorateData(projectId, rundown, data ?? {}, this.activeGraphics.get(graphicId)?.manifest);
       await this.sendCommand('update', {
         id: graphicId,
         data: decorated

@@ -2,6 +2,7 @@
  * Sample data for library previews: the website's simulated race and sample feeds, shaped for
  * one template the way the app shapes live data (feeds the graphic declares, then its defaults).
  */
+import { applyFieldMap } from '../../../shared/fieldMap';
 import { graphicFeedData } from '../../../../site/preview/feeds.js';
 import type { SampleRace } from '../../../../site/preview/sim.js';
 import type { OGrafTemplateInfo } from '../../../shared/types/ograf';
@@ -66,5 +67,6 @@ export function sampleGraphicData(template: OGrafTemplateInfo, race: SampleRace,
   }
   data.clockOffsetMs = simNow - Date.now();
   data.presentation = { language: 'en', identity: 'club', international: false, logoMode: 'template' };
-  return data;
+  // A graphic made elsewhere gets our data under its own field names, as on air
+  return applyFieldMap((template.manifest as { v_olgrafik_fieldMap?: unknown }).v_olgrafik_fieldMap, data);
 }

@@ -17,7 +17,9 @@ const templates = [
   tpl('iof-results', 'iof', 'main'),
   tpl('iof-name-strap', 'iof', 'lower'),
   tpl('iof-clock', 'iof', 'corner'),
-  tpl('cz-podium', 'cz', 'main')
+  tpl('cz-podium', 'cz', 'main'),
+  // Made elsewhere: its own field names, filled from ours by its field map
+  { ...tpl('guest-strap', 'iof', 'lower'), manifest: { id: 'guest-strap', name: 'Guest strap', stepCount: 1, v_olgrafik_fieldMap: { headline: 'runnerName', where: 'event.location' } } }
 ];
 vi.mock('../../templates/OGrafManager', () => ({
   getTemplateManager: () => ({ getAllTemplates: () => templates })
@@ -49,7 +51,7 @@ describe('PlaybackEngine and template sets', () => {
     project = { id: 'p1', name: 'WOC', templateSet: 'iof', settings: { presentation: { international: true, logoUrl: '/assets/iof.png' } } };
     rundown = {
       id: 'r1', projectId: 'p1', settings: { raceLocation: 'Genova' }, dataSource: { competitionName: 'WOC 2026' },
-      items: [item('strap', 'iof-name-strap', { name: 'Tove Alexandersson' }), item('clock', 'iof-clock'), item('table', 'iof-results'), item('cz', 'cz-podium')]
+      items: [item('strap', 'iof-name-strap', { name: 'Tove Alexandersson' }), item('clock', 'iof-clock'), item('table', 'iof-results'), item('cz', 'cz-podium'), item('guest', 'guest-strap', { runnerName: 'Tove Alexandersson' })]
     };
     engine = new PlaybackEngine();
     engine.sendCommand = vi.fn(async () => ({ success: true, result: { currentStep: 1 } }));
@@ -70,6 +72,18 @@ describe('PlaybackEngine and template sets', () => {
       presentation: { international: true, identity: 'auto', clubLogos: true, clearClashing: true, logoUrl: '/assets/iof.png' },
       event: { name: 'WOC 2026', location: 'Genova' }
     });
+  });
+
+  it("fills a graphic's own fields from ours through its field map, on Show and on Update", async () => {
+    await engine.playItem('p1', 'r1', 'guest');
+    expect(commands('load')[0].data).toMatchObject({ headline: 'Tove Alexandersson', where: 'Genova' });
+    await engine.updateItem('p1', 'r1', 'guest', { runnerName: 'Simona Aebersold' });
+    expect(commands('update').at(-1).data).toMatchObject({ headline: 'Simona Aebersold' });
+  });
+
+  it('leaves data from an outside OGraf controller as it was sent', async () => {
+    await engine.apiLoad('guest-strap', { runnerName: 'X' });
+    expect(commands('load').at(-1).data).toEqual({ runnerName: 'X' });
   });
 
   it('a results table takes the lower third off air but leaves the clock', async () => {
