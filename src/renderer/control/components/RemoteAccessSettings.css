@@ -1,0 +1,35 @@
+.remote-access {
+  display: grid;
+  gap: 14px;
+}
+.remote-access .remote-access-switch {
+  display: flex;
+  flex-direction: row;
+  justify-self: start;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+.remote-access .remote-access-key {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.remote-access .remote-access-key label {
+  display: grid;
+  gap: 4px;
+}
+.remote-access .remote-access-key input {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  min-width: 22em;
+}
+.remote-access h3 {
+  margin: 8px 0 0;
+}
+.remote-access ul {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+}

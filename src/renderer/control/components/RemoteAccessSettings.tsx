@@ -6,6 +6,7 @@
 import { t as tr } from "../i18n";
 import { useEffect, useState } from "react";
 import { AlertTriangle, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import "./RemoteAccessSettings.css";
 
 type Access = { requireKey: boolean; key: string };
 
@@ -57,7 +58,7 @@ export function RemoteAccessSettings() {
 
   return (
     <div className="remote-access">
-      <label className="checkbox-label">
+      <label className="remote-access-switch">
         <input
           type="checkbox"
           checked={access.requireKey}
@@ -76,9 +77,9 @@ export function RemoteAccessSettings() {
           {tr("Anyone on the network can control the graphics and read the live data.")}
         </p>
       )}
-      <div className="row wrap">
+      <div className="remote-access-key">
         <label>
-          {tr("Access key")}{" "}
+          {tr("Access key")}
           <input type={shown ? "text" : "password"} readOnly value={access.key} size={30} onFocus={(e) => e.target.select()} />
         </label>
         <button className="studio-button" onClick={() => setShown((s) => !s)} aria-pressed={shown}>
