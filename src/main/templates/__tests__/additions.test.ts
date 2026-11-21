@@ -82,4 +82,10 @@ describe('additions to a look', () => {
     const m = await manager();
     expect(m.getTemplateById('standard-name-strap')!.desk).toBeUndefined();
   });
+  it('marks a graphic that replaces another, so Live and the library know it works', async () => {
+    writeGraphic(path.join(tmp, 'user', 'additions', 'standard', 'guest-strap'), 'guest-strap');
+    fs.writeFileSync(path.join(tmp, 'user', 'additions', 'standard', 'overrides.json'), JSON.stringify({ replaces: { 'guest-strap': 'standard-free-text' } }));
+    const m = await manager();
+    expect(m.getTemplateById('guest-strap')!.replaces).toBe('standard-free-text');
+  });
 });

@@ -14,7 +14,7 @@ import type { GraphicZone, OGrafManifest, OGrafTemplateInfo, TemplateSetInfo } f
 import { CUSTOM_TEMPLATE_SET } from "../../../shared/types/ograf";
 import { DEFAULT_TEMPLATE_SET } from "../../../shared/types/spx";
 import { LibraryPreview } from "./LibraryPreview";
-import { graphicTitle, lookCards } from "./libraryModel";
+import { graphicTitle, lookCards, needsAttention } from "./libraryModel";
 import { sampleGraphicData } from "./sampleData";
 import {
   buildDesk, buildFieldMap, conflicts, deriveInputs, fieldRows, initialChoices, kindFor, OUR_DATA, replacementFor, ROW_DATA, slug, typeWarning,
@@ -233,22 +233,30 @@ export function ImportHelper({
   onFinished: (done: { id: string; setId: string }) => Promise<void>;
   onClose: () => void;
 }) {
-  const [index, setIndex] = useState(0);
-  const graphic = queue[index];
-  if (!graphic) return null;
+  // Finished or skipped graphics; the rest are looked up again after every reload, so a graphic
+  // that an earlier Finish already made work (it was replaced, say) is not offered again
+  const [handled, setHandled] = useState<string[]>([]);
+  const waiting = queue
+    .map((q) => templates.find((t) => t.manifest.id === q.manifest.id))
+    .filter((t): t is OGrafTemplateInfo => !!t && !handled.includes(t.manifest.id) && needsAttention([t]).length > 0);
+  const graphic = waiting[0];
+  if (!graphic) {
+    if (handled.length || queue.length) queueMicrotask(onClose);
+    return null;
+  }
+  const next = (id: string) => setHandled((list) => [...list, id]);
   return (
     <HelperFor
       key={graphic.manifest.id}
       graphic={graphic}
-      position={`${index + 1} ${tr("of")} ${queue.length}`}
+      position={`${Math.min(handled.length + 1, queue.length)} ${tr("of")} ${queue.length}`}
       templates={templates}
       sets={sets}
       onFinished={async (done) => {
         await onFinished(done);
-        if (index + 1 < queue.length) setIndex(index + 1);
-        else onClose();
+        next(graphic.manifest.id);
       }}
-      onSkip={index + 1 < queue.length ? () => setIndex(index + 1) : undefined}
+      onSkip={waiting.length > 1 ? () => next(graphic.manifest.id) : undefined}
       onClose={onClose}
     />
   );
@@ -315,7 +323,8 @@ function HelperFor({
   const problems = conflicts({ target, label, looks, templates, selfId: graphic.manifest.id });
   const lookGraphics = templates.filter((t) => t.setId === targetLook && t.desk && t.manifest.id !== graphic.manifest.id);
   const suggested = replacementFor(templates, targetLook, inputs, graphic.manifest.id);
-  const replacing = replaces === undefined ? suggested?.manifest.id ?? null : replaces;
+  // Offered for a graphic coming into the look; a look's own graphic replaces nothing unless chosen
+  const replacing = replaces === undefined ? (inLook ? null : suggested?.manifest.id ?? null) : replaces;
 
   const finish = async () => {
     setBusy(true);
@@ -482,7 +491,7 @@ function HelperFor({
           {step < 3 ? (
             <button
               className="studio-button primary"
-              disabled={unset.length > 0}
+              disabled={unset.length > 0 || (step === 2 && checked.warnings.length > 0)}
               title={unset.length ? `${tr("Needs a choice")}: ${unset.map((r) => r.key).join(", ")}` : undefined}
               onClick={() => setStep((step + 1) as 2 | 3)}
             >

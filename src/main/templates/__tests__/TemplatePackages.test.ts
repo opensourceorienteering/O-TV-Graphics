@@ -335,6 +335,16 @@ describe('additions travel as .splitlook files', () => {
     expect(exported).toContain('cz/cz-extra/cz-extra.ograf.json');
   });
 
+  it("carries the Live entries given to the look's own graphics", async () => {
+    fs.mkdirSync(additionsDir(), { recursive: true });
+    fs.writeFileSync(path.join(additionsDir(), 'desk.json'), JSON.stringify({ 'standard-name-strap': { v_olgrafik_desk: { label: 'Name strap', fields: ['name'] } } }));
+    const zip = exportLookZip(manager, 'standard');
+    expect(Object.keys(unzipSync(zip))).toContain('standard/desk.json');
+    const fresh = await freshManager();
+    await importTemplateZip(fresh, zip);
+    expect(fresh.getTemplateById('standard-name-strap')!.desk).toMatchObject({ label: 'Name strap' });
+  });
+
   it('refuses to export a built-in look with no additions', () => {
     expect(() => exportLookZip(manager, 'standard')).toThrow('This look has no additions to export');
   });

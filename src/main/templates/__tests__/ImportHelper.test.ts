@@ -70,10 +70,10 @@ describe('finishing a loose graphic', () => {
     fs.writeFileSync(user('sets', 'club', 'set.json'), JSON.stringify({ id: 'club', name: 'Club' }));
     await rediscover();
     const done = await finishGraphic(manager, {
-      graphicId: 'studio-strap', target: { newLookName: 'Club' }, kind: 'club-2-guest', zone: 'lower', desk: { ...desk, inputs: [], required: [], feeds: [], fields: ['headline'] }, fieldMap: {},
+      graphicId: 'studio-strap', target: { newLookName: 'Club!' }, kind: 'club-2-guest', zone: 'lower', desk: { ...desk, inputs: [], required: [], feeds: [], fields: ['headline'] }, fieldMap: {},
     });
     expect(done.setId).toBe('club-2');
-    expect(JSON.parse(fs.readFileSync(user('sets', 'club-2', 'set.json'), 'utf8'))).toMatchObject({ id: 'club-2', name: 'Club' });
+    expect(JSON.parse(fs.readFileSync(user('sets', 'club-2', 'set.json'), 'utf8'))).toMatchObject({ id: 'club-2', name: 'Club!' });
     expect(manager.getTemplateSets().find((s) => s.id === 'club-2')).toMatchObject({ source: 'imported' });
   });
 
@@ -97,6 +97,21 @@ describe('finishing a loose graphic', () => {
   });
 });
 
+describe('finishing safely', () => {
+  const plain = { ...desk, inputs: [], required: [], feeds: [], fields: ['headline'] };
+  it('creates no new look when the graphic is refused', async () => {
+    await expect(finishGraphic(manager, { graphicId: 'studio-strap', target: { newLookName: 'Fresh' }, kind: 'fresh-a', desk: plain, fieldMap: { nothere: 'runnerName' } })).rejects.toThrow();
+    expect(fs.existsSync(user('sets', 'fresh'))).toBe(false);
+    expect(fs.existsSync(user('studio-strap'))).toBe(true);
+  });
+  it('refuses a new look named like one that exists', async () => {
+    await expect(finishGraphic(manager, { graphicId: 'studio-strap', target: { newLookName: 'STANDARD' }, kind: 'x-a', desk: plain, fieldMap: {} })).rejects.toThrow(/already exists/);
+  });
+  it("refuses a kind another graphic of the look already has (it would push one out of Live)", async () => {
+    await expect(finishGraphic(manager, { graphicId: 'studio-strap', target: { lookId: 'standard' }, kind: 'results', desk: plain, fieldMap: {} })).rejects.toThrow(/kind/);
+  });
+});
+
 describe('finishing a graphic that is already in a look', () => {
   it('gives the Name strap a Live entry with a patch beside the look, keeping the app files as they are', async () => {
     const before = fs.readFileSync(path.join(tmp, 'app', 'sets', 'standard', 'standard-name-strap', 'standard-name-strap.ograf.json'), 'utf8');
@@ -112,5 +127,17 @@ describe('finishing a graphic that is already in a look', () => {
     await expect(finishGraphic(manager, {
       graphicId: 'standard-name-strap', target: { newLookName: 'Other' }, kind: 'name-strap', desk: { ...desk, inputs: [], required: [], feeds: [], fields: ['name'] }, fieldMap: {},
     })).rejects.toThrow(/its own look/);
+  });
+  it("keeps a look graphic's own kind", async () => {
+    await expect(finishGraphic(manager, {
+      graphicId: 'standard-name-strap', target: { lookId: 'standard' }, kind: 'results', desk: { ...desk, inputs: [], required: [], feeds: [], fields: ['name'] }, fieldMap: {},
+    })).rejects.toThrow(/kind/);
+  });
+  it('clears what it replaced when finished again with nothing', async () => {
+    const strap = { graphicId: 'standard-name-strap', target: { lookId: 'standard' }, kind: 'name-strap', desk: { ...desk, inputs: [], required: [], feeds: [], fields: ['name'] }, fieldMap: {} };
+    await finishGraphic(manager, { ...strap, replaces: 'standard-free-text' });
+    expect(manager.getReplacements('standard')).toEqual({ 'standard-name-strap': 'standard-free-text' });
+    await finishGraphic(manager, { ...strap, replaces: null });
+    expect(manager.getReplacements('standard')).toEqual({});
   });
 });

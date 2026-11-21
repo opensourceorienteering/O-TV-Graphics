@@ -473,7 +473,8 @@ export class OGrafManager {
       dataSourceConfig, // Add datasource config (null if not found)
       setId,
       zone,
-      ...(root === this.userDir && directoryName.startsWith(`${ADDITIONS}/`) ? { addition: true as const } : {})
+      ...(root === this.userDir && directoryName.startsWith(`${ADDITIONS}/`) ? { addition: true as const } : {}),
+      ...(this.getReplacements(setId)[manifest.id] ? { replaces: this.getReplacements(setId)[manifest.id] } : {})
     };
   }
 

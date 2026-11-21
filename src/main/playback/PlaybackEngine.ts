@@ -1,4 +1,4 @@
-import { applyFieldMap } from '../../shared/fieldMap';
+import { applyFieldMap, mappedListsSignature } from '../../shared/fieldMap';
 import { graphicsRulesVersion } from '../security/rulesReload';
 import { timingClasses } from '../data/timingScope';
 /**
@@ -428,7 +428,12 @@ export class PlaybackEngine {
         // Operator chose to hold this graphic's data on air: only note that what it would show changed
         if (graphic.isPlaying && item.liveResultsData?.holdOnAir) {
           const withSplits = /splits|position-history/.test(graphic.templateId);
-          graphic.newData = shownResults(mappedData, withSplits) !== shownResults(graphic.data, withSplits);
+          // A graphic made elsewhere shows our lists under its own names: compare those
+          const map = (graphic.manifest as { v_olgrafik_fieldMap?: unknown } | undefined)?.v_olgrafik_fieldMap;
+          const mappedNow = mappedListsSignature(map, mappedData);
+          graphic.newData = mappedNow !== null
+            ? mappedNow !== mappedListsSignature(map, graphic.data ?? {})
+            : shownResults(mappedData, withSplits) !== shownResults(graphic.data, withSplits);
           continue;
         }
 

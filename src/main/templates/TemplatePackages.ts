@@ -17,7 +17,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { strToU8, unzipSync, zipSync, type Zippable } from 'fflate';
 import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
-import { ADDITIONS, type OGrafManager } from './OGrafManager';
+import { ADDITIONS, DESK_PATCH_KEYS, type OGrafManager } from './OGrafManager';
 import { pickManifestFile } from './manifestFile';
 import { normalizeAllowedOrigin } from '../security/csp';
 
@@ -50,6 +50,8 @@ export interface ZipExtension {
   graphics: ZipGraphic[];
   /** New graphic id → the id it replaces, only for graphics in this file */
   replaces: Record<string, string>;
+  /** Live entries for the look's own graphics (desk.json), only the desk settings of each */
+  deskPatches: Record<string, Record<string, unknown>>;
 }
 
 export interface ZipContents {
@@ -125,6 +127,19 @@ function graphicFolders(lookFiles: Map<string, Uint8Array>, lookId: string): Arr
   return out;
 }
 
+/** desk.json as a file carries it: per graphic id, only the desk settings (never code or identity) */
+function readDeskPatches(bytes: Uint8Array | undefined): Record<string, Record<string, unknown>> {
+  const raw = readJson(bytes, 'desk.json');
+  const out: Record<string, Record<string, unknown>> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [id, patch] of Object.entries(raw)) {
+    if (!/^[a-z0-9][a-z0-9_-]{0,127}$/i.test(id) || !patch || typeof patch !== 'object' || Array.isArray(patch)) continue;
+    const kept = Object.fromEntries(DESK_PATCH_KEYS.filter((k) => (patch as Record<string, unknown>)[k] !== undefined).map((k) => [k, (patch as Record<string, unknown>)[k]]));
+    if (Object.keys(kept).length) out[id] = kept;
+  }
+  return out;
+}
+
 /** A set.json with "extends": the graphics it adds to that look and the replacements among them */
 function readExtension(lookFiles: Map<string, Uint8Array>, meta: any): ZipExtension {
   const lookId = String(meta.extends ?? '').trim();
@@ -135,7 +150,8 @@ function readExtension(lookFiles: Map<string, Uint8Array>, meta: any): ZipExtens
     for (const [file, data] of lookFiles) if (file.startsWith(`${folder}/`)) files.set(file.slice(folder.length + 1), data);
     return { folder, id: String(manifest.id), name: String(manifest.name || manifest.id), files };
   });
-  if (!graphics.length) fail(`The file adds no graphics to the look "${lookId}"`);
+  const deskPatches = readDeskPatches(lookFiles.get('desk.json'));
+  if (!graphics.length && !Object.keys(deskPatches).length) fail(`The file adds nothing to the look "${lookId}"`);
   const own = new Set(graphics.map((g) => g.id));
   const replaces: Record<string, string> = {};
   const declared = readJson(lookFiles.get('overrides.json'), 'overrides.json')?.replaces;
@@ -145,7 +161,7 @@ function readExtension(lookFiles: Map<string, Uint8Array>, meta: any): ZipExtens
       if (own.has(newId) && typeof oldId === 'string' && oldId.trim() && oldId !== newId) replaces[newId] = oldId;
     }
   }
-  return { lookId, graphics, replaces };
+  return { lookId, graphics, replaces, deskPatches };
 }
 
 /** Unpack a zip into the looks and graphics it holds. Nothing is written to disk. */
@@ -380,6 +396,10 @@ export async function importTemplateZip(manager: OGrafManager, zip: Uint8Array):
       replaceFolder(path.join(dir, graphic.folder), graphic.files);
     }
     writeOverrides(dir, { ...replaces, ...extension.replaces });
+    if (Object.keys(extension.deskPatches).length) {
+      fs.mkdirSync(dir, { recursive: true });
+      writeFileSafe(path.join(dir, 'desk.json'), JSON.stringify({ ...readDeskJson(dir), ...extension.deskPatches }, null, 2) + '\n');
+    }
   }
   await rediscover(manager);
   return preview;
@@ -403,6 +423,21 @@ export function readOverrides(dir: string): Record<string, string> {
   } catch {
     return {};
   }
+}
+
+function readDeskJson(dir: string): Record<string, unknown> {
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(dir, 'desk.json'), 'utf-8'));
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeFileSafe(file: string, text: string) {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temp, text);
+  fs.renameSync(temp, file);
 }
 
 export function writeOverrides(dir: string, replaces: Record<string, string>): void {
@@ -455,7 +490,9 @@ export function exportLookZip(manager: OGrafManager, setId: string): Uint8Array 
   const set = manager.getTemplateSets().find((s) => s.id === setId) ?? fail(`The look "${setId}" is not installed`);
   if (set.source === 'imported') return wholeLookZip(manager, setId);
   const folders = additionFolders(manager, setId);
-  if (!folders.length) fail('This look has no additions to export');
+  const dir0 = manager.getUserDirectory() ? path.join(manager.getUserDirectory()!, ADDITIONS, setId) : '';
+  const deskPatches = dir0 ? readDeskJson(dir0) : {};
+  if (!folders.length && !Object.keys(deskPatches).length) fail('This look has no additions to export');
   const dir = path.join(manager.getUserDirectory()!, ADDITIONS, setId);
   const files: Zippable = {
     [`${setId}/set.json`]: strToU8(JSON.stringify({ id: setId, name: set.name, extends: setId }, null, 2) + '\n'),
@@ -463,6 +500,7 @@ export function exportLookZip(manager: OGrafManager, setId: string): Uint8Array 
   for (const folder of folders) collectFiles(path.join(dir, folder), `${setId}/${folder}`, files);
   const replaces = readOverrides(dir);
   if (Object.keys(replaces).length) files[`${setId}/overrides.json`] = strToU8(JSON.stringify({ replaces }, null, 2) + '\n');
+  if (Object.keys(deskPatches).length) files[`${setId}/desk.json`] = strToU8(JSON.stringify(deskPatches, null, 2) + '\n');
   return zipSync(files, { level: 6 });
 }
 
