@@ -58,4 +58,11 @@ describe('sample race data for previews', () => {
     const t = tpl({ params: ['class'], feeds: ['timing'] }, { title: { type: 'string', title: 'Title' } });
     expect(sampleGraphicData(t, race, race.end - 60_000).title).toBeUndefined();
   });
+  it("previews a mapped graphic with our data under its own field names", () => {
+    const t = tpl({ params: ['runner'], feeds: ['timing'] }, { headline: { type: 'string', default: 'Jane Doe' } });
+    (t.manifest as Record<string, unknown>).v_olgrafik_fieldMap = { headline: 'runnerName' };
+    const data = sampleGraphicData(t, race, race.firstStart + 3 * 60_000);
+    expect(data.headline).toBe(data.runnerName);
+    expect(data.headline).not.toBe('Jane Doe');
+  });
 });
