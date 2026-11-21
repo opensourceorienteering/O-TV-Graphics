@@ -178,6 +178,28 @@ describe('live desk', () => {
     await expect(desk.deskUpdate('p1', changed)).rejects.toThrow('not on air');
   });
 
+  it('sends the picked runner to a mapped graphic, and the Preview monitor maps it too', async () => {
+    templates.push({
+      manifest: {
+        id: 'guest', name: 'Guest', stepCount: 1, v_olgrafik_kind: 'iof-guest',
+        v_olgrafik_desk: { label: 'Guest', inputs: ['runner'], required: ['runner'], fields: ['role'] },
+        v_olgrafik_fieldMap: { headline: 'runnerName', sub: 'runnerClub' },
+        schema: { type: 'object', properties: { headline: { type: 'string' }, sub: { type: 'string' }, role: { type: 'string' } } },
+      },
+      setId: 'iof', zone: 'lower', directoryName: 'sets/iof/guest', dataSourceConfig: null,
+    });
+    try {
+      const draft = { key: 'iof-guest', values: { runnerName: 'Jan Novák', runnerClub: 'OK Praha' }, fields: { role: 'Guest' } };
+      const preview = await desk.deskPreviewData('p1', draft);
+      expect(preview.data).toMatchObject({ headline: 'Jan Novák', sub: 'OK Praha', role: 'Guest' });
+      await desk.deskShow('p1', draft);
+      const item = pages[0].items.find((i: any) => i.templateId === 'guest');
+      expect(item.fields).toMatchObject({ role: 'Guest', runnerName: 'Jan Novák', runnerClub: 'OK Praha' });
+    } finally {
+      templates.pop();
+    }
+  });
+
   it('opens paged graphics on the requested page and pages the one on air', async () => {
     await desk.deskShow('p1', { key: 'results', values: { className: 'H21' }, fields: {}, page: 3 });
     expect(engine.nextItem).toHaveBeenCalledTimes(2);

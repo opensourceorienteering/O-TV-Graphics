@@ -1,4 +1,5 @@
 import { deskEntriesForLook, resolveDeskDeclaration } from '../../shared/deskDeclaration';
+import { applyFieldMap } from '../../shared/fieldMap';
 /**
  * Live desk: show / update / hide prepared drafts, template favourites and the command map.
  *
@@ -188,6 +189,13 @@ export async function refreshWeatherOnAir(): Promise<void> {
   if (!weatherProjects.size && weatherTimer) { clearInterval(weatherTimer); weatherTimer = null; }
 }
 
+/** What Live picked (runner, class, timing point), for the field map of a graphic made elsewhere */
+const PICKED = ['runnerName', 'runnerClub', 'runnerBib', 'className', 'controlName'] as const;
+function pickedForMap(template: OGrafTemplateInfo, values: Record<string, any>): Record<string, any> {
+  if (!(template.manifest as { v_olgrafik_fieldMap?: unknown }).v_olgrafik_fieldMap) return {};
+  return Object.fromEntries(PICKED.filter((k) => values[k] !== undefined && values[k] !== '').map((k) => [k, values[k]]));
+}
+
 /** Write the draft to the template's desk item; returns where it lives */
 /**
  * The draft's data values as graphics receive them. A virtual bib (V12) only helps operators
@@ -230,7 +238,7 @@ async function writeDraft(projectId: string, draft: DeskDraft) {
   // holdOnAir keeps polling (so the desk can say new results are waiting) but does not push them
   // A frozen clock always follows the data: the official time replaces it as soon as it arrives
   const liveResultsData = t.dataSourceConfig ? { autoUpdate: true, holdOnAir: draft.liveUpdates === false && !isFrozenDraft(draft), dataSourceValues: values } : undefined;
-  const fields = await automaticFields(project, draft.key, draft.fields, draft.values?.className);
+  const fields = { ...pickedForMap(t, values), ...(await automaticFields(project, draft.key, draft.fields, draft.values?.className)) };
   const eventPageDuration = Math.max(0, Number(project.settings?.presentation?.autoPageDurationSeconds) || 0);
   const requestedPageDuration = draft.autoPageDurationSeconds === undefined
     ? eventPageDuration
@@ -358,11 +366,13 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
     };
   }
   data = {
+    ...pickedForMap(template, graphicValues(projectId, draft)),
     ...applyStartList(projectId, data),
     presentation: presentationForGraphics(project.settings?.presentation),
     event: { ...project.info, name: project.name, location: project.info?.location || '', date: project.info?.date || '' }
   };
-  return { template, data };
+  // As Show would: a graphic made elsewhere gets our data under its own field names
+  return { template, data: applyFieldMap((template.manifest as { v_olgrafik_fieldMap?: unknown }).v_olgrafik_fieldMap, data) };
 }
 
 /** Like writeDraft's checks, but leaves the desk item untouched (Preview never changes what Show plays) */
