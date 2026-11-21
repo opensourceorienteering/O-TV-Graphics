@@ -2,6 +2,7 @@ import { setAppLanguage, t as tr } from "../i18n";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
+  KeyRound,
   Database,
   Globe,
   HardDrive,
@@ -16,6 +17,7 @@ import { DataSourceManager } from "../components/DataSourceManager";
 import { KeyboardShortcutsList } from "../components/KeyboardShortcuts";
 import { ClubNameLibrary } from "../components/ClubNameLibrary";
 import { GraphicsInternetAccess } from "../components/GraphicsInternetAccess";
+import { RemoteAccessSettings } from "../components/RemoteAccessSettings";
 import { CommandNumbersPanel } from "../components/CommandNumbersPanel";
 
 interface AppConfig {
@@ -41,7 +43,7 @@ interface AppConfig {
   };
 }
 
-type TabId = "general" | "outputs" | "controls" | "sources" | "internet" | "clubs" | "storage";
+type TabId = "general" | "outputs" | "controls" | "sources" | "internet" | "remote" | "clubs" | "storage";
 
 const tabs: Array<{
   id: TabId;
@@ -78,6 +80,12 @@ const tabs: Array<{
     label: "Internet access",
     detail: "Addresses graphics may use",
     icon: Globe,
+  },
+  {
+    id: "remote",
+    label: "Remote access",
+    detail: "Key for other computers",
+    icon: KeyRound,
   },
   {
     id: "clubs",
@@ -453,6 +461,15 @@ export function SettingsView() {
               intro={tr("Let graphics load from addresses on the internet, such as a GPS viewer or map tiles. Applies to every output: the app, NDI, the previews and the OBS/vMix web output.")}
             >
               <GraphicsInternetAccess />
+            </SettingsSection>
+          )}
+
+          {tab === "remote" && (
+            <SettingsSection
+              title={tr("Remote access")}
+              intro={tr("Other computers on the network need this key to control Split Control or read its live data.")}
+            >
+              <RemoteAccessSettings />
             </SettingsSection>
           )}
 

@@ -7,6 +7,8 @@ const mock = vi.hoisted(() => ({
 vi.mock('electron', () => ({ ipcMain: { handle: (name: string, fn: any) => mock.handlers.set(name, fn) }, app: { getPath: () => '/tmp' } }));
 vi.mock('../../utils/logger', () => ({ getLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }) }));
 vi.mock('../../templates/OGrafManager', () => ({ findTemplateManager: () => undefined }));
+const ws = vi.hoisted(() => ({ dropUnauthorised: vi.fn(() => 0) }));
+vi.mock('../../data/WebSocketServer', () => ({ getWebSocketServer: () => ws }));
 vi.mock('../../utils/config', () => ({
   getConfig: () => mock.config,
   saveConfig: vi.fn(async (cfg: any) => { mock.config = cfg; mock.saved.push(cfg); }),
@@ -20,7 +22,9 @@ beforeEach(() => {
   mock.config = {
     general: { port: 5657, wsPort: 5656, loglevel: 'info', resolution: 'HD' },
     liveresults: {}, dataSources: [], output: { ndi: { fps: 50 }, web: { cors: true } },
+    remoteAccess: { requireKey: true, key: 'k'.repeat(24) },
   };
+  ws.dropUnauthorised.mockClear();
   mock.handlers.clear();
   registerSettingsHandlers();
 });
@@ -54,3 +58,25 @@ describe('blocked addresses', () => {
   });
 });
 
+
+describe('remote access', () => {
+  it('shows the key and the switch, and keeps both when other settings are saved', async () => {
+    expect(await invoke('remoteAccess:get')).toEqual({ success: true, data: { requireKey: true, key: 'k'.repeat(24) } });
+    await invoke('settings:update', { general: { loglevel: 'debug' }, remoteAccess: { requireKey: false, key: 'mine' } });
+    expect(mock.saved.at(-1).remoteAccess).toEqual({ requireKey: true, key: 'k'.repeat(24) });
+  });
+  it('turns the requirement off and on, and drops remote connections that no longer qualify', async () => {
+    await invoke('remoteAccess:set', { requireKey: false });
+    expect(mock.config.remoteAccess).toEqual({ requireKey: false, key: 'k'.repeat(24) });
+    await invoke('remoteAccess:set', { requireKey: 'yes' });
+    expect(mock.config.remoteAccess.requireKey).toBe(true);
+    expect(ws.dropUnauthorised).toHaveBeenCalledTimes(2);
+  });
+  it('makes a new key and disconnects whoever used the old one', async () => {
+    const result = await invoke('remoteAccess:regenerate');
+    expect(result.data.key).toMatch(/^[A-Za-z0-9_-]{24}$/);
+    expect(result.data.key).not.toBe('k'.repeat(24));
+    expect(mock.config.remoteAccess.key).toBe(result.data.key);
+    expect(ws.dropUnauthorised).toHaveBeenCalled();
+  });
+});
