@@ -3296,6 +3296,86 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Spara grafiken som lagts till i temat som en .splitlook-fil, för en annan dator som har temat",
     "nb": "Lagre grafikken som er lagt til i temaet som en .splitlook-fil, for en annen datamaskin som har temaet"
   },
+  "Remote access": {
+    "sv": "Fjärråtkomst",
+    "nb": "Fjerntilgang"
+  },
+  "Key for other computers": {
+    "sv": "Nyckel för andra datorer",
+    "nb": "Nøkkel for andre datamaskiner"
+  },
+  "Other computers on the network need this key to control Split Control or read its live data.": {
+    "sv": "Andra datorer i nätverket behöver den här nyckeln för att styra Split Control eller läsa dess livedata.",
+    "nb": "Andre datamaskiner i nettverket trenger denne nøkkelen for å styre Split Control eller lese livedataene."
+  },
+  "Could not save the setting": {
+    "sv": "Kunde inte spara inställningen",
+    "nb": "Kunne ikke lagre innstillingen"
+  },
+  "Key copied": {
+    "sv": "Nyckeln kopierad",
+    "nb": "Nøkkelen er kopiert"
+  },
+  "Could not copy: select the key and copy it.": {
+    "sv": "Kunde inte kopiera: markera nyckeln och kopiera den.",
+    "nb": "Kunne ikke kopiere: merk nøkkelen og kopier den."
+  },
+  "Make a new key? Companion, OBS/vMix and director pages on other computers stop working until they get the new key.": {
+    "sv": "Skapa en ny nyckel? Companion, OBS/vMix och regisidor på andra datorer slutar fungera tills de får den nya nyckeln.",
+    "nb": "Lage en ny nøkkel? Companion, OBS/vMix og regisider på andre datamaskiner slutter å virke til de får den nye nøkkelen."
+  },
+  "New key made. Other computers using the old key were disconnected.": {
+    "sv": "Ny nyckel skapad. Andra datorer som använde den gamla nyckeln kopplades bort.",
+    "nb": "Ny nøkkel laget. Andre datamaskiner som brukte den gamle nøkkelen ble koblet fra."
+  },
+  "Other computers now need the key.": {
+    "sv": "Andra datorer behöver nu nyckeln.",
+    "nb": "Andre datamaskiner trenger nå nøkkelen."
+  },
+  "Other computers need the access key": {
+    "sv": "Andra datorer behöver åtkomstnyckeln",
+    "nb": "Andre datamaskiner trenger tilgangsnøkkelen"
+  },
+  "Anyone on the network can control the graphics and read the live data.": {
+    "sv": "Vem som helst i nätverket kan styra grafiken och läsa livedata.",
+    "nb": "Hvem som helst i nettverket kan styre grafikken og lese livedataene."
+  },
+  "Access key": {
+    "sv": "Åtkomstnyckel",
+    "nb": "Tilgangsnøkkel"
+  },
+  "Make a new key": {
+    "sv": "Skapa ny nyckel",
+    "nb": "Lag ny nøkkel"
+  },
+  "Where the key goes": {
+    "sv": "Var nyckeln används",
+    "nb": "Hvor nøkkelen brukes"
+  },
+  "Companion (Stream Deck): the Access key field of the Split Control connection.": {
+    "sv": "Companion (Stream Deck): fältet Access key i Split Control-anslutningen.",
+    "nb": "Companion (Stream Deck): feltet Access key i Split Control-tilkoblingen."
+  },
+  "OBS or vMix on another computer: copy the network link in Output → Web output. It already ends in ?key=.": {
+    "sv": "OBS eller vMix på en annan dator: kopiera nätverkslänken under Utgång → Webbutgång. Den slutar redan med ?key=.",
+    "nb": "OBS eller vMix på en annen datamaskin: kopier nettverkslenken under Utgang → Nettutgang. Den slutter allerede med ?key=."
+  },
+  "Director page on a phone or laptop: the link on the Live desk already carries the key.": {
+    "sv": "Regisidan på en telefon eller bärbar dator: länken i Live-vyn innehåller redan nyckeln.",
+    "nb": "Regisiden på en telefon eller bærbar PC: lenken i Live-visningen har allerede nøkkelen."
+  },
+  "OGraf controllers and other tools: send it as Authorization: Bearer <key>, or add ?key= to the address.": {
+    "sv": "OGraf-styrningar och andra verktyg: skicka den som Authorization: Bearer <nyckel>, eller lägg till ?key= i adressen.",
+    "nb": "OGraf-styringer og andre verktøy: send den som Authorization: Bearer <nøkkel>, eller legg til ?key= i adressen."
+  },
+  "This computer never needs the key. The key travels unencrypted on the network: it keeps other devices out, not someone who can watch the traffic.": {
+    "sv": "Den här datorn behöver aldrig nyckeln. Nyckeln skickas okrypterad i nätverket: den stänger ute andra enheter, inte någon som kan avlyssna trafiken.",
+    "nb": "Denne datamaskinen trenger aldri nøkkelen. Nøkkelen sendes ukryptert i nettverket: den holder andre enheter ute, ikke noen som kan avlytte trafikken."
+  },
+  "Copy": {
+    "sv": "Kopiera",
+    "nb": "Kopier"
+  },
   "Import this file?": {
     "sv": "Importera den här filen?",
     "nb": "Importere denne filen?"

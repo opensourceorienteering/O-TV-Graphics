@@ -6,6 +6,8 @@
 import { ipcMain } from 'electron';
 import { getLogger } from '../utils/logger';
 import { getConfig, saveConfig, AppConfig } from '../utils/config';
+import { cleanRemoteAccess, generateAccessKey, type RemoteAccessSettings } from '../security/accessKey';
+import { getWebSocketServer } from '../data/WebSocketServer';
 import path from 'path';
 import { mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 import { findTemplateManager } from '../templates/OGrafManager';
@@ -155,6 +157,36 @@ export function registerSettingsHandlers() {
   /**
    * Get current configuration
    */
+  // --- Remote access: the key other computers need (see security/accessKey.ts) ---
+
+  const saveRemoteAccess = async (next: RemoteAccessSettings) => {
+    await saveConfig({ ...getConfig(), remoteAccess: next });
+    // Other computers connected under the old rules and no longer allowed are disconnected
+    getWebSocketServer()?.dropUnauthorised();
+    logger.info('Remote access changed', { requireKey: next.requireKey });
+    return { success: true, data: next };
+  };
+  const currentRemoteAccess = () => cleanRemoteAccess(getConfig().remoteAccess).value;
+
+  ipcMain.handle('remoteAccess:get', async () => ({ success: true, data: currentRemoteAccess() }));
+
+  ipcMain.handle('remoteAccess:set', async (_event, update: { requireKey?: unknown }) => {
+    try {
+      // Anything but an explicit false keeps the key required
+      return await saveRemoteAccess({ ...currentRemoteAccess(), requireKey: update?.requireKey !== false });
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  ipcMain.handle('remoteAccess:regenerate', async () => {
+    try {
+      return await saveRemoteAccess({ ...currentRemoteAccess(), key: generateAccessKey() });
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
   ipcMain.handle('settings:get', async (): Promise<IPCResponse<AppConfig>> => {
     try {
       logger.debug('IPC: settings:get');
@@ -181,7 +213,7 @@ export function registerSettingsHandlers() {
    */
   ipcMain.handle('settings:update', async (_event, updates: Partial<AppConfig>): Promise<IPCResponse<{ requiresRestart: boolean }>> => {
     try {
-      logger.debug('IPC: settings:update', { updates });
+      logger.debug('IPC: settings:update', { fields: Object.keys(updates ?? {}) });
 
       // Validate updates
       const validation = validateConfig(updates);
