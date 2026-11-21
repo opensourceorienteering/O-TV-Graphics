@@ -9,9 +9,10 @@ const g = (id: string, name: string, setId: string, extra: Partial<OGrafTemplate
      manifest: { id, name, main: 'm.js' } as any, ...extra });
 
 const sets = [set('custom', 'Custom'), set('club', 'Club look', 'imported'), set('standard', 'Standard'), set('bold', 'Bold')];
+const live = { desk: { key: 'k', kind: 'k', label: 'K', short: 'K', params: [], required: [], live: false } } as Partial<OGrafTemplateInfo>;
 const templates = [
-  g('std-strap', 'Name strap', 'standard'), g('std-results', 'Results', 'standard', { deskWarnings: ['x'] }),
-  g('club-a', 'Alpha', 'club'), g('loose', 'Studio strap', 'custom'),
+  g('std-strap', 'Name strap', 'standard', live), g('std-results', 'Results', 'standard', { ...live, deskWarnings: ['x'] }),
+  g('club-a', 'Alpha', 'club', live), g('loose', 'Studio strap', 'custom'),
 ];
 
 describe('library model', () => {
@@ -57,5 +58,13 @@ describe('graphic titles', () => {
     const desk = { label: 'Identity plate' } as OGrafTemplateInfo['desk'];
     expect(graphicTitle(g('standard-free-text', 'Free text', 'standard', { desk }))).toBe('Identity plate');
     expect(graphicTitle(g('guest-strap', 'Guest strap', 'standard', { desk, addition: true }))).toBe('Guest strap');
+  });
+});
+
+describe('needs attention', () => {
+  it('lists a look graphic Live has no entry for, but not the system test pattern', () => {
+    const list = needsAttention([...templates, g('std-lower', 'Runner lower third', 'standard'), g('pattern', 'Test pattern', 'system')]);
+    expect(list.map((t) => t.manifest.id)).toContain('std-lower');
+    expect(list.map((t) => t.manifest.id)).not.toContain('pattern');
   });
 });

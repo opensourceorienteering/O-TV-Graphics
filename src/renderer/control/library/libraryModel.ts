@@ -25,9 +25,15 @@ export function lookCards(sets: TemplateSetInfo[], templates: OGrafTemplateInfo[
     .map((set) => ({ set, graphics: templates.filter((t) => t.setId === set.id).sort(byName) }));
 }
 
-/** Graphics Live can't offer as they are: outside any look, or with a desk declaration problem */
+/**
+ * Graphics Live can't offer as they are: outside any look, with a desk declaration problem, or
+ * in a look but with no Live entry (e.g. a Name strap); the system test pattern is never offered
+ */
 export function needsAttention(templates: OGrafTemplateInfo[]): OGrafTemplateInfo[] {
-  return templates.filter((t) => t.setId === CUSTOM_TEMPLATE_SET || (t.deskWarnings?.length ?? 0) > 0).sort(byName);
+  return templates
+    .filter((t) => t.setId !== SYSTEM_TEMPLATE_SET)
+    .filter((t) => t.setId === CUSTOM_TEMPLATE_SET || (t.deskWarnings?.length ?? 0) > 0 || !t.desk)
+    .sort(byName);
 }
 
 /** Graphics in any look matching name, description or id; each with the name of its look */
