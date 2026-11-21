@@ -62,7 +62,7 @@ export function createOGrafServerApiRouter(deps: OGrafServerApiDeps): Router {
   router.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, HEAD, OPTIONS, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Split-Key');
     res.setHeader('Access-Control-Max-Age', '3600');
     if (req.method === 'OPTIONS') {
       res.sendStatus(204);

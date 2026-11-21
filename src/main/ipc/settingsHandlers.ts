@@ -192,10 +192,12 @@ export function registerSettingsHandlers() {
       logger.debug('IPC: settings:get');
       
       const config = getConfig();
-      
+      // The access key only through remoteAccess:get (Settings → Remote access)
+      const data = config.remoteAccess ? { ...config, remoteAccess: { requireKey: config.remoteAccess.requireKey } as RemoteAccessSettings } : config;
+
       return {
         success: true,
-        data: config
+        data
       };
     } catch (error) {
       logger.error('IPC error: settings:get', {

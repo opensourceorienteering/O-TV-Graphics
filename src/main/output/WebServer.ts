@@ -5,7 +5,7 @@
 
 import { additionFallbackPath } from '../templates/additionPaths';
 import { requireAccessKey } from '../security/accessGuard';
-import { remoteAccessSettings } from '../security/remoteAccess';
+import { localContext, remoteAccessSettings } from '../security/remoteAccess';
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -67,7 +67,7 @@ export class WebServer {
     // (Settings → Remote access); this computer never does
     this.app.use(
       ['/api/control', '/ograf/v1', '/api/director', '/director', '/output', '/preview', '/api/output/info', '/api/graphics'],
-      requireAccessKey(remoteAccessSettings),
+      requireAccessKey(remoteAccessSettings, localContext),
     );
 
     // JSON body parser

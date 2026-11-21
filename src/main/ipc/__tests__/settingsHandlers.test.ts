@@ -60,6 +60,11 @@ describe('blocked addresses', () => {
 
 
 describe('remote access', () => {
+  it('keeps the key out of the general settings, which many views read', async () => {
+    const all = await invoke('settings:get');
+    expect(all.data.remoteAccess).toEqual({ requireKey: true });
+    expect(mock.config.remoteAccess.key).toBe('k'.repeat(24));
+  });
   it('shows the key and the switch, and keeps both when other settings are saved', async () => {
     expect(await invoke('remoteAccess:get')).toEqual({ success: true, data: { requireKey: true, key: 'k'.repeat(24) } });
     await invoke('settings:update', { general: { loglevel: 'debug' }, remoteAccess: { requireKey: false, key: 'mine' } });

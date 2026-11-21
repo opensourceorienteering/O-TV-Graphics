@@ -42,8 +42,49 @@ export function keyMatches(given: string, expected: string): boolean {
   return timingSafeEqual(digest(given), digest(expected)) && given.length === expected.length;
 }
 
-export function remoteAllowed(caller: { address: string | undefined; key: string }, settings: RemoteAccessSettings): boolean {
-  if (!settings.requireKey || isLocalAddress(caller.address)) return true;
+/** What "this computer" means right now: its own network addresses and the app's own page origins */
+export interface LocalContext {
+  own: string[];
+  origins: string[];
+}
+
+export interface Caller {
+  /** The connection's source address */
+  address: string | undefined;
+  /** The Host header: the name the request was addressed to */
+  host: string | undefined;
+  /** The Origin header: the page that made the request, if a browser did */
+  origin?: string;
+  key: string;
+}
+
+/** The origins of the app's own pages: file:// (the packaged app) and the web server's addresses */
+export function appOrigins({ webPort, dev, own }: { webPort: number; dev: boolean; own: string[] }): string[] {
+  const hosts = ['localhost', '127.0.0.1', '[::1]', ...own.map((a) => (a.includes(':') ? `[${a}]` : a))];
+  const ports = dev ? [webPort, 5175] : [webPort];
+  return ['file://', ...hosts.flatMap((h) => ports.map((p) => `http://${h}:${p}`))];
+}
+
+const hostName = (host: string) => {
+  const m = /^\[([^\]]+)\](?::\d+)?$/.exec(host) ?? /^([^:]+)(?::\d+)?$/.exec(host);
+  return m ? m[1].toLowerCase() : '';
+};
+
+/**
+ * This computer, and not a web page open in a browser on it: the connection comes from here,
+ * it was addressed to this computer by name (a rebound domain name is not), and it carries no
+ * Origin or one of the app's own pages
+ */
+export function fromThisComputer(caller: Omit<Caller, 'key'>, here: LocalContext): boolean {
+  const isHere = (address: string | undefined) => isLocalAddress(address) || (!!address && here.own.includes(address.replace(/^::ffff:/, '')));
+  if (!isHere(caller.address)) return false;
+  const name = caller.host ? hostName(caller.host) : '';
+  if (!(name === 'localhost' || isHere(name))) return false;
+  return caller.origin === undefined || here.origins.includes(caller.origin);
+}
+
+export function remoteAllowed(caller: Caller, settings: RemoteAccessSettings, here: LocalContext): boolean {
+  if (!settings.requireKey || fromThisComputer(caller, here)) return true;
   return keyMatches(caller.key, settings.key);
 }
 
