@@ -3,6 +3,7 @@
  * config.json handling
  */
 
+import { cleanRemoteAccess, type RemoteAccessSettings } from '../security/accessKey';
 import fs from 'fs';
 import type { EventorLogoSettings } from '../data/ClubLogoService';
 import path from 'path';
@@ -83,6 +84,8 @@ export interface AppConfig {
   clubNames?: Record<string, string>;
   /** Addresses graphics may load from (Settings → Internet access for graphics), normalised https origins */
   graphicsAllowedOrigins?: string[];
+  /** Other computers need this key (Settings → Remote access); changed only through remoteAccess:* */
+  remoteAccess?: RemoteAccessSettings;
   output: {
     ndi: {
       enabled: boolean;
@@ -106,6 +109,7 @@ function getDefaultConfig(): AppConfig {
   const logDir = getLogDirectory();
 
   return {
+    remoteAccess: cleanRemoteAccess(undefined).value,
     general: {
       hostname: 'Split Control',
       port: 5657,
@@ -160,6 +164,10 @@ export async function loadConfig(configPath?: string): Promise<AppConfig> {
       // Merge with defaults (in case new fields were added)
       // Use getDefaultConfig() to get proper paths for the current environment
       config = mergeConfig(getDefaultConfig(), loadedConfig);
+      // A new access key must be the same on the next start: save it now
+      if (config.remoteAccess?.key !== loadedConfig.remoteAccess?.key || config.remoteAccess?.requireKey !== loadedConfig.remoteAccess?.requireKey) {
+        await saveConfig(config, cfgPath);
+      }
 
       logger.info('Configuration loaded from file', { path: cfgPath });
     } else {
@@ -224,6 +232,7 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
     ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
     ...(loaded.clubNames ? { clubNames: loaded.clubNames } : {}),
     ...(loaded.graphicsAllowedOrigins ? { graphicsAllowedOrigins: cleanAllowedOrigins(loaded.graphicsAllowedOrigins) } : {}),
+    remoteAccess: cleanRemoteAccess(loaded.remoteAccess).value,
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }
