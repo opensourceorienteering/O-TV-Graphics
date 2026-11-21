@@ -15,6 +15,7 @@ import {
   removeImportedLook,
 } from '../templates/TemplatePackages';
 import { takePendingLookFile } from '../utils/lookFiles';
+import { finishGraphic, type FinishRequest } from '../templates/ImportHelper';
 import { listEvents } from '../events/EventService';
 import { logger } from '../utils/logger';
 import { getConfig, saveConfig } from '../utils/config';
@@ -262,6 +263,18 @@ export function registerTemplateHandlers(): void {
       logger.info('Imported look removed', { setId });
       return { success: true };
     } catch (error) {
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  /** The import helper's Finish: the graphic gets its place in a look and its Live entry */
+  ipcMain.handle('templates:finishHelper', async (_event, request: FinishRequest) => {
+    try {
+      const done = await finishGraphic(getTemplateManager(), request);
+      logger.info('Graphic set up with the import helper', done);
+      return { success: true, data: done };
+    } catch (error) {
+      logger.warn('Import helper could not finish', { error: errorMessage(error) });
       return { success: false, error: errorMessage(error) };
     }
   });

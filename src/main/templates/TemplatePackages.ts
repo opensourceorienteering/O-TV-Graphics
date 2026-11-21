@@ -89,7 +89,7 @@ function cleanEntryName(raw: string): string | null {
   return parts.join('/');
 }
 
-const isValidId = (id: string) => /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id) && !RESERVED.has(id.toLowerCase());
+export const isValidId = (id: string) => /^[a-z0-9][a-z0-9_-]{0,63}$/i.test(id) && !RESERVED.has(id.toLowerCase());
 
 function readJson(bytes: Uint8Array | undefined, what: string): any {
   if (!bytes) return undefined;
@@ -395,7 +395,7 @@ function collectFiles(dir: string, prefix: string, out: Zippable): void {
   }
 }
 
-function readOverrides(dir: string): Record<string, string> {
+export function readOverrides(dir: string): Record<string, string> {
   try {
     const replaces = JSON.parse(fs.readFileSync(path.join(dir, 'overrides.json'), 'utf-8'))?.replaces;
     if (!replaces || typeof replaces !== 'object' || Array.isArray(replaces)) return {};
@@ -405,7 +405,7 @@ function readOverrides(dir: string): Record<string, string> {
   }
 }
 
-function writeOverrides(dir: string, replaces: Record<string, string>): void {
+export function writeOverrides(dir: string, replaces: Record<string, string>): void {
   const file = path.join(dir, 'overrides.json');
   if (!Object.keys(replaces).length) {
     fs.rmSync(file, { force: true });
@@ -420,7 +420,7 @@ function writeOverrides(dir: string, replaces: Record<string, string>): void {
  * built-in look (additions/<look>), or inside an imported look (sets/<look>), so they travel and
  * are removed with it
  */
-function extensionFolder(manager: OGrafManager, lookId: string): string {
+export function extensionFolder(manager: OGrafManager, lookId: string): string {
   const imported = manager.getTemplateSets().find((s) => s.id === lookId)?.source === 'imported';
   return imported ? `sets/${lookId}` : `${ADDITIONS}/${lookId}`;
 }

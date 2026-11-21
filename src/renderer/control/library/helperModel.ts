@@ -7,6 +7,8 @@ import type { DeskFeed, DeskParam } from '../../../shared/capabilities';
 import { ROW_KEYS, type FieldMap } from '../../../shared/fieldMap';
 import type { OGrafTemplateInfo, TemplateSetInfo } from '../../../shared/types/ograf';
 import { graphicTitle } from './libraryModel';
+import { slug } from '../../../shared/slug';
+export { slug };
 
 export type FieldType = 'string' | 'number' | 'boolean' | 'list' | 'other';
 
@@ -216,12 +218,6 @@ export function buildFieldMap(choices: Record<string, Choice>): FieldMap {
     }
   }
   return map;
-}
-
-/** A label as part of an id: "Guest Strap – Ö!" → "guest-strap-o" */
-export function slug(text: string): string {
-  const s = text.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-  return s || 'graphic';
 }
 
 /** An outside graphic's own kind, <look>-<label>, unique among the look's kinds */
