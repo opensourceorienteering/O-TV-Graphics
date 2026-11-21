@@ -63,7 +63,7 @@ async function readLookLogo(setDir: string, file: unknown): Promise<string | und
 /** Folder (in the user templates folder) of graphics added to looks */
 export const ADDITIONS = 'additions';
 /** What a desk patch may set on a graphic: nothing that changes its code or identity */
-export const DESK_PATCH_KEYS = ['v_olgrafik_desk', 'v_olgrafik_fieldMap', 'v_olgrafik_zone'] as const;
+export const DESK_PATCH_KEYS = ['v_olgrafik_kind', 'v_olgrafik_desk', 'v_olgrafik_fieldMap', 'v_olgrafik_zone'] as const;
 
 export class OGrafManager {
   private templatesDir: string;
