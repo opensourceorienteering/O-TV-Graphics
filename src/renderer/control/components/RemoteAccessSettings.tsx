@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
 import "./RemoteAccessSettings.css";
 
-type Access = { requireKey: boolean; key: string };
+type Access = { requireKey: boolean; key: string; unsaved?: boolean };
 
 async function invoke(channel: string, ...args: unknown[]): Promise<Access> {
   const result = await window.electronAPI.invoke(channel, ...args);
@@ -71,6 +71,12 @@ export function RemoteAccessSettings() {
         />{" "}
         {tr("Other computers need the access key")}
       </label>
+      {access.unsaved && (
+        <p className="studio-warning" role="alert">
+          <AlertTriangle size={15} aria-hidden="true" />{" "}
+          {tr("The settings file could not be saved, so this key changes every time Split Control starts. Check that the settings folder can be written to.")}
+        </p>
+      )}
       {!access.requireKey && (
         <p className="studio-warning" role="note">
           <AlertTriangle size={15} aria-hidden="true" />{" "}

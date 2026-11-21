@@ -517,6 +517,8 @@ export async function removeImportedLook(manager: OGrafManager, setId: string): 
 
 /** A look's name as a file name on every system ("IOF / Sprint" → "IOF - Sprint") */
 export function lookFileName(name: string): string {
+  // Control characters are not allowed in file names either
+  // eslint-disable-next-line no-control-regex
   const clean = name.replace(/\s*[<>:"/\\|?*\x00-\x1f][\s<>:"/\\|?*\x00-\x1f]*/g, ' - ').replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s.-]+$/g, '');
   const file = clean.slice(0, 80) || 'look';
   // Windows keeps these names for devices

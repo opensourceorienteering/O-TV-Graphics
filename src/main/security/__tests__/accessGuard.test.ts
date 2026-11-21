@@ -16,7 +16,9 @@ beforeAll(async () => {
   const guard = requireAccessKey(() => settings, here, (req) => (req.headers['x-test-from'] as string) ?? req.socket.remoteAddress);
   app.use(['/api/control', '/output'], guard);
   app.get('/api/control/state', (_q, r) => { r.json({ ok: true }); });
+  app.use('/director', guard);
   app.get('/output', (_q, r) => { r.send('page'); });
+  app.get('/director', (_q, r) => { r.send('page'); });
   await new Promise<void>((resolve) => { server = app.listen(0, '127.0.0.1', () => resolve()); });
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
@@ -35,6 +37,18 @@ describe('access key on the web server', () => {
     const page = await fetch(base + '/output', { headers: remote });
     expect(page.status).toBe(401);
     expect(page.headers.get('content-type')).toContain('text/html');
+    expect(await page.text()).toContain('key');
+  });
+  it('refuses an output page with a transparent page, so nothing covers the program in OBS', async () => {
+    const page = await fetch(base + '/output', { headers: { ...remote, accept: 'text/html' } });
+    expect(page.status).toBe(401);
+    const html = await page.text();
+    expect(html).toMatch(/background:\s*transparent/);
+    expect(html).not.toMatch(/#16181d/);
+  });
+  it('explains the key on other pages, such as the director page', async () => {
+    const page = await fetch(base + '/director', { headers: { ...remote, accept: 'text/html' } });
+    expect(page.status).toBe(401);
     expect(await page.text()).toContain('?key=');
   });
   it('lets another computer in with the key in a header or the address', async () => {

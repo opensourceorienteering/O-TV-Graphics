@@ -311,13 +311,15 @@ function HelperFor({
   const desk = buildDesk({ label, short, choices });
   const fieldMap = buildFieldMap(choices);
 
-  // The graphic as Live would have it, for the Check step (kept the same while nothing changes)
+  // The graphic as Live would have it, for the Check step (kept the same while nothing changes,
+  // so the preview isn't reloaded on every render)
+  const checkKey = step === 2 ? JSON.stringify([kind, desk, fieldMap, zone]) : "idle";
   const checked = useMemo(() => {
     const manifest = { ...graphic.manifest, v_olgrafik_kind: kind, v_olgrafik_desk: desk, v_olgrafik_fieldMap: fieldMap } as OGrafManifest;
     const resolved = resolveDeskDeclaration(manifest);
     return { template: { ...graphic, manifest, desk: resolved.desk, deskWarnings: resolved.warnings, zone } as OGrafTemplateInfo, warnings: resolved.warnings };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step === 2 ? JSON.stringify([kind, desk, fieldMap, zone]) : "idle"]);
+  }, [checkKey]);
 
   const target = inLook || mode === "existing" ? { lookId: targetLook } : { newLookName };
   const problems = conflicts({ target, label, looks, templates, selfId: graphic.manifest.id });

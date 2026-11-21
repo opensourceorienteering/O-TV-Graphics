@@ -67,7 +67,9 @@ export class WebServer {
     // (Settings → Remote access); this computer never does
     this.app.use(
       ['/api/control', '/ograf/v1', '/api/director', '/director', '/output', '/preview', '/api/output/info', '/api/graphics'],
-      requireAccessKey(remoteAccessSettings, localContext),
+      requireAccessKey(remoteAccessSettings, localContext, undefined, (address) =>
+        logger.warn('Web output refused: the link has no access key. Copy it again from Output → Web output', { address })
+      ),
     );
 
     // JSON body parser

@@ -5,7 +5,7 @@
   "name": "Split Control",
   "shortname": "Split Control",
   "description": "Event graphics, runner graphics and live tally for Split Control",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "maintainers": [
     {

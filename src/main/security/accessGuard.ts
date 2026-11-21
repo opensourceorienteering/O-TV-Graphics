@@ -17,17 +17,35 @@ const page = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Access key
 <p>Copy the link from Split Control (Output → Web output, or Settings → Remote access). It ends in <code>?key=…</code>.</p>
 </body></html>`;
 
+/**
+ * An output page (OBS/vMix browser source) refused: transparent, so an old link without the key
+ * never puts a card over the program. The reason is in the tab title and the app's log.
+ */
+const outputPage = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Split Control: access key required</title></head>
+<body style="background: transparent; margin: 0"><!-- This address needs the access key: copy the link again from Split Control (Output → Web output). --></body></html>`;
+
+const isOutput = (req: Request) => /^\/(output|preview)(\/|$|\?)/.test(req.originalUrl);
+
 const wantsPage = (req: Request) => !/^\/(api|ograf)\//.test(req.originalUrl) && !!req.accepts('html') && req.method === 'GET';
 
 /** Express middleware: other computers need the key while it is required */
-export function requireAccessKey(settings: Settings, here: Here, addressOf: (req: Request) => string | undefined = (req) => req.socket.remoteAddress): RequestHandler {
+export function requireAccessKey(
+  settings: Settings,
+  here: Here,
+  addressOf: (req: Request) => string | undefined = (req) => req.socket.remoteAddress,
+  /** An output page refused (an OBS/vMix link without the key): for the log */
+  onRefusedOutput?: (address: string | undefined) => void,
+): RequestHandler {
   return (req, res, next) => {
     // A browser's preflight carries no key and does nothing; the request after it is checked
     if (req.method === 'OPTIONS') return next();
     const caller = { address: addressOf(req), host: req.get('host'), origin: req.get('origin'), key: keyFromHttp(req as never) };
     if (remoteAllowed(caller, settings(), here())) return next();
     res.status(401);
-    if (wantsPage(req)) res.type('html').send(page);
+    if (isOutput(req) && req.method === 'GET') {
+      onRefusedOutput?.(caller.address);
+      res.type('html').send(outputPage);
+    } else if (wantsPage(req)) res.type('html').send(page);
     else res.json({ ok: false, success: false, error: KEY_REQUIRED });
   };
 }

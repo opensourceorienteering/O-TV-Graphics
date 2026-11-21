@@ -14,7 +14,7 @@ import { lookCards, needsAttention, searchGraphics } from "../library/libraryMod
 import "../library/library.css";
 import { ImportConfirm, type ImportPreview } from "../library/ImportConfirm";
 import { ImportHelper } from "../library/ImportHelper";
-import type { OpenedLookFile } from "../library/LookFileOpener";
+import { takeParkedLookFile, type OpenedLookFile } from "../library/LookFileOpener";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import type {
@@ -81,7 +81,7 @@ export function TemplatesView() {
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
-    const opened = (location.state as { openLook?: OpenedLookFile } | null)?.openLook;
+    const opened = (location.state as { openLook?: OpenedLookFile } | null)?.openLook ?? takeParkedLookFile();
     if (!opened) return;
     setPending(opened);
     // Shown once: going back here later doesn't ask again

@@ -3624,6 +3624,14 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "rader",
     "nb": "rader"
   },
+  "The settings file could not be saved, so this key changes every time Split Control starts. Check that the settings folder can be written to.": {
+    "sv": "Inställningsfilen kunde inte sparas, så nyckeln ändras varje gång Split Control startar. Kontrollera att inställningsmappen går att skriva till.",
+    "nb": "Innstillingsfilen kunne ikke lagres, så nøkkelen endres hver gang Split Control starter. Sjekk at innstillingsmappen kan skrives til."
+  },
+  "A look file was opened. Open the Graphics library to import it.": {
+    "sv": "En temafil öppnades. Öppna grafikbiblioteket för att importera den.",
+    "nb": "En temafil ble åpnet. Åpne grafikkbiblioteket for å importere den."
+  },
   "Import this file?": {
     "sv": "Importera den här filen?",
     "nb": "Importere denne filen?"
