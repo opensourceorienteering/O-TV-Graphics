@@ -62,6 +62,8 @@ async function readLookLogo(setDir: string, file: unknown): Promise<string | und
 
 /** Folder (in the user templates folder) of graphics added to looks */
 export const ADDITIONS = 'additions';
+/** What a desk patch may set on a graphic: nothing that changes its code or identity */
+export const DESK_PATCH_KEYS = ['v_olgrafik_desk', 'v_olgrafik_fieldMap', 'v_olgrafik_zone'] as const;
 
 export class OGrafManager {
   private templatesDir: string;
@@ -434,7 +436,10 @@ export class OGrafManager {
   /**
    * Create template info for UI
    */
-  private async createTemplateInfo(manifestPath: string, manifest: OGrafManifest): Promise<OGrafTemplateInfo> {
+  private async createTemplateInfo(manifestPath: string, original: OGrafManifest): Promise<OGrafTemplateInfo> {
+    const setOf = this.setOfManifest.get(manifestPath) ?? CUSTOM_TEMPLATE_SET;
+    // The import helper's settings for a graphic in a look (desk.json beside the look)
+    const manifest = { ...original, ...this.getDeskPatch(setOf, original.id) } as OGrafManifest;
     // Extract vendor-specific UI color if available
     const uicolor = (manifest as any).v_tvgrafik_uicolor ||
                     (manifest as any).v_spx_uicolor ||
@@ -476,6 +481,25 @@ export class OGrafManager {
    * Graphics used instead of others in a look: new graphic id -> replaced graphic id. From
    * <user>/additions/<look>/overrides.json and, for an imported look, <user>/sets/<look>/overrides.json.
    */
+  /**
+   * Desk settings the import helper saved for a graphic of a look whose files it can't change
+   * (a built-in look's graphic, e.g. the Name strap): only the desk entry, field map and position
+   */
+  getDeskPatch(setId: string, graphicId: string): Partial<Pick<OGrafManifest, 'v_olgrafik_zone'>> & Record<string, unknown> {
+    if (!this.userDir || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(String(setId))) return {};
+    const out: Record<string, unknown> = {};
+    for (const file of [path.join(this.userDir, ADDITIONS, setId, 'desk.json'), path.join(this.userDir, 'sets', setId, 'desk.json')]) {
+      try {
+        const patch = JSON.parse(fsSync.readFileSync(file, 'utf-8'))?.[graphicId];
+        if (!patch || typeof patch !== 'object') continue;
+        for (const key of DESK_PATCH_KEYS) if (patch[key] !== undefined) out[key] = patch[key];
+      } catch {
+        // no patches for this look
+      }
+    }
+    return out;
+  }
+
   getReplacements(setId: string): Record<string, string> {
     // A look id is one folder name; anything else would read outside the templates folder
     if (!this.userDir || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(String(setId))) return {};

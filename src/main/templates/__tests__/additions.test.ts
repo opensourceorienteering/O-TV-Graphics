@@ -61,4 +61,25 @@ describe('additions to a look', () => {
     expect(m.getReplacements('standard')).toEqual({ 'guest-strap': 'standard-free-text' });
     expect(m.getReplacements('bold')).toEqual({});
   });
+  it('gives a look graphic a Live entry from the desk patch beside the look, taking only desk settings', async () => {
+    fs.mkdirSync(path.join(tmp, 'user', 'additions', 'standard'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'user', 'additions', 'standard', 'desk.json'), JSON.stringify({
+      'standard-name-strap': {
+        v_olgrafik_desk: { label: 'Name strap', fields: ['name', 'title', 'club'] },
+        v_olgrafik_zone: 'lower',
+        main: 'evil.js',
+        id: 'other',
+      },
+    }));
+    const m = await manager();
+    const strap = m.getTemplateById('standard-name-strap')!;
+    expect(strap.desk).toMatchObject({ key: 'name-strap', label: 'Name strap', fields: ['name', 'title', 'club'] });
+    expect(strap.zone).toBe('lower');
+    expect(strap.manifest.main).not.toBe('evil.js');
+    expect(strap.manifest.id).toBe('standard-name-strap');
+  });
+  it('a look graphic without a patch has no Live entry', async () => {
+    const m = await manager();
+    expect(m.getTemplateById('standard-name-strap')!.desk).toBeUndefined();
+  });
 });
