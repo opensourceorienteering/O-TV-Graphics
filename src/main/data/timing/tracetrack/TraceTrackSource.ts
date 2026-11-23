@@ -92,8 +92,28 @@ export const TRACE_TRACK_FIELDS: { key: string; type: 'number' | 'string' | 'boo
   { key: 'paceRecent', type: 'number', label: 'Pace over the last minute', unit: 's/km', standings: true },
   { key: 'paceChange', type: 'number', label: 'Change from the minute before (negative: faster)', unit: 's/km', standings: true },
   { key: 'legPace', type: 'number', label: 'Pace on the current leg', unit: 's/km', standings: true },
-  { key: 'timeLost', type: 'number', label: 'Estimated time lost on completed legs (experimental)', unit: 'ms', standings: true }
+  { key: 'timeLost', type: 'number', label: 'Estimated time lost on completed legs (experimental)', unit: 'ms', standings: true },
+  { key: 'courseDistance', type: 'number', label: 'Course metres covered, straight control to control (experimental)', unit: 'm', standings: true },
+  { key: 'courseLength', type: 'number', label: 'Course length, straight control to control', unit: 'm', standings: true }
 ];
+
+/** Class fields Trace / Track adds (x.trace-track.<key>): the class leader's course progress */
+export const TRACE_TRACK_CLASS_FIELDS: { key: string; type: 'number' | 'string'; label: string; unit?: string }[] = [
+  { key: 'leaderName', type: 'string', label: 'The class leader (experimental)' },
+  { key: 'leaderId', type: 'string', label: 'The class leader\'s Trace / Track runner id' },
+  { key: 'leaderPercent', type: 'number', label: 'The class leader\'s course progress (experimental)', unit: '%' },
+  { key: 'leaderDistance', type: 'number', label: 'The class leader\'s course metres covered', unit: 'm' },
+  { key: 'leaderCourseLength', type: 'number', label: 'The class leader\'s course length', unit: 'm' },
+  { key: 'leaderState', type: 'string', label: 'The leader\'s tracking, gps-finished or timing-finished' },
+  { key: 'leaderBasis', type: 'string', label: 'standings: leads the virtual standings; furthest: furthest along (nobody compared yet)' },
+  { key: 'leaderGap', type: 'number', label: 'The leader\'s estimated gap (0 when leading the standings)', unit: 'ms' }
+];
+
+/** One leader-progress answer (Trace / Track's GET …/classes/<class>/leader-progress) */
+interface TtLeaderProgress {
+  leaderBasis?: string | null;
+  leader?: { id: string; name: string; percent?: number | null; distance?: number | null; totalDistance?: number | null; state?: string; gap?: number | null } | null;
+}
 
 const pace = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 const set = (out: Record<string, unknown>, key: string, v: unknown) => {
@@ -136,6 +156,8 @@ export function runnerFields(r: TtRunner, standing?: TtStandingRow): Record<stri
     set(x, 'paceChange', standing.pacing?.change);
     set(x, 'legPace', standing.pacing?.leg);
     if (standing.mistakes?.length) set(x, 'timeLost', standing.mistakes.reduce((sum, m) => sum + (m.lost || 0), 0));
+    set(x, 'courseDistance', standing.progress?.distance);
+    set(x, 'courseLength', standing.progress?.totalDistance);
   }
   return x;
 }
@@ -218,6 +240,33 @@ export class TraceTrackSource implements TimingSource {
     const seen = new Map<string, string>();
     for (const r of (await this.allRunners()).runners) if (!seen.has(r.classId)) seen.set(r.classId, r.className || r.classId);
     return [...seen].map(([id, name]) => ({ id, name, kind: 'individual', radioControls: [] }));
+  }
+
+  /**
+   * Class fields: the class leader's course progress (Trace / Track's leader-progress, the leader of
+   * the virtual standings ranked where each runner is now). Only with Virtual standings on; left
+   * out when Trace / Track has no leader or no such endpoint (older servers).
+   */
+  async classDetails(_competitionId: string, classId: string): Promise<{ ext?: Record<string, unknown> }> {
+    if (!this.options.virtualStandings) return {};
+    try {
+      const res = await this.get<TtLeaderProgress>(`/classes/${encodeURIComponent(classId)}/leader-progress`, { comparison: 'own-point' });
+      const l = res.leader;
+      if (!l) return {};
+      const x: Record<string, unknown> = {};
+      set(x, 'leaderName', l.name);
+      set(x, 'leaderId', l.id);
+      set(x, 'leaderPercent', l.percent);
+      set(x, 'leaderDistance', l.distance);
+      set(x, 'leaderCourseLength', l.totalDistance);
+      set(x, 'leaderState', l.state);
+      set(x, 'leaderBasis', res.leaderBasis);
+      set(x, 'leaderGap', l.gap);
+      return Object.keys(x).length ? { ext: x } : {};
+    } catch (error) {
+      this.ctx?.log.warn('Trace / Track leader progress unavailable', { classId, error: error instanceof Error ? error.message : String(error) });
+      return {};
+    }
   }
 
   async entries(_competitionId: string, classId: string): Promise<Entry[]> {

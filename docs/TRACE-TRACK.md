@@ -85,6 +85,26 @@ on recorded races before on-air use, and a value is left out whenever Trace / Tr
 | `paceChange` | number | s/km | Change from the minute before (negative: faster) |
 | `legPace` | number | s/km | Pace on the current leg |
 | `timeLost` | number | ms | Estimated time lost on completed legs (experimental) |
+| `courseDistance` | number | m | Course metres covered, straight control to control (experimental) |
+| `courseLength` | number | m | Course length, straight control to control |
+
+### The class leader's progress (experimental)
+
+With **Virtual standings** on, Split Control also reads Trace / Track's `leader-progress` for each
+class and adds the leader under the class's own fields, `x['trace-track']` (not on a runner). The
+leader is whoever leads the virtual standings at a point at least one other runner has also reached;
+before anyone has been compared, the runner furthest along (`leaderBasis` says which).
+
+| Field | Type | Unit | Meaning |
+|---|---|---|---|
+| `leaderName` | string |  | The class leader (experimental) |
+| `leaderId` | string |  | The class leader's Trace / Track runner id |
+| `leaderPercent` | number | % | The class leader's course progress (experimental) |
+| `leaderDistance` | number | m | The class leader's course metres covered |
+| `leaderCourseLength` | number | m | The class leader's course length |
+| `leaderState` | string |  | The leader's tracking, gps-finished or timing-finished |
+| `leaderBasis` | string |  | standings: leads the virtual standings; furthest: furthest along (nobody compared yet) |
+| `leaderGap` | number | ms | The leader's estimated gap (0 when leading the standings) |
 
 ## Using the fields in a graphic
 
@@ -126,6 +146,21 @@ like the first runner through a radio control. Trace / Track servers from before
 least advanced runner's, which in an interval start means near the start: update Trace / Track
 before using the tower. The response's `model.standings` says which one was used
 (`behind-best-at-own-progress` or `elapsed-at-common-progress`).
+
+## Course progress and Pace and heart rate
+
+Two lower thirds for one runner, in every look except IOF and ČO:
+
+- **Course progress**: the runner's progress along the course (`progressPercent`) as a bar, the
+  class leader's progress (`x['trace-track'].leaderPercent`) marked on the same bar with their
+  name, and the distance to go (`courseLength − courseDistance`), or Finish. Needs
+  **Virtual standings** on. The leader's own bar has no marker. Says Estimated.
+- **Pace and heart rate**: heart rate (the heart icon beats at the runner's rate), pace per km with
+  the change over the last minute (▲ faster, ▼ slower; `paceChange` needs Virtual standings), speed,
+  and average and highest heart rate below. Readings Trace / Track lacks are left out; with none it
+  says GPS. Works without Virtual standings.
+
+Both take a class and a runner in Live. The website preview's simulated race sends the fields.
 
 ## Checking it against a real Trace / Track server
 

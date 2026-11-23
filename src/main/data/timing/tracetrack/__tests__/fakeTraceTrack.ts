@@ -16,6 +16,8 @@ export interface FakeTraceTrack {
   /** The runners every answer and stream message carries; change them at will */
   runners: TtRunner[];
   standings: Record<string, TtStandingRow[]>;
+  /** leader-progress answers by class (null: no leader) */
+  leaders: Record<string, Record<string, unknown> | null>;
   /** Make virtual standings answer HTTP 500 */
   failStandings: boolean;
   /** Send a runners message to every open stream now */
@@ -35,6 +37,7 @@ export async function fakeTraceTrack(opts: { eventId: string; key: string; runne
     requests: [] as FakeTraceTrack['requests'],
     runners: opts.runners,
     standings: opts.standings ?? {},
+    leaders: {},
     failStandings: false
   };
   const runnersBody = (timeline: string) => ({ version: 1, eventId: opts.eventId, serverTime: Date.now(), timeline, runners: state.runners });
@@ -57,7 +60,7 @@ export async function fakeTraceTrack(opts: { eventId: string; key: string; runne
   const server = http.createServer((req, res) => {
     const url = new URL(req.url!, 'http://x');
     state.requests.push({ path: url.pathname, query: url.searchParams, auth: req.headers.authorization });
-    const tracking = url.pathname.match(/^\/api\/v1\/events\/([^/]+)\/classes\/([^/]+)\/virtual-standings$/);
+    const tracking = url.pathname.match(/^\/api\/v1\/events\/([^/]+)\/classes\/([^/]+)\/(virtual-standings|leader-progress)$/);
     const main = url.pathname.match(/^\/api\/v1\/events\/([^/]+)\/(program|runners|board|stream)(?:\/([^/]+))?$/);
     const eventId = decodeURIComponent((tracking ?? main)?.[1] ?? '');
     if (!tracking && !main) return json(res, 404, { error: 'Endpoint not found' });
@@ -69,7 +72,12 @@ export async function fakeTraceTrack(opts: { eventId: string; key: string; runne
       const classId = decodeURIComponent(tracking[2]);
       if (!state.runners.some(r => r.classId === classId)) return json(res, 404, { error: 'Class not found' });
       if (state.failStandings) return json(res, 500, { error: 'boom' });
-      return json(res, 200, { version: 1, eventId, classId, className: classId, serverTime: Date.now(), timeline, revision: 1, estimated: true, model: {}, rows: state.standings[classId] ?? [] });
+      const envelope = { version: 1, eventId, classId, className: classId, serverTime: Date.now(), timeline, revision: 1, estimated: true, model: {} };
+      if (tracking[3] === 'leader-progress') {
+        const leader = state.leaders[classId] ?? null;
+        return json(res, 200, { ...envelope, by: 'standings', leaderBasis: leader ? 'standings' : null, reason: leader ? null : 'no-progress', leader });
+      }
+      return json(res, 200, { ...envelope, rows: state.standings[classId] ?? [] });
     }
     if (main![2] === 'runners') return json(res, 200, runnersBody(timeline));
     if (main![2] === 'program') return json(res, 200, { version: 1, eventId, revision: 1, takenAt: 0, serverTime: Date.now(), classId: '', className: '', source: 'live', reference: 'realtime', delay: 0, time: Date.now(), caption: '', runnerIds: [], lowerThird: null, graphic: null, board: false, follow: null });

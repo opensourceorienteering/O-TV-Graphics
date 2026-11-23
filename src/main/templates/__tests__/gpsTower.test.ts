@@ -91,3 +91,47 @@ describe('GPS tower arrows count overtakes only', () => {
     expect(changes(views.renderView('gps-tower', at({ N: 1, B: 2, C: 3 }, 2000), c).html)).toEqual(['-', '-', '-']);
   });
 });
+
+describe('GPS course progress and pace graphics', () => {
+  const tt = (g: object) => ({ 'trace-track': g });
+  const karolin = { name: 'Karolin Ohlsson', club: 'Ulricehamns OK', statusCode: 0,
+    x: tt({ progressPercent: 38.6, courseDistance: 2856, courseLength: 7400, progressState: 'tracking', signal: 'live',
+      heartRate: 171, averageHeartRate: 164, maxHeartRate: 180, paceText: '4:46', speedKmh: 12.6, paceChange: -7 }) };
+  const classX = { x: tt({ leaderName: 'Tove Alexandersson', leaderPercent: 82.4 }) };
+  const data = (extra = {}) => ({ className: 'D21', runnerName: 'Karolin Ohlsson', results: [karolin], ...classX, ...extra });
+
+  it('shows the runner\'s progress, the leader marked on the bar, and the distance to go', () => {
+    const html = views.renderView('gps-progress', data(), { ...ctx, kind: 'gps-progress' }).html;
+    expect(html).toContain('--p:38.6;--l:82.4');
+    expect(text(html)).toContain('Karolin Ohlsson');
+    expect(text(html)).toContain('39 %');
+    expect(text(html)).toContain('Leader · Alexandersson 82 %');
+    expect(text(html)).toContain('4.5 km to go · Estimated');
+    // Swedish: decimal comma and Swedish words
+    expect(text(views.renderView('gps-progress', data({ presentation: { language: 'sv' } }), { ...ctx, kind: 'gps-progress' }).html)).toContain('4,5 km kvar · Beräknat');
+  });
+
+  it('leaves the leader marker out for the leader, and handles finished and unknown progress', () => {
+    const leaderView = views.renderView('gps-progress', data({ runnerName: 'Tove Alexandersson',
+      results: [{ ...karolin, name: 'Tove Alexandersson', x: tt({ progressPercent: 82.4, progressState: 'tracking' }) }] }), { ...ctx, kind: 'gps-progress' }).html;
+    expect(leaderView).not.toContain('gps-leader');
+    expect(leaderView).toContain('is-leading');
+    const done = views.renderView('gps-progress', data({ results: [{ ...karolin, x: tt({ progressPercent: 100, progressState: 'timing-finished' }) }] }), { ...ctx, kind: 'gps-progress' }).html;
+    expect(text(done)).toContain('Finish · Estimated');
+    const unknown = views.renderView('gps-progress', data({ results: [{ ...karolin, x: undefined }] }), { ...ctx, kind: 'gps-progress' }).html;
+    expect(unknown).toContain('is-unknown');
+  });
+
+  it('shows heart rate (beating at that rate), pace with its change, speed, and avg / max below', () => {
+    const html = views.renderView('gps-pace', data(), { ...ctx, kind: 'gps-pace' }).html;
+    expect(html).toContain('--beat:0.35s');                         // 60 / 171 bpm
+    expect(text(html)).toMatch(/171 bpm Heart rate/);          // the label sits above the value on screen (CSS order)
+    expect(html).toMatch(/<span class="c-change up">7s<\/span>/);   // 7 s/km faster than the minute before
+    expect(text(html)).toContain('12.6 km/h');
+    expect(text(html)).toContain('Avg 164 · Max 180 bpm');
+    // nothing from Trace / Track: says GPS rather than showing zeros
+    const none = views.renderView('gps-pace', data({ results: [{ ...karolin, x: undefined }] }), { ...ctx, kind: 'gps-pace' }).html;
+    expect(none).not.toContain('bpm');
+    expect(text(none)).toContain('GPS –');
+  });
+});

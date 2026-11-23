@@ -11,7 +11,7 @@ import { parseSqlProfile, profileManifest, SqlProfile } from './sql/SqlProfile';
 import { createSqlProfileSource } from './sql/SqlProfileSource';
 import { createMySqlRunner } from './mysqlRunner';
 import { createLiveresultatSource } from './liveresultat/LiveresultatSource';
-import { createTraceTrackSource, DEFAULT_TRACE_TRACK_URL, TRACE_TRACK_FIELDS } from './tracetrack/TraceTrackSource';
+import { createTraceTrackSource, DEFAULT_TRACE_TRACK_URL, TRACE_TRACK_FIELDS, TRACE_TRACK_CLASS_FIELDS } from './tracetrack/TraceTrackSource';
 import meosMopYaml from './profiles/meos-mop.yaml?raw';
 
 const num = (v: unknown): number | undefined => (v === undefined || v === null || v === '' ? undefined : Number(v));
@@ -160,7 +160,10 @@ export const traceTrackPlugin: TimingPlugin = {
       }
     },
     capabilities: { push: true, minPollMs: 1000 },
-    extFields: TRACE_TRACK_FIELDS.map(f => ({ key: f.key, on: 'entry' as const, type: f.type, label: f.label, ...(f.unit ? { unit: f.unit } : {}) }))
+    extFields: [
+      ...TRACE_TRACK_FIELDS.map(f => ({ key: f.key, on: 'entry' as const, type: f.type, label: f.label, ...(f.unit ? { unit: f.unit } : {}) })),
+      ...TRACE_TRACK_CLASS_FIELDS.map(f => ({ key: f.key, on: 'class' as const, type: f.type, label: f.label, ...(f.unit ? { unit: f.unit } : {}) }))
+    ]
   },
   create: (config, ctx) => createTraceTrackSource(config, ctx)
 };

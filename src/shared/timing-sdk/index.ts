@@ -248,7 +248,7 @@ export interface TimingSource {
    * Radio controls and course facts a source only sends together with the entries.
    * Called right after entries() for the same class; replaces those fields of classes().
    */
-  classDetails?(competitionId: string, classId: string): Promise<Partial<Pick<ClassInfo, 'radioControls' | 'course'>>>;
+  classDetails?(competitionId: string, classId: string): Promise<Partial<Pick<ClassInfo, 'radioControls' | 'course' | 'ext'>>>;
   /** Latest passings, newest first (capabilities.passings) */
   passings?(competitionId: string, limit: number): Promise<LatestPassing[]>;
   /** Push sources: the classes Split Control polls now, to subscribe to (replaces the last call) */

@@ -372,3 +372,7 @@
   --presentation-surface: var(--deep);
   --presentation-on-focus: var(--deep);
 }
+
+/* GPS graphics: the course-progress bar and the heart in the look's own accent */
+.panel--progress { --gps-accent: var(--red); }
+.panel--vitals .v-heart { background: var(--red); }

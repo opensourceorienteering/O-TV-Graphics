@@ -1,0 +1,54 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "version": "1.0.0",
+  "description": "A runner's heart rate (the heart beats at that rate), pace per km with the change over the last minute, and speed; average and highest heart rate below. Needs Trace / Track.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {}
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_kind": "gps-pace",
+  "v_olgrafik_zone": "lower",
+  "v_olgrafik_desk": {
+    "label": "Pace and heart rate",
+    "short": "Pace & HR",
+    "inputs": [
+      "class",
+      "runner"
+    ],
+    "required": [
+      "class",
+      "runner"
+    ],
+    "fields": [],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": [],
+    "sourceFields": [
+      "results[].x.trace-track.heartRate",
+      "results[].x.trace-track.paceText"
+    ]
+  },
+  "id": "iof2-gps-pace",
+  "name": "IOF inspired – Pace and heart rate",
+  "v_olgrafik_set": "iof2"
+}

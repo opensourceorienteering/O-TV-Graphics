@@ -11,7 +11,7 @@ vi.mock('../../../../utils/logger', () => {
 
 import fs from 'fs';
 import path from 'path';
-import { TraceTrackSource, TRACE_TRACK_FIELDS, runnerFields, type TraceTrackOptions } from '../TraceTrackSource';
+import { TraceTrackSource, TRACE_TRACK_FIELDS, TRACE_TRACK_CLASS_FIELDS, runnerFields, type TraceTrackOptions } from '../TraceTrackSource';
 import { TimingHub, numericCompetitionId } from '../../TimingHub';
 import { traceTrackPlugin } from '../../builtInPlugins';
 import { PluginDataSource } from '../../PluginDataSource';
@@ -84,15 +84,17 @@ describe('Trace / Track plugin', () => {
     tt.standings = {
       w21: [{
         id: 'r-12', rank: 2, gap: 12000, comparisonFieldSize: 8,
-        progress: { state: 'tracking', lastControl: 3, nextControl: 4, percent: 41.5 },
+        progress: { state: 'tracking', lastControl: 3, nextControl: 4, percent: 41.5, distance: 2075, totalDistance: 5000 },
         pacing: { current: 250, recent: 262, previous: 270, change: -8, leg: 258 },
         arrival: { controlIndex: 4, time: 1793530040000, remaining: 50000 },
         mistakes: [{ leg: 1, lost: 25000 }, { leg: 2, lost: 31000 }]
       }]
     };
+    tt.leaders.w21 = { id: 'r-7', name: 'Tove Alexandersson', percent: 62.4, distance: 3120, totalDistance: 5000, state: 'tracking', rank: 1, gap: 0, compared: 4 };
     const off = make();
-    await off.hub.getClassResults(ID, 'W21');
-    expect(tt.requests.some(r => r.path.includes('virtual-standings'))).toBe(false);
+    const offData = (await off.hub.getClassResults(ID, 'W21')).data;
+    expect(tt.requests.some(r => r.path.includes('virtual-standings') || r.path.includes('leader-progress'))).toBe(false);
+    expect(offData.ext?.['trace-track']).toBeUndefined();
 
     const on = make({ virtualStandings: true, timeline: 'live' });
     const anna = (await on.hub.getClassResults(ID, 'W21')).data.rows.find(r => r.name === 'Anna Lind')!;
@@ -104,6 +106,14 @@ describe('Trace / Track plugin', () => {
     expect(tt.requests.find(r => r.path.endsWith('/classes/w21/virtual-standings'))!.query.get('timeline')).toBe('live');
     // ranked where each runner is now (the GPS tower's who-is-fastest-now), not at one common point
     expect(tt.requests.find(r => r.path.endsWith('/classes/w21/virtual-standings'))!.query.get('comparison')).toBe('own-point');
+    expect(anna.ext!['trace-track']).toMatchObject({ courseDistance: 2075, courseLength: 5000 });
+    // the class leader's progress, under the class's own fields
+    const cls = (await on.hub.getClassResults(ID, 'W21', { force: true })).data;
+    expect(cls.ext!['trace-track']).toMatchObject({ leaderName: 'Tove Alexandersson', leaderId: 'r-7', leaderPercent: 62.4, leaderDistance: 3120, leaderCourseLength: 5000, leaderState: 'tracking', leaderBasis: 'standings', leaderGap: 0 });
+    expect(tt.requests.find(r => r.path.endsWith('/classes/w21/leader-progress'))!.query.get('comparison')).toBe('own-point');
+    // no leader yet: no class fields
+    tt.leaders.w21 = null;
+    expect((await make({ virtualStandings: true }).hub.getClassResults(ID, 'W21')).data.ext?.['trace-track']).toBeUndefined();
 
     // Standings failing: the runner metrics still go out
     tt.failStandings = true;
@@ -171,5 +181,6 @@ describe('Trace / Track plugin', () => {
   it('documents every field in docs/TRACE-TRACK.md', () => {
     const doc = fs.readFileSync(path.resolve(__dirname, '../../../../../../docs/TRACE-TRACK.md'), 'utf8');
     expect(TRACE_TRACK_FIELDS.filter(f => !doc.includes(`| \`${f.key}\` |`)).map(f => f.key)).toEqual([]);
+    expect(TRACE_TRACK_CLASS_FIELDS.filter(f => !doc.includes(`| \`${f.key}\` |`)).map(f => f.key)).toEqual([]);
   });
 });
