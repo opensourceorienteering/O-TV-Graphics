@@ -23,7 +23,7 @@ export interface OGrafServerApiDeps {
   engine: {
     listGraphicInstances(): { graphicInstanceId: string; templateId: string; source: 'rundown' | 'api'; isPlaying: boolean }[];
     apiLoad(templateId: string, data: unknown): Promise<{ graphicInstanceId: string; statusCode: number; statusMessage?: string }>;
-    apiPlay(id: string, params: { delta?: number; goto?: number; skipAnimation?: boolean }): Promise<{ graphicInstanceId: string; statusCode: number; statusMessage?: string; currentStep: number }>;
+    apiPlay(id: string, params: { delta?: number; goto?: number; skipAnimation?: boolean }): Promise<{ graphicInstanceId: string; statusCode: number; statusMessage?: string; currentStep?: number }>;
     apiStop(id: string, params: { skipAnimation?: boolean }): Promise<{ graphicInstanceId: string; statusCode: number }>;
     apiUpdate(id: string, params: { data: unknown; skipAnimation?: boolean }): Promise<{ graphicInstanceId: string; statusCode: number }>;
     apiCustomAction(id: string, actionId: string, params: { payload: unknown; skipAnimation?: boolean }): Promise<{ graphicInstanceId: string; statusCode: number }>;
@@ -145,7 +145,8 @@ export function createOGrafServerApiRouter(deps: OGrafServerApiDeps): Router {
     renderCharacteristics: {
       resolution: deps.resolution || { width: 1920, height: 1080 },
       frameRate: deps.frameRate || 50,
-      accessToPublicInternet: true
+      // Graphics are sealed: only this computer and the operator's allowlist (Settings → Internet access)
+      accessToPublicInternet: false
     },
     renderTargetSchema: {
       type: 'object',

@@ -11,7 +11,13 @@ export default class OutputTestPattern extends HTMLElement {
     this.shadowRoot.querySelector('h1').textContent = `${data.event?.name || 'Split Control'} · OUTPUT TEST`;
     return { statusCode: 200 };
   }
-  async playAction() { this.style.display = 'block'; return { statusCode: 200, currentStep: 1 }; }
+  async playAction({ goto, delta } = {}) {
+    // OGraf v1: one step (step 0); playing past it ends the graphic
+    const target = Number.isInteger(goto) && goto >= 0 ? goto : (this.style.display === 'block' ? 0 : -1) + (delta ?? 1);
+    if (target >= 1) { await this.stopAction(); return { statusCode: 200, currentStep: undefined }; }
+    this.style.display = 'block';
+    return { statusCode: 200, currentStep: 0 };
+  }
   async stopAction() { this.style.display = 'none'; return { statusCode: 200 }; }
   async updateAction({ data }) { return this.load({ data }); }
   async dispose() { this.shadowRoot.innerHTML = ''; return { statusCode: 200 }; }

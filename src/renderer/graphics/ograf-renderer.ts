@@ -37,7 +37,8 @@ export class RendererError extends Error {
 function checkResult(result: ReturnPayload | undefined, action: string): void {
   if (result && result.statusCode >= 400)
     throw new RendererError(
-      result.message || `${action} returned status ${result.statusCode}`,
+      // OGraf v1: statusMessage (message from graphics written before v1)
+      (result as { statusMessage?: string }).statusMessage || result.message || `${action} returned status ${result.statusCode}`,
       "GRAPHIC_ACTION_FAILED",
     );
 }
@@ -137,7 +138,8 @@ export class OGrafRenderer {
       const loadOptions: LoadOptions = {
         data,
         renderType: "realtime",
-        renderCharacteristics: { resolution: { ...OUTPUT_RESOLUTION } },
+        // Sealed graphics reach only this computer and the operator's allowlist
+        renderCharacteristics: { resolution: { ...OUTPUT_RESOLUTION }, accessToPublicInternet: false },
       };
       const result = await element.load(loadOptions);
       checkResult(result, "Load");
@@ -262,6 +264,8 @@ export class OGrafRenderer {
     id: string,
     data: any,
     skipAnimation?: boolean,
+    /** An OGraf controller's partial update (merged); the app's own updates replace the data */
+    partial = false,
   ): Promise<ReturnPayload> {
     console.log("[OGrafRenderer] Update action", { id });
 
@@ -269,14 +273,16 @@ export class OGrafRenderer {
 
     try {
       // Call update action
-      const options: UpdateActionOptions = skipAnimation
-        ? { data, skipAnimation }
-        : { data };
+      const options: UpdateActionOptions = {
+        data,
+        ...(skipAnimation ? { skipAnimation } : {}),
+        ...(partial ? {} : { v_replace: true }),
+      };
       const result = await state.element!.updateAction(options);
       checkResult(result, "Update");
 
       // Update cached data
-      state.data = data;
+      state.data = partial && state.data && typeof state.data === "object" ? { ...state.data, ...data } : data;
 
       console.log("[OGrafRenderer] Update complete", { id });
 

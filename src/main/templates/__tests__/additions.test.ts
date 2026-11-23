@@ -88,4 +88,9 @@ describe('additions to a look', () => {
     const m = await manager();
     expect(m.getTemplateById('guest-strap')!.replaces).toBe('standard-free-text');
   });
+  it('flags a graphic that cannot render in real time (Split Control plays graphics live)', async () => {
+    writeGraphic(path.join(tmp, 'user', 'offline-only'), 'offline-only', { supportsRealTime: false, supportsNonRealTime: true });
+    const m = await manager();
+    expect(m.getTemplateById('offline-only')!.deskWarnings).toEqual([expect.stringMatching(/real-time/)]);
+  });
 });

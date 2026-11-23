@@ -454,7 +454,11 @@ export class OGrafManager {
     const zoneValue = (manifest as any).v_olgrafik_zone;
     const zone: GraphicZone | undefined = ['main', 'lower', 'side', 'corner', 'full'].includes(zoneValue) ? zoneValue : undefined;
 
-    const declaration = resolveDeskDeclaration(manifest);
+    const resolved = resolveDeskDeclaration(manifest);
+    // OGraf: supportsRealTime false means the graphic only renders offline (goToTime); Live can't play it
+    const declaration = manifest.supportsRealTime === false
+      ? { ...resolved, warnings: [...resolved.warnings, 'This graphic does not support real-time rendering (supportsRealTime is false), so it cannot be played live'] }
+      : resolved;
     for (const warning of declaration.warnings) logger.warn(warning, { id: manifest.id });
 
     // Load datasource configuration (if exists)

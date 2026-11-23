@@ -144,6 +144,8 @@ export interface UpdateActionOptions {
   data: any;
   /** OGraf 2026-01: optional; render the update without animating */
   skipAnimation?: boolean;
+  /** Split Control: data is the whole state (a cleared field goes), not a partial update to merge */
+  v_replace?: boolean;
 }
 
 export interface CustomActionOptions {
@@ -154,9 +156,12 @@ export interface CustomActionOptions {
 }
 
 /** What the renderer can do (OGraf v1 load() parameter) */
+/** OGraf v1 RenderCharacteristics (render.ts): what the renderer offers the graphic */
 export interface RenderCharacteristics {
   resolution?: { width: number; height: number };
   frameRate?: number;
+  /** Whether the graphic may reach the public internet (Split Control: no, only its allowlist) */
+  accessToPublicInternet?: boolean;
 }
 
 export interface LoadOptions {

@@ -55,7 +55,7 @@ describe('OGrafValidator', () => {
       stepCount: -1,
       thumbnails: [{ file: 'thumb.png', resolution: { width: 1920, height: 1080 } }],
       actionDurations: [{ type: 'playAction', duration: 500 }, { type: 'stopAction', duration: -1 }],
-      renderRequirements: [{ engine: [{ type: 'CEF', version: { min: 139 } }] }],
+      renderRequirements: [{ engine: [{ type: 'CEF', version: { min: '139' } }] }],
       v_olgrafik: { anything: true }
     });
     expect(result.errors ?? []).toEqual([]);
@@ -76,5 +76,32 @@ describe('OGrafValidator against official EBU example shapes', () => {
     });
     expect(result.errors ?? []).toEqual([]);
     expect(result.valid).toBe(true);
+  });
+});
+
+describe('OGrafValidator follows the official EBU schema exactly', () => {
+  const base = {
+    $schema: 'https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json',
+    id: 'com.example.lower-third', name: 'Lower third', main: 'graphic.mjs', supportsRealTime: true, supportsNonRealTime: false,
+  };
+  const validator = new OGrafValidator();
+  it.each([
+    ['a main file without .js', { main: 'graphic' }],
+    ['a schema with no fields', { schema: { type: 'object', properties: {} } }],
+    ['internet access as ideal only', { renderRequirements: [{ accessToPublicInternet: { ideal: true } }] }],
+    ['action durations', { actionDurations: [{ type: 'playAction', duration: 500, steps: [{ step: 0, duration: 800 }] }, { type: 'stopAction', duration: 300 }] }],
+    ['thumbnails', { thumbnails: [{ file: 'thumb.png', resolution: { width: 640, height: 360 } }] }],
+    ['an engine requirement', { renderRequirements: [{ engine: [{ type: 'CEF', version: { min: '139' } }] }] }],
+  ])('accepts %s', (_name, extra) => {
+    expect(validator.validate({ ...base, ...extra })).toEqual({ valid: true });
+  });
+  it.each([
+    ['an unknown field without v_', { playbackMode: 'solo' }],
+    ['a thumbnail resolution missing its height', { thumbnails: [{ file: 't.png', resolution: { width: 640 } }] }],
+    ['an author field that is not in the spec', { author: { name: 'A', phone: '1' } }],
+    ['a wrong $schema', { $schema: 'https://example.com/schema.json' }],
+    ['a custom action without a name', { customActions: [{ id: 'x' }] }],
+  ])('rejects %s', (_name, extra) => {
+    expect(validator.validate({ ...base, ...extra }).valid).toBe(false);
   });
 });
