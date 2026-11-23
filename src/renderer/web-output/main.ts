@@ -453,6 +453,7 @@ async function handleUpdate(payload: any) {
       id,
       data,
       payload.skipAnimation,
+      payload.partial === true,
     );
     logger.log("[WebOutput] ✅ Graphic updated successfully!", { id, result });
 

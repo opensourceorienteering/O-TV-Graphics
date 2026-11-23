@@ -64,10 +64,11 @@ beforeAll(async () => {
   setLiveEvent(projectId);
   initDataStore();
   engine = initPlaybackEngine();
-  let step = 1;
+  // A two-page graphic replying as OGraf v1 says: zero-based steps
+  let step = 0;
   transport = vi.spyOn(engine as any, 'sendCommand').mockImplementation(async (command: string, payload: any) => {
-    if (command === 'play') step = payload.options?.goto ?? Math.min(2, Math.max(1, step + (payload.options?.delta ?? 0)));
-    return { success: true, currentStep: step, totalSteps: 2 };
+    if (command === 'play') step = payload.options?.goto ?? Math.min(1, Math.max(0, step + (payload.options?.delta ?? 0)));
+    return { success: true, currentStep: step, v_totalSteps: 2 };
   });
   const app = express();
   app.use('/api/control', createControlApiRouter());

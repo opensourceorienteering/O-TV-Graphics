@@ -32,6 +32,14 @@ let webServerInstance: WebServer | null = null;
 /** An address for the log, without the access key */
 const withoutKey = (url: string) => url.replace(/([?&]key=)[^&]*/g, '$1…');
 
+function appVersion(): string {
+  try {
+    return require('electron').app.getVersion();
+  } catch {
+    return process.env.npm_package_version || '';
+  }
+}
+
 export class WebServer {
   private app: Express;
   private server: HTTPServer | null = null;
@@ -383,7 +391,8 @@ export class WebServer {
         apiClear: (f) => engine().apiClear(f)
       },
       serverName: getConfig().general.hostname || 'Split Control',
-      version: process.env.npm_package_version || '1.1.0',
+      // The app's own version (npm_package_version only exists when started through npm)
+      version: appVersion(),
       frameRate: getConfig().output.ndi?.fps
     }));
 

@@ -88,7 +88,7 @@ describe("OGraf v1 parameters", () => {
     expect(element.load).toHaveBeenCalledWith({
       data: { a: 1 },
       renderType: "realtime",
-      renderCharacteristics: { resolution: { width: 1920, height: 1080 } },
+      renderCharacteristics: { resolution: { width: 1920, height: 1080 }, accessToPublicInternet: false },
     });
   });
   it("plays the next step when neither goto nor delta is given", async () => {

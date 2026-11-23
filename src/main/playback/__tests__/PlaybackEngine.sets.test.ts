@@ -54,7 +54,8 @@ describe('PlaybackEngine and template sets', () => {
       items: [item('strap', 'iof-name-strap', { name: 'Tove Alexandersson' }), item('clock', 'iof-clock'), item('table', 'iof-results'), item('cz', 'cz-podium'), item('guest', 'guest-strap', { runnerName: 'Tove Alexandersson' })]
     };
     engine = new PlaybackEngine();
-    engine.sendCommand = vi.fn(async () => ({ success: true, result: { currentStep: 1 } }));
+    // Graphics reply as OGraf v1 says: zero-based steps (step 0 is the first page)
+    engine.sendCommand = vi.fn(async () => ({ success: true, result: { currentStep: 0 } }));
   });
 
   const commands = (name: string) => engine.sendCommand.mock.calls.filter((c: any[]) => c[0] === name).map((c: any[]) => c[1]);
@@ -86,6 +87,22 @@ describe('PlaybackEngine and template sets', () => {
     expect(commands('load').at(-1).data).toEqual({ runnerName: 'X' });
   });
 
+  it('resumes on the same page when shown again within the undo window, with a zero-based goto', async () => {
+    vi.useFakeTimers();
+    try {
+      await engine.playItem('p1', 'r1', 'table');
+      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 2 } }); // third page
+      await engine.nextItem('p1', 'r1', 'table');
+      expect(engine.getActiveGraphics().find((g: any) => g.itemId === 'table').currentStep).toBe(3);
+      await engine.stopItem('p1', 'r1', 'table');
+      engine.sendCommand.mockClear();
+      await engine.playItem('p1', 'r1', 'table');
+      expect(commands('play').find((c: any) => c.id === 'p1-r1-table').options.goto).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a results table takes the lower third off air but leaves the clock', async () => {
     await engine.playItem('p1', 'r1', 'strap');
     await engine.playItem('p1', 'r1', 'clock');
@@ -107,7 +124,7 @@ describe('PlaybackEngine and template sets', () => {
     vi.useFakeTimers();
     try {
       await engine.playItem('p1', 'r1', 'table');
-      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 3 } });
+      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 2 } });
       await engine.nextItem('p1', 'r1', 'table');
       await engine.playItem('p1', 'r1', 'strap'); // lower clashes with main: the table goes off air
       await vi.advanceTimersByTimeAsync(2000);

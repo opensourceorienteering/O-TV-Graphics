@@ -126,6 +126,28 @@ receive the event's `favourite` flag through start-list enrichment.
 The presentation view uses `pageKey` so Next can lift the next chosen runner on a page before
 switching pages. See [the operator sequence](RUNNER-PRESENTATIONS.md).
 
+## OGraf v1 rules every graphic follows
+
+Graphics are OGraf v1 graphics ([specification](https://github.com/ebu/ograf)); `_core/graphic.js`
+does this for you, and a graphic written from scratch must do the same:
+
+- **Steps are zero-based.** The first `playAction()` shows step 0 and returns `{ statusCode: 200,
+  currentStep: 0 }`; `goto` is zero-based; `delta` defaults to 1. Split Control converts to page
+  numbers (1, 2, 3 …) only for the operator.
+- **One-step graphics end when played past their step**: they leave and return no `currentStep`.
+  Paged graphics (`"stepCount": -1`) stay on their last page. A look's own paged kind goes in
+  `set.js` as `paged: ['my-kind']` as well as `"stepCount": -1` in its manifest.
+- **Returns** are `{ statusCode, statusMessage? }`. Anything of our own needs the `v_` prefix
+  (the page count is `v_totalSteps`).
+- **`updateAction()` data may be partial** (OGraf controllers send only what changed), so merge it
+  into the data you have. Split Control's own updates carry `v_replace: true`: then the data is the
+  whole state, and a field the operator cleared must disappear.
+- **Manifests** are checked against the official EBU schema, bundled in
+  `src/main/templates/ograf-schema/`. Vendor fields need the `v_` prefix. A graphic with
+  `"supportsRealTime": false` is listed under Needs attention: Live plays graphics in real time.
+- `load()` receives `renderType: "realtime"` and `renderCharacteristics` (1920×1080, and
+  `accessToPublicInternet: false`: graphics reach only this computer and the operator's allowlist).
+
 ## Package and verify
 
 Bundle every asset/font the look needs. `set.json.logo` supplies the library/Plan preview;

@@ -28,14 +28,25 @@ const logger = getLogger();
 /**
  * Renderers reply { success, result: ReturnPayload }, so the step is result.result.currentStep.
  * (Reading result.currentStep always gave 1, which broke multi-step resync and undo.)
+ *
+ * Graphics count steps from 0 (OGraf v1); the engine and the desk count pages from 1. These
+ * convert at the boundary: page = step + 1 when reading, goto = page - 1 when sending.
  */
-function stepFromPlayResult(playResult: any): number {
-  const step = playResult?.result?.currentStep ?? playResult?.currentStep;
-  return Number.isFinite(step) && step > 0 ? step : 1;
+function rawStep(playResult: any): unknown {
+  return playResult?.result?.currentStep ?? playResult?.currentStep;
 }
 
+function stepFromPlayResult(playResult: any): number {
+  const step = rawStep(playResult);
+  return Number.isInteger(step) && (step as number) >= 0 ? (step as number) + 1 : 1;
+}
+
+/** The page to resume on, as OGraf's zero-based goto */
+const gotoForPage = (page: number | undefined) => Math.max(0, (page || 1) - 1);
+
 function totalStepsFromPlayResult(playResult: any): number | undefined {
-  const steps = playResult?.result?.totalSteps ?? playResult?.totalSteps;
+  // Split Control graphics send their page count as the vendor field v_totalSteps
+  const steps = playResult?.result?.v_totalSteps ?? playResult?.v_totalSteps ?? playResult?.result?.totalSteps ?? playResult?.totalSteps;
   return Number.isFinite(steps) && steps > 0 ? steps : undefined;
 }
 
@@ -571,7 +582,7 @@ export class PlaybackEngine {
               id: graphic.id,
               options: {
                 skipAnimation: true, // Skip animation for sync
-                goto: graphic.currentStep || 1
+                goto: gotoForPage(graphic.currentStep)
               }
             }
           });
@@ -931,7 +942,7 @@ export class PlaybackEngine {
           id: graphicId,
           options: {
             skipAnimation: false,
-            goto: preservedStep // Resume from preserved step
+            goto: gotoForPage(preservedStep) // Resume from preserved page
           }
         });
       } else {
@@ -1316,7 +1327,14 @@ export class PlaybackEngine {
     const result: any = await this.sendCommand('play', { id: graphicInstanceId, options: params });
     g.isPlaying = true;
     g.currentStep = stepFromPlayResult(result);
-    return { graphicInstanceId, statusCode: result?.result?.statusCode ?? 200, statusMessage: result?.result?.message, currentStep: g.currentStep };
+    // An OGraf controller gets the graphic's own (zero-based) step; none once it has ended
+    const step = rawStep(result);
+    return {
+      graphicInstanceId,
+      statusCode: result?.result?.statusCode ?? 200,
+      statusMessage: result?.result?.statusMessage ?? result?.result?.message,
+      currentStep: Number.isInteger(step) ? (step as number) : undefined,
+    };
   }
 
   async apiStop(graphicInstanceId: string, params: { skipAnimation?: boolean } = {}) {
@@ -1328,8 +1346,9 @@ export class PlaybackEngine {
 
   async apiUpdate(graphicInstanceId: string, params: { data: unknown; skipAnimation?: boolean }) {
     const g = this.requireApiInstance(graphicInstanceId);
-    await this.sendCommand('update', { id: graphicInstanceId, data: params.data, skipAnimation: params.skipAnimation });
-    g.data = params.data;
+    // OGraf: a (potentially partial) update, merged into the graphic's data
+    await this.sendCommand('update', { id: graphicInstanceId, data: params.data, skipAnimation: params.skipAnimation, partial: true });
+    g.data = g.data && typeof g.data === 'object' && params.data && typeof params.data === 'object' ? { ...g.data, ...params.data } : params.data;
     return { graphicInstanceId, statusCode: 200 };
   }
 

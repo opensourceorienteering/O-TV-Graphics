@@ -332,6 +332,8 @@ async function handleUpdate(payload: {
   id: string;
   data: any;
   skipAnimation?: boolean;
+  /** An OGraf controller's partial update, merged into the graphic's data */
+  partial?: boolean;
 }) {
   console.log("[Graphics] Updating graphic", payload.id);
 
@@ -342,7 +344,7 @@ async function handleUpdate(payload: {
     return;
   }
 
-  await renderer!.updateGraphic(id, data, payload.skipAnimation);
+  await renderer!.updateGraphic(id, data, payload.skipAnimation, payload.partial === true);
   console.log("[Graphics] Graphic updated", id);
 }
 
