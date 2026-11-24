@@ -3,12 +3,16 @@
  * Defines interfaces for pluggable data sources (LiveResults, manual entry, CSV, etc.)
  */
 
-import { LiveResultsCompetition, LiveResultsClass, LiveResultsResult } from './liveresults';
+import type { ConfigSchema, ExtFieldDecl, PluginManifest } from '../timing-sdk';
 
 /**
- * Data source type identifier
+ * Data source type identifier: a built-in type or the id of a timing plugin
  */
-export type DataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'iofxml' | 'meos' | 'custom';
+export type BuiltInDataSourceType = 'liveresults' | 'manual' | 'csv' | 'mysql' | 'iofxml' | 'meos' | 'custom';
+export type DataSourceType = BuiltInDataSourceType | (string & {});
+
+/** Where a source type comes from */
+export type DataSourceKind = 'native' | 'builtin' | 'code' | 'sql-profile';
 
 /**
  * Data source configuration
@@ -243,6 +247,12 @@ export interface DataSourceRegistryEntry {
   factory: DataSourceFactory;
   displayName: string;
   description: string;
+  /** native = Liveresultat; the others are timing plugins */
+  kind?: DataSourceKind;
+  /** Settings form for plugin sources */
+  configSchema?: ConfigSchema;
+  /** Fields the source adds on top of the base tags (x.<type>.<key>) */
+  extFields?: ExtFieldDecl[];
 }
 
 /**
@@ -252,35 +262,29 @@ export interface DataSourceTypeInfo {
   type: DataSourceType;
   displayName: string;
   description: string;
+  kind?: DataSourceKind;
+  configSchema?: ConfigSchema;
+  extFields?: ExtFieldDecl[];
 }
 
-/**
- * Helper function to convert LiveResults types to normalized types
- */
-export function convertLiveResultsCompetition(lr: LiveResultsCompetition): Competition {
-  return {
-    id: lr.id,
-    name: lr.name,
-    organizer: lr.organizer,
-    date: lr.date
-  };
+/** A loaded timing plugin, for the settings screen */
+export interface TimingPluginInfo {
+  id: string;
+  name: string;
+  description?: string;
+  version: string;
+  sdk: string;
+  kind: 'builtin' | 'code' | 'sql-profile';
+  /** File the plugin was loaded from (not for built-ins) */
+  path?: string;
+  capabilities: NonNullable<PluginManifest['capabilities']>;
+  extFields: ExtFieldDecl[];
 }
 
-export function convertLiveResultsClass(lr: LiveResultsClass): Class {
-  return {
-    className: lr.className,
-    displayName: lr.className,
-    numberOfEntries: 0 // LiveResultsClass doesn't have this field
-  };
+export interface TimingPluginList {
+  /** The user's plugins folder (null before it is loaded) */
+  folder: string | null;
+  plugins: TimingPluginInfo[];
+  /** Files in the folder that failed to load, with the reason */
+  failures: { path: string; error: string }[];
 }
-
-export function convertLiveResultsResult(lr: LiveResultsResult): Result {
-  return {
-    place: parseInt(lr.place, 10) || undefined,
-    name: lr.name,
-    club: lr.club,
-    time: lr.result, // 'result' field contains the time
-    status: lr.status.toString() // Convert number to string
-  };
-}
-

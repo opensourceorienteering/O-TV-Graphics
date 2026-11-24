@@ -1,0 +1,74 @@
+# Example SQL profile for a small club timing database (a made-up schema).
+#
+# Drop this file in Split Control's timing plugins folder and press Reload. It appears as
+# "Club timing database (example)" with the MySQL connection fields plus a "Season" option.
+#
+#   races(id, season, title, day)                 runners(id, race, cls, first, last, club, bib,
+#   classes(id, race, name, len, climb)                   status, start_at DATETIME, run_s, guest)
+#   radios(race, cls, code, label, ord)           punches(race, runner, code, t_s, at DATETIME)
+
+id: club-db
+name: Club timing database (example)
+description: Individual races from the club's own database
+version: 1.0.0
+sdk: ^1.0
+driver: mysql
+timezone: Europe/Stockholm
+
+units:
+  time: seconds        # run_s and t_s are seconds
+  clock: datetime      # start_at and at are DATETIME columns
+
+statusMap:
+  OK: ok
+  MP: mispunch
+  DNF: dnf
+  DNS: dns
+  DSQ: dsq
+  default: { ifPassings: running, else: notStarted }
+
+options:
+  type: object
+  properties:
+    season: { type: integer, title: Season, default: 2026 }
+
+extFields:
+  - { key: guest, on: entry, type: boolean, label: Guest runner }
+
+queries:
+  competitions: |
+    SELECT id, title AS name, day AS date
+      FROM races
+     WHERE season = :season
+     ORDER BY day DESC
+
+  classes: |
+    SELECT id, name, len AS `course.lengthM`, climb AS `course.climbM`
+      FROM classes
+     WHERE race = :competitionId
+     ORDER BY name
+
+  radioControls: |
+    SELECT cls AS classId, code AS id, code, label AS name
+      FROM radios
+     WHERE race = :competitionId
+     ORDER BY cls, ord
+
+  entries: |
+    SELECT id, first AS `name.given`, last AS `name.family`, club AS `club.name`, bib,
+           status, start_at AS start, run_s AS time,
+           (guest = 0) AS ranked, guest AS `ext.guest`
+      FROM runners
+     WHERE race = :competitionId AND cls = :classId
+
+  passings: |
+    SELECT runner AS entryId, code AS controlId, t_s AS time
+      FROM punches
+     WHERE race = :competitionId AND runner IN (:entryIds)
+
+  latestPassings: |
+    SELECT p.runner AS entryId, r.cls AS classId, p.code AS controlId, p.at
+      FROM punches p JOIN runners r ON r.id = p.runner
+     WHERE p.race = :competitionId
+     ORDER BY p.at DESC
+     LIMIT :limit

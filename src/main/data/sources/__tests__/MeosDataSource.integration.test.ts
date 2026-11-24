@@ -1,4 +1,4 @@
-/** MeosDataSource over real HTTP against a stand-in for the MeOS information server */
+/** The built-in MeOS plugin over real HTTP against a stand-in for the MeOS information server */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import http from 'http';
@@ -9,7 +9,12 @@ vi.mock('../../../utils/logger', () => {
   return { getLogger: () => l, logger: l };
 });
 
-import { MeosDataSource } from '../MeosDataSource';
+import { PluginDataSource } from '../../timing/PluginDataSource';
+import { meosPlugin } from '../../timing/builtInPlugins';
+
+class MeosDataSource extends PluginDataSource {
+  constructor(config: any) { super(meosPlugin, config); }
+}
 
 const COMPLETE = `<?xml version="1.0"?><MOPComplete xmlns="http://www.melin.nu/mop" nextdifference="1">
 <competition date="2026-10-26" organizer="OK" homepage="" zerotime="10:00:00">Test</competition>
@@ -43,7 +48,7 @@ describe('MeosDataSource (HTTP)', () => {
 
     const updates: any[] = [];
     ds.getClient().startPolling({ competitionId: 1, className: 'H21', interval: 0, onUpdate: (d: any) => updates.push(d) });
-    await vi.waitFor(() => expect(updates.some(u => u.results?.[0]?.splits?.['1031'] === 30000)).toBe(true), { timeout: 4000 });
+    await vi.waitFor(() => expect(updates.some(u => u.rows?.[0]?.splits?.[1031]?.time === 300_000)).toBe(true), { timeout: 4000 });
     ds.destroy();
     expect(seen[0]).toBe('/meos?difference=zero');
     expect(seen).toContain('/meos?difference=1');

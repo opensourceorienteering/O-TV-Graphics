@@ -16,7 +16,9 @@ import { getRundownManager } from "../projects/RundownManager";
 import { getTemplateManager } from "../templates/OGrafManager";
 import { getDataSourceRegistry } from "../data/DataSourceRegistry";
 import { competitionClock, startTimeEpochMs } from "../data/liveTime";
-import { IofXmlBackend } from "../data/sources/IofXmlBackend";
+import { IofXmlSource } from "../data/sources/IofXmlSource";
+import { TimingHub } from "../data/timing/TimingHub";
+import { wallClockCs, type CompetitionInfo } from "../data/timing/model";
 import { clubNameRows } from "../data/clubNames";
 import type {
   SPXProject,
@@ -172,6 +174,7 @@ export async function syncPages(project: SPXProject): Promise<void> {
       : ds === undefined
         ? r.dataSource
         : undefined;
+    r.additionalSources = project.additionalSources?.length ? project.additionalSources : undefined;
     r.settings = {
       ...(r.settings || {}),
       competitionNameOverride: project.name,
@@ -617,38 +620,54 @@ export async function refreshStartListFromSource(
   classes?: string[],
 ): Promise<EventStartList> {
   const project = await loadEvent(projectId);
+  const { timeZone, classNames, entries: fresh } = await startListFromSource(project, classes);
+  const list = loadStartList(projectId);
+  return saveStartList(projectId, {
+    ...list,
+    origin: "source",
+    timeZone,
+    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
+  });
+}
+
+/** The start list entries the event's data source has now (all classes, or some) */
+export async function startListFromSource(
+  project: SPXProject,
+  classes?: string[],
+): Promise<{ timeZone?: string; classNames: string[]; entries: StartListEntry[] }> {
   const ds = project.dataSource;
   if (!ds?.sourceId || !ds.competitionId)
     throw new Error("Choose a data source and competition first (Settings → Data)");
   const instance: any = getDataSourceRegistry().get(ds.sourceId);
   if (!instance) throw new Error(`Data source "${ds.sourceId}" is not set up`);
   if (!instance.initialized) await instance.initialize();
-  const client =
+  const client: TimingHub | null =
     typeof instance.getClient === "function" ? instance.getClient() : null;
   if (!client) throw new Error("This data source has no start lists");
-  let info: any;
+  let info: CompetitionInfo | undefined;
   try {
     info = await client.getCompetitionInfo(ds.competitionId);
   } catch {
     info = undefined;
   }
+  // The event's own time zone, when set, wins over the source's
   const clock = info
     ? competitionClock({
-        ...info,
+        date: info.date,
+        timediff: info.timediffHours,
         timezone: project.info?.timeZone || info.timezone,
       })
     : null;
   const classNames: string[] = classes?.length
     ? classes
-    : (await client.getClasses(ds.competitionId)).data.map(
-        (c: any) => c.className,
-      );
+    : (await client.getClasses(ds.competitionId)).data.map((c) => c.className);
   const fresh: StartListEntry[] = [];
   for (const className of classNames) {
     const res = await client.getClassResults(ds.competitionId, className, {
       maxAgeMs: 30_000,
     });
-    for (const r of res.data.results ?? []) {
+    for (const r of res.data.rows) {
+      const startCs = info ? wallClockCs(info, r.start) : 0;
       fresh.push({
         key: entryKey(className, r.name, r.club),
         className,
@@ -657,19 +676,11 @@ export async function refreshStartListFromSource(
         country: r.country || undefined,
         bib: r.bib ? String(r.bib) : undefined,
         startTimeMs:
-          clock && r.start
-            ? startTimeEpochMs(clock, Number(r.start))
-            : undefined,
+          clock && startCs ? startTimeEpochMs(clock, startCs) : undefined,
       });
     }
   }
-  const list = loadStartList(projectId);
-  return saveStartList(projectId, {
-    ...list,
-    origin: "source",
-    timeZone: clock?.timeZone,
-    entries: mergeEntries(list.entries, fresh, new Set(classNames)),
-  });
+  return { timeZone: clock?.timeZone, classNames, entries: fresh };
 }
 
 /** Import an IOF XML 3.0 StartList (or ResultList) */
@@ -678,46 +689,55 @@ export async function importStartListIofXml(
   filePath: string,
 ): Promise<EventStartList> {
   const project = await loadEvent(projectId);
-  const tz = project.info?.timeZone || "Europe/Stockholm";
-  const backend = new IofXmlBackend(filePath, {
-    competitionId: 1,
-    timezone: tz,
-  });
-  const info = await backend.fetchCompetitionInfo(1);
-  const clock = competitionClock({
-    date:
-      info.date || project.info?.date || new Date().toISOString().slice(0, 10),
-    timediff: 0,
-    timezone: tz,
-  });
-  const fresh: StartListEntry[] = [];
-  const classNames: string[] = [];
-  for (const { className } of await backend.fetchClasses(1)) {
-    classNames.push(className);
-    const res = await backend.fetchClassResults(1, className);
-    for (const r of res.results) {
-      fresh.push({
-        key: entryKey(className, r.name, r.club),
-        className,
-        name: r.name,
-        club: r.club || "",
-        country: (r as any).country,
-        bib: r.bib ? String(r.bib) : undefined,
-        startTimeMs:
-          clock && r.start
-            ? startTimeEpochMs(clock, Number(r.start))
-            : undefined,
-      });
-    }
-  }
+  const { timeZone, classNames, entries: fresh } = await startListFromIofXml(project, filePath);
   if (!fresh.length) throw new Error("No runners found in the file");
   const list = loadStartList(projectId);
   return saveStartList(projectId, {
     ...list,
     origin: "iofxml",
-    timeZone: tz,
+    timeZone,
     entries: mergeEntries(list.entries, fresh, new Set(classNames)),
   });
+}
+
+/** The start list entries in an IOF XML 3.0 StartList (or ResultList) */
+export async function startListFromIofXml(
+  project: SPXProject,
+  filePath: string,
+): Promise<{ timeZone: string; classNames: string[]; entries: StartListEntry[] }> {
+  const tz = project.info?.timeZone || "Europe/Stockholm";
+  const hub = new TimingHub(new IofXmlSource(filePath, { competitionId: 1, timezone: tz }), { pluginId: "iofxml" });
+  try {
+    const info = await hub.getCompetitionInfo(1);
+    const clock = competitionClock({
+      date:
+        info.date || project.info?.date || new Date().toISOString().slice(0, 10),
+      timediff: 0,
+      timezone: tz,
+    });
+    const fresh: StartListEntry[] = [];
+    const classNames: string[] = [];
+    for (const { className } of (await hub.getClasses(1)).data) {
+      classNames.push(className);
+      const res = await hub.getClassResults(1, className);
+      for (const r of res.data.rows) {
+        const startCs = wallClockCs(info, r.start);
+        fresh.push({
+          key: entryKey(className, r.name, r.club),
+          className,
+          name: r.name,
+          club: r.club || "",
+          country: r.country,
+          bib: r.bib ? String(r.bib) : undefined,
+          startTimeMs:
+            clock && startCs ? startTimeEpochMs(clock, startCs) : undefined,
+        });
+      }
+    }
+    return { timeZone: tz, classNames, entries: fresh };
+  } finally {
+    hub.destroy();
+  }
 }
 
 /** Split one CSV/TSV line, honouring quotes */

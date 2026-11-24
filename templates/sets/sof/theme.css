@@ -427,3 +427,7 @@
   --presentation-surface: var(--blue);
   --presentation-on-focus: var(--on-yellow);
 }
+
+/* GPS graphics: the course-progress bar and the heart in the look's own accent */
+.panel--progress { --gps-accent: var(--yellow); }
+.panel--vitals .v-heart { background: var(--yellow); }

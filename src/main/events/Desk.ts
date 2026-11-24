@@ -20,6 +20,7 @@ import { getTemplateManager } from '../templates/OGrafManager';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { DataSourceFieldMapper } from '../data/DataSourceFieldMapper';
 import { getDataSourceRegistry } from '../data/DataSourceRegistry';
+import { usableAdditionalSources } from '../data/timing/additionalSources';
 import { isMultiStep, type OGrafTemplateInfo } from '../../shared/types/ograf';
 import type { SPXProject, SPXRundown } from '../../shared/types/spx';
 import { DEFAULT_TEMPLATE_SET } from '../../shared/types/spx';
@@ -63,9 +64,32 @@ function missingGraphic(project: SPXProject, label: string): Error {
     : `The "${setId}" look is not installed. Import it in Graphics library, or choose another look in Plan → Theme.`);
 }
 
+/**
+ * Timing plugin fields the event's sources provide (results[].x.<plugin>.<key>, x.<plugin>.<key>):
+ * the timing source's and every additional source's (GPS …)
+ */
+export function providedSourceFields(project: SPXProject): Set<string> {
+  const registry = getDataSourceRegistry();
+  const types = registry.getRegisteredTypeInfo();
+  const out = new Set<string>();
+  const add = (sourceId?: string) => {
+    const ds = sourceId ? registry.get(sourceId) : undefined;
+    const type = ds?.config.type;
+    // fields are under the plugin's id, the same as the source type
+    const plugin: string | undefined = (ds as any)?.getClient?.()?.pluginId ?? type;
+    for (const f of types.find(t => t.type === type)?.extFields ?? []) {
+      out.add(f.on === 'entry' ? `results[].x.${plugin}.${f.key}` : `x.${plugin}.${f.key}`);
+    }
+  };
+  add(project.dataSource?.sourceId);
+  for (const a of usableAdditionalSources(project.dataSource?.sourceId, project.additionalSources)) add(a.sourceId);
+  return out;
+}
+
 /** Which desk templates the event's set provides */
 export async function deskTemplates(projectId: string) {
   const project = await loadEvent(projectId);
+  const provided = providedSourceFields(project);
   const remembered = new Set([...Object.values(loadDeskCommands()), ...Object.keys(loadDeskFavorites(projectId))]);
   const missing = [...remembered].map(key => ({ key, kind: key, label: key, short: key, params: [], required: [], live: false } as DeskTemplate));
   return orderDeskTemplates([...new Map([...missing, ...DESK_TEMPLATES, ...deskDefinitions(project)].map(t => [t.key, t])).values()], project.settings?.templateOrder).map(def => {
@@ -78,6 +102,7 @@ export async function deskTemplates(projectId: string) {
       fieldDefaults: fieldDefaults(def, settings),
       templateId: t?.manifest.id ?? null,
       available: !!t,
+      missingSourceFields: (def.sourceFields ?? []).filter(f => !provided.has(f)),
       schema: (t?.manifest.schema as any)?.properties ?? {},
       requiredFields: ((t?.manifest.schema as any)?.required ?? []) as string[],
       multiStep: t ? isMultiStep(t.manifest) : false
@@ -141,7 +166,7 @@ async function automaticFields(project: SPXProject, key: string, typed: Record<s
 }
 
 /** Length, climb and controls of a class from the timing data, when the source has them (IOF XML) */
-async function courseFields(project: SPXProject, className?: string): Promise<Record<string, any>> {
+export async function courseFields(project: SPXProject, className?: string): Promise<Record<string, any>> {
   const ds = project.dataSource;
   if (!className || !ds?.sourceId || !ds.competitionId) return {};
   try {
@@ -152,8 +177,8 @@ async function courseFields(project: SPXProject, className?: string): Promise<Re
     const course = (await client?.getClassResults(ds.competitionId, className, { maxAgeMs: 10_000 }))?.data?.course;
     if (!course) return {};
     const out: Record<string, any> = { title: className };
-    if (course.length) out.length = (course.length / 1000).toFixed(1);
-    if (course.climb) out.climb = String(Math.round(course.climb));
+    if (course.lengthM) out.length = (course.lengthM / 1000).toFixed(1);
+    if (course.climbM) out.climb = String(Math.round(course.climbM));
     if (course.controls) out.controls = String(course.controls);
     return out;
   } catch {
@@ -361,7 +386,7 @@ export async function deskPreviewData(projectId: string, draft: DeskDraft) {
     data = {
       ...data,
       ...(await DataSourceFieldMapper.fetchAndMapData(
-        template.dataSourceConfig, rundown.dataSource?.competitionId || 0, values, rundown.settings, rundown.dataSource?.sourceId
+        template.dataSourceConfig, rundown.dataSource?.competitionId || 0, values, rundown.settings, rundown.dataSource?.sourceId, rundown.additionalSources
       ))
     };
   }

@@ -64,3 +64,9 @@ companion/pkg/
 companion/*.tgz
 site/looks/
 _site/
+
+# Timing plugins folder in development (user data = project directory)
+/timing-plugins/
+
+# Timing snapshot mismatches (expected/actual for diffing)
+/test-data/timing-snapshots/.diff/

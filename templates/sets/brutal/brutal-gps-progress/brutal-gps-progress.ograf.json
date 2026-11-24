@@ -1,0 +1,54 @@
+{
+  "$schema": "https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json",
+  "version": "1.0.0",
+  "description": "A runner's GPS progress along the course, 0–100 %, as a bar with the class leader marked on it and the distance to go. Needs Trace / Track with Virtual standings on. Estimates from GPS.",
+  "author": {
+    "name": "Split Control"
+  },
+  "main": "graphic.js",
+  "supportsRealTime": true,
+  "supportsNonRealTime": false,
+  "stepCount": 1,
+  "schema": {
+    "type": "object",
+    "properties": {}
+  },
+  "renderRequirements": [
+    {
+      "resolution": {
+        "width": {
+          "ideal": 1920
+        },
+        "height": {
+          "ideal": 1080
+        }
+      }
+    }
+  ],
+  "v_olgrafik_kind": "gps-progress",
+  "v_olgrafik_zone": "lower",
+  "v_olgrafik_desk": {
+    "label": "Course progress",
+    "short": "Progress",
+    "inputs": [
+      "class",
+      "runner"
+    ],
+    "required": [
+      "class",
+      "runner"
+    ],
+    "fields": [],
+    "feeds": [
+      "timing"
+    ],
+    "behaviours": [],
+    "sourceFields": [
+      "results[].x.trace-track.progressPercent",
+      "x.trace-track.leaderPercent"
+    ]
+  },
+  "id": "brutal-gps-progress",
+  "name": "Brutal – Course progress",
+  "v_olgrafik_set": "brutal"
+}

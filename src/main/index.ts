@@ -17,10 +17,10 @@ import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
 import { initTemplateManager } from './templates/OGrafManager';
 import { registerTemplateHandlers } from './ipc/templateHandlers';
-import { initLiveResultsClient } from './data/LiveResultsClient';
+import { initDefaultTimingHub } from './data/timing/defaultHub';
 import { initDataStore } from './data/DataStore';
 import { registerDataHandlers } from './ipc/dataHandlers';
-import { registerDataSourceHandlers } from './ipc/dataSourceHandlers';
+import { registerDataSourceHandlers, timingPluginsFolder } from './ipc/dataSourceHandlers';
 import { initProjectManager } from './projects/ProjectManager';
 import { initRundownManager } from './projects/RundownManager';
 import { registerProjectHandlers } from './ipc/projectHandlers';
@@ -41,6 +41,7 @@ import { frameCaptureService } from './output/FrameCaptureService';
 import { validateNodeVersionOrExit } from './utils/version-check';
 import { initDataSourceRegistry, getDataSourceRegistry } from './data/DataSourceRegistry';
 import { registerBuiltInDataSources } from './data/sources';
+import { loadTimingPlugins } from './data/timing/TimingPlugins';
 import { claimSingleInstance } from './utils/singleInstance';
 import { lookFileFromArgv, setPendingLookFile } from './utils/lookFiles';
 
@@ -198,6 +199,8 @@ async function initializeServices() {
     // Initialize data source registry
     initDataSourceRegistry();
     registerBuiltInDataSources();
+    // Timing plugins and SQL profiles from <user data>/timing-plugins (before saved sources are created)
+    loadTimingPlugins(timingPluginsFolder());
 
     // Create data source instances from config
     const registry = getDataSourceRegistry();
@@ -227,9 +230,9 @@ async function initializeServices() {
       logger.warn('No data sources configured. Users must configure data sources in Settings > Data.');
     }
 
-    // Initialize LiveResults client (backward compatibility)
+    // The application-wide Liveresultat hub, for graphics without a data source (backward compatibility)
     const liveResultsBaseUrl = appConfig.liveresults?.baseUrl || 'https://api.orienteering.services';
-    initLiveResultsClient({
+    initDefaultTimingHub({
       baseUrl: liveResultsBaseUrl,
       cacheInterval: appConfig.liveresults?.cacheInterval,
       timeout: 10000,

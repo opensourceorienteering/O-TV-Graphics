@@ -139,6 +139,10 @@ and label are required; inputs, required inputs, fields, feeds and behaviours de
 The stable desk `key` defaults to the kind, and `short` defaults to the label. `live` is derived
 from the timing feed. `settingsFields` lists schema fields shown only in template settings;
 `rowsPartner` names a desk key with which to share the rows-per-page setting.
+`sourceFields` lists [timing plugin](TIMING-PLUGINS.md#extra-fields) fields the graphic needs,
+such as `"results[].x.gps-track.speedKmh"` or `"x.gps-track.sponsor"`. When the event's timing
+source does not provide one, the Live desk dims the graphic and names the missing fields; the
+graphic can still be shown.
 
 For known kinds, omitted properties inherit the existing desk entry. Empty arrays clear an
 inherited list; `previewData: null` clears an inherited preview requirement. Legacy fallback

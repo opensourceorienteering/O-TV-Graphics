@@ -16,6 +16,8 @@ import os from 'os';
 import { ipcMain } from 'electron';
 import { getDataSourceRegistry } from '../data/DataSourceRegistry';
 import { competitionClock, startTimeEpochMs } from '../data/liveTime';
+import type { TimingHub } from '../data/timing/TimingHub';
+import { wallClockCs, type CompetitionInfo } from '../data/timing/model';
 import { getProjectManager } from '../projects/ProjectManager';
 import { entryKey, loadEvent, loadStartList, updateOrAddStartListEntry as updateOrAdd } from '../events/EventService';
 import { getConfig } from '../utils/config';
@@ -23,7 +25,7 @@ import { getLogger } from '../utils/logger';
 
 const logger = getLogger();
 
-function clientFor(sourceId: string): any {
+function clientFor(sourceId: string): TimingHub {
   const ds: any = getDataSourceRegistry().get(sourceId);
   if (!ds) throw Object.assign(new Error(`Data source not found: ${sourceId}`), { status: 404 });
   const client = typeof ds.getClient === 'function' ? ds.getClient() : undefined;
@@ -79,31 +81,39 @@ export function createDirectorApiRouter(): express.Router {
       const client = clientFor(String(req.query.source));
       const comp = Number(req.query.comp);
       const className = String(req.query.class ?? '');
-      let info: any;
-      try { info = await client.getCompetitionInfo(comp); } catch { info = (await client.getCompetitions()).data.find((c: any) => c.id === comp); }
-      const clock = info ? competitionClock(info) : null;
-      // Start lists change rarely: reuse anything fetched in the last 30 s
-      const result = await client.getClassResults(comp, className, { maxAgeMs: 30_000 });
       const eventId = typeof req.query.event === 'string' ? req.query.event : '';
       const favs = eventId ? new Set(loadStartList(eventId).entries.filter(e => e.favourite).map(e => e.key)) : new Set<string>();
-      const runners = (result.data.results ?? []).map((r: any) => ({
-        name: r.name, club: r.club, bib: r.bib ?? '', status: Number(r.status),
-        favourite: favs.has(entryKey(className, r.name, r.club)),
-        startTimeMs: clock && r.start ? startTimeEpochMs(clock, Number(r.start)) : null
-      }));
-      res.json({
-        className,
-        competitionName: info?.name ?? '',
-        timeZone: clock?.timeZone,
-        clockOffsetMs: await client.getServerClockOffsetMs(),
-        runners
-      });
+      res.json(await directorStarts(client, comp, className, favs));
     } catch (error: any) {
       res.status(error?.status || 500).json({ error: error instanceof Error ? error.message : String(error) });
     }
   });
 
   return router;
+}
+
+/** Upcoming starters of a class for the director page (start times as epoch ms) */
+export async function directorStarts(client: TimingHub, comp: number, className: string, favs: Set<string>) {
+  let info: CompetitionInfo | undefined;
+  try { info = await client.getCompetitionInfo(comp); } catch { info = undefined; }
+  const clock = info ? competitionClock({ date: info.date, timezone: info.timezone, timediff: info.timediffHours }) : null;
+  // Start lists change rarely: reuse anything fetched in the last 30 s
+  const result = await client.getClassResults(comp, className, { maxAgeMs: 30_000 });
+  const runners = result.data.rows.map(r => {
+    const startCs = info ? wallClockCs(info, r.start) : 0;
+    return {
+      name: r.name, club: r.club, bib: r.bib ?? '', status: r.statusCode,
+      favourite: favs.has(entryKey(className, r.name, r.club)),
+      startTimeMs: clock && startCs ? startTimeEpochMs(clock, startCs) : null
+    };
+  });
+  return {
+    className,
+    competitionName: info?.name ?? '',
+    timeZone: clock?.timeZone,
+    clockOffsetMs: await client.getServerClockOffsetMs(),
+    runners
+  };
 }
 
 /** A LAN address for links other devices can open */

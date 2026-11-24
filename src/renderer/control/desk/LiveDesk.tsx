@@ -25,6 +25,8 @@ type DeskTemplateInfo = (typeof DESK_TEMPLATES)[number] & {
   templateId: string | null; available: boolean; schema: Record<string, any>; requiredFields: string[]; multiStep: boolean;
   /** Settings → Templates */
   hidden?: boolean; liveUpdatesDefault?: boolean; fieldDefaults?: Record<string, any>;
+  /** Timing plugin fields the graphic needs that the event's source does not provide */
+  missingSourceFields?: string[];
 };
 
 const isTyping = (t: EventTarget | null) =>
@@ -568,7 +570,12 @@ export function LiveDesk() {
     ? changed ? `${tr(def?.label || '')} · ${tr('on air')} · ${tr('changes not applied')}`
       : freshData ? `${tr(def?.label || '')} · ${tr('on air')} · ${tr('new results waiting · U updates')}`
       : `${tr(def?.label || '')} · ${tr('on air')}${onAirSel.held ? ` · ${tr('live updates held')}` : ''}`
-    : previewError ? previewError : def?.available ? 'Ready to show' : 'This graphic is not in the event’s look';
+    : previewError ? previewError
+    : def?.available
+      ? def.missingSourceFields?.length
+        ? `${tr('Ready to show')} · ${tr('the timing source does not provide')} ${def.missingSourceFields.join(', ')}`
+        : 'Ready to show'
+      : 'This graphic is not in the event’s look';
 
   const set = (values: Partial<DeskDraft['values']>) => setDraft({ ...draft, values: { ...draft.values, ...values } });
 
@@ -630,7 +637,12 @@ export function LiveDesk() {
                     aria-selected={t.key === selected}
                     tabIndex={t.key === selected ? 0 : -1}
                     disabled={!t.available}
-                    title={t.available ? undefined : tr("Not in this event’s look")}
+                    className={t.missingSourceFields?.length ? 'needs-source' : undefined}
+                    title={!t.available
+                      ? tr("Not in this event’s look")
+                      : t.missingSourceFields?.length
+                        ? `${tr("The event’s timing source does not provide:")} ${t.missingSourceFields.join(', ')}`
+                        : undefined}
                     onClick={() => setSelected(t.key)}
                   >
                     <span className="num">{n ?? ''}</span>{tr(t.label)}{air && <span className="onair-dot" aria-label={tr("on air")}>●</span>}

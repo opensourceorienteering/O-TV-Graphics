@@ -15,6 +15,9 @@
  * start). In Split Control add a LiveResults data source with base URL http://127.0.0.1:5800
  * and API "rest", then pick the competition id. GET /replay shows the replay clock.
  *
+ * --data <file> replays a recorded race (scripts/record-liveresultat.js, test-data/liveresultat)
+ * instead of downloading it. --port 0 picks a free port; the first line printed names it.
+ *
  * Simplifications: runners who did not finish (DNF, MP, DSQ, ...) get their status at their
  * finish time if they have one, otherwise one (compressed) hour after their start.
  */
@@ -37,9 +40,10 @@ if (!competitionId) {
   process.exit(1);
 }
 const speed = Number(args.speed || 1);
-const port = Number(args.port || 5800);
+const port = args.port !== undefined ? Number(args.port) : 5800;
 const source = (args.source || 'https://api.orienteering.services').replace(/\/+$/, '');
 const cacheFile = path.join(os.tmpdir(), `liveresultat-replay-${competitionId}.json`);
+const dataFile = args.data && args.data !== 'true' ? path.resolve(args.data) : null;
 const timeZone = 'Europe/Stockholm';
 
 // --- data --------------------------------------------------------------------------------
@@ -51,6 +55,7 @@ async function getJson(url) {
 }
 
 async function loadCompetition() {
+  if (dataFile) return JSON.parse(fs.readFileSync(dataFile, 'utf8'));
   if (fs.existsSync(cacheFile) && !args.refresh) return JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   const base = `${source}/competitions/${competitionId}`;
   const info = await getJson(base);
@@ -94,8 +99,9 @@ const fmt = (cs) => {
 
 // --- the competition at a moment ---------------------------------------------------------
 
-const NOT_STARTED = 10;
-const RUNNING = 9;
+// Liveresultat status codes (its API documentation): 9 not started, 10 running
+const NOT_STARTED = 9;
+const RUNNING = 10;
 
 /** Places with ties: [{ key, time }] sorted -> Map key -> { place, timeplus } */
 function rank(entries) {
@@ -229,7 +235,7 @@ function passingsAt(data, now) {
 
   const info = { ...data.info, date: day.date, serverTime: undefined };
 
-  http.createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const p = url.pathname.replace(/\/+$/, '');
     const now = clockCs();
@@ -254,8 +260,9 @@ function passingsAt(data, now) {
         res.writeHead(404);
         return res.end();
     }
-  }).listen(port, '127.0.0.1', () => {
-    console.log(`Replaying ${data.info.name} (${competitionId}) on http://127.0.0.1:${port}`);
+  });
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`Replaying ${data.info.name} (${competitionId}) on http://127.0.0.1:${server.address().port}`);
     console.log(`Original race time ${fmt(fromCs)} is now (${fmt(startedCs)} on ${day.date}), ${speed}x compressed. Original first start ${fmt(firstStart)}.`);
   });
 })().catch((error) => {

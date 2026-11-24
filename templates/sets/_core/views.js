@@ -139,6 +139,31 @@ const ctlLabel = (data, label, ctx) => `<span class="ftr-class">${esc(shownClass
 const nameStyle = (ctx, where) => ctx.nameStyle?.[where] ?? 'full';
 const runnerName = (r, data, ctx, where) => (teamFirst(data, ctx) ? nameHtml(r?.club, 'team') : nameHtml(r?.name, nameStyle(ctx, where)));
 
+/**
+ * GPS tower: places gained or lost, kept in the graphic's memory (ctx.memory). Only overtakes
+ * count: positions are compared among the runners on the tower both times, so a runner joining
+ * or leaving it moves no one's arrow. An arrow shows for `changeSeconds` (10 s); moves within that
+ * time add up, and moves that cancel out clear it. Without memory (a one-off render) no arrows.
+ */
+function rankChanges(ranked, data, ctx) {
+  const mem = ctx?.memory;
+  if (!mem) return {};
+  if (mem.tower?.className !== data.className) mem.tower = { className: data.className, order: [], arrows: {} };
+  const m = mem.tower, t = now(data), hold = Math.max(1, int(data.changeSeconds, 10)) * 1000;
+  const order = ranked.map(x => rowKey(x.r));
+  const both = new Set(order.filter(k => m.order.includes(k)));
+  const before = m.order.filter(k => both.has(k)), after = order.filter(k => both.has(k));
+  after.forEach((k, i) => {
+    const moved = before.indexOf(k) - i;
+    if (!moved) return;
+    const delta = (m.arrows[k] && t - m.arrows[k].at <= hold ? m.arrows[k].delta : 0) + moved;
+    if (delta) m.arrows[k] = { delta, at: t }; else delete m.arrows[k];
+  });
+  m.order = order;
+  for (const [k, a] of Object.entries(m.arrows)) if (t - a.at > hold) delete m.arrows[k];
+  return Object.fromEntries(Object.entries(m.arrows).map(([k, a]) => [k, { delta: a.delta }]));
+}
+
 /** A radio control's short name on air (TV1, Arena, or C35) */
 const controlShort = (c) => c.short || (c.name && !/^control\s/i.test(c.name) ? c.name : `C${c.code % 1000}`);
 
@@ -526,6 +551,116 @@ const views = {
       steps: 1,
       html: `<div class="panel panel--side panel--splits panel--team-splits panel--relay-team">${header(nameHtml(team, 'team'), esc(relay ? relay[0] : shownClass(data, ctx)), data)}` +
         `<div class="rows">${(rows + finishRow) || emptyRow(L(ctx, 'noResults', 'No results yet'))}</div>${footer(foot, data)}</div>`
+    };
+  },
+
+  /**
+   * Course progress (GPS): the runner's progress along the course, 0–100 %, as a bar, with the class
+   * leader's progress marked on the same bar (Trace / Track's leader-progress, class field
+   * x['trace-track'].leaderPercent). Distance to go below. Estimates from GPS.
+   */
+  'gps-progress'(data, ctx) {
+    const list = Array.isArray(data.results) ? data.results : [];
+    const r = findRunner(list, data) || {};
+    const g = r.x?.['trace-track'] ?? {}, cx = data.x?.['trace-track'] ?? {};
+    const runner = { ...r, name: r.name || data.runnerName || '', club: r.club || data.runnerClub || '' };
+    const pct = Number.isFinite(Number(g.progressPercent)) ? Math.max(0, Math.min(100, Number(g.progressPercent))) : null;
+    const isLeader = !!cx.leaderName && cx.leaderName === runner.name;
+    const lead = !isLeader && Number.isFinite(Number(cx.leaderPercent)) ? Math.max(0, Math.min(100, Number(cx.leaderPercent))) : null;
+    const lang = data.presentation?.language;
+    const km = (m) => (m / 1000).toFixed(1).replace('.', !lang || lang === 'en' ? '.' : ',');
+    const finished = /finished/.test(String(g.progressState ?? ''));
+    const left = Number(g.courseLength) - Number(g.courseDistance);
+    const sub = finished ? L(ctx, 'finish', 'Finish')
+      : g.signal === 'lost' ? `${L(ctx, 'gps', 'GPS')} –`
+      : Number.isFinite(left) && left >= 0 ? `${km(left)} km ${L(ctx, 'toGo', 'to go')}` : L(ctx, 'progress', 'Course progress');
+    const leaderLabel = lead === null ? '' : `${L(ctx, 'leader', 'Leader')} · ${nameHtml(cx.leaderName, 'family')} ${Math.round(lead)} %`;
+    const bar = `<div class="gps-bar${pct === null ? ' is-unknown' : ''}${isLeader ? ' is-leading' : ''}" style="--p:${pct ?? 0}${lead === null ? '' : `;--l:${lead}`}">` +
+      `<span class="gps-fill"></span>` +
+      (lead === null ? '' : `<span class="gps-leader"><span class="gps-leader-label">${leaderLabel}</span></span>`) + `</div>`;
+    return {
+      steps: 1,
+      html: `<div class="panel panel--lower panel--strap panel--progress"><div class="rows"><div class="row row--hl" style="--i:0" data-key="focus">` +
+        `<span class="c-name">${nameHtml(runner.name, nameStyle(ctx, 'strap'))}</span><span class="c-id">${identityHtml(runner, data, { code: true })}</span>` +
+        `<span class="c-time">${pct === null ? '' : `${Math.round(pct)} %`}</span></div></div>${bar}` +
+        footer(esc(`${sub} · ${L(ctx, 'estimated', 'Estimated')}`), data) + `</div>`
+    };
+  },
+
+  /**
+   * Pace and heart rate (GPS / heart-rate strap): the runner's heart rate (the heart beats at that
+   * rate), pace per km with the change over the last minute (▲ faster, ▼ slower) and speed.
+   * Average and highest heart rate below. Values Trace / Track lacks are left out.
+   */
+  'gps-pace'(data, ctx) {
+    const list = Array.isArray(data.results) ? data.results : [];
+    const r = findRunner(list, data) || {};
+    const g = r.x?.['trace-track'] ?? {};
+    const runner = { ...r, name: r.name || data.runnerName || '', club: r.club || data.runnerClub || '' };
+    const num = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? Number(v) : null);
+    const hr = num(g.heartRate), speed = num(g.speedKmh), change = num(g.paceChange);
+    const lost = g.signal === 'lost';
+    const faster = change !== null && change <= -2, slower = change !== null && change >= 2;
+    const items = [
+      hr === null ? '' : `<span class="v v-hr"><span class="v-heart" style="--beat:${(60 / Math.max(30, Math.min(230, hr))).toFixed(2)}s"></span>` +
+        `<b>${hr}</b><small>bpm</small><em>${esc(L(ctx, 'heartRate', 'Heart rate'))}</em></span>`,
+      !g.paceText ? '' : `<span class="v v-pace"><b>${esc(g.paceText)}</b><small>/km</small>` +
+        `${faster || slower ? `<span class="c-change ${faster ? 'up' : 'down'}">${Math.abs(change)}s</span>` : ''}<em>${esc(L(ctx, 'pace', 'Pace'))}</em></span>`,
+      speed === null ? '' : `<span class="v v-speed"><b>${esc(String(speed).replace('.', !data.presentation?.language || data.presentation.language === 'en' ? '.' : ','))}</b><small>km/h</small><em>${esc(L(ctx, 'speed', 'Speed'))}</em></span>`
+    ].filter(Boolean).join('');
+    const avg = num(g.averageHeartRate), max = num(g.maxHeartRate);
+    const foot = [avg === null ? '' : `${L(ctx, 'avg', 'Avg')} ${avg}`, max === null ? '' : `${L(ctx, 'max', 'Max')} ${max} bpm`].filter(Boolean).join(' · ')
+      || (lost ? L(ctx, 'gps', 'GPS') : '');
+    return {
+      steps: 1,
+      html: `<div class="panel panel--lower panel--strap panel--vitals${lost ? ' is-lost' : ''}"><div class="rows"><div class="row row--hl" style="--i:0" data-key="focus">` +
+        `<span class="c-name">${nameHtml(runner.name, nameStyle(ctx, 'strap'))}</span><span class="c-id">${identityHtml(runner, data, { code: true })}</span></div></div>` +
+        `<div class="gps-vitals">${items || `<span class="v v-none">${esc(L(ctx, 'gps', 'GPS'))} –</span>`}</div>` +
+        footer(esc(foot), data) + `</div>`
+    };
+  },
+
+  /**
+   * GPS tower (F1 style): the class in Trace / Track's estimated order right now, from GPS
+   * (results[].x['trace-track'] virtual standings). Estimates, never results: official finishers
+   * are marked, runners whose GPS is lost are dimmed at the bottom, and the selected runner is
+   * always shown. Each row carries the runner's course progress.
+   */
+  'gps-tower'(data, ctx) {
+    const all = (Array.isArray(data.results) ? data.results : []).map(r => ({ r, g: r?.x?.['trace-track'] })).filter(x => x.g);
+    const ranked = all.filter(x => Number.isFinite(Number(x.g.virtualRank))).sort((a, b) => a.g.virtualRank - b.g.virtualRank);
+    const lost = all.filter(x => !Number.isFinite(Number(x.g.virtualRank)) && x.g.signal === 'lost');
+    const max = int(data.rows, 10);
+    const focus = findRunner(all.map(x => x.r), data);
+    const arrows = rankChanges(ranked, data, ctx);
+    let shown = [...ranked, ...lost].slice(0, max);
+    // the selected runner stays on the tower, in place of the last row
+    const f = focus && [...ranked, ...lost].find(x => x.r === focus);
+    if (f && !shown.includes(f)) shown = [...shown.slice(0, Math.max(0, max - 1)), f];
+    const rows = shown.map(({ r, g }, i) => {
+      const isLost = !Number.isFinite(Number(g.virtualRank));
+      const official = g.progressState === 'timing-finished';
+      const cls = ['row', r === focus ? 'row--hl' : '', isLost ? 'is-lost' : '', official ? 'is-official' : '', i === 0 && !isLost ? 'row--leader' : ''].filter(Boolean).join(' ');
+      const gap = isLost ? '' : ranked[0]?.r === r ? L(ctx, 'leader', 'Leader') : clock(Math.round(Number(g.virtualGap) / 1000) || 0, { sign: true });
+      const mark = isLost ? L(ctx, 'gps', 'GPS') : official ? L(ctx, 'finishShort', 'F') : '';
+      // places gained (▲) or lost (▼) lately; a mark (finished, GPS lost) comes first
+      const moved = mark ? 0 : arrows[rowKey(r)]?.delta ?? 0;
+      const change = mark ? esc(mark) : moved ? String(Math.abs(moved)) : '';
+      const progress = Math.max(0, Math.min(100, Number(g.progressPercent) || 0));
+      return `<div class="${cls}" style="--i:${i}" data-key="${rowKey(r)}">` +
+        // positions are counted on the tower (1, 2, 3 …): ranks withheld by Trace / Track leave no gaps
+        `<span class="c-place">${isLost ? '' : ranked.findIndex(x => x.r === r) + 1}</span>` +
+        `<span class="c-label">${nameHtml(r.name, 'family')}</span>` +
+        `<span class="c-change${moved > 0 ? ' up' : moved < 0 ? ' down' : ''}">${change}</span>` +
+        `<span class="c-time">${esc(gap)}</span>` +
+        `<span class="c-progress" style="--p:${progress}"></span></div>`;
+    }).join('') || emptyRow(L(ctx, 'noResults', 'No results yet'));
+    return {
+      steps: 1,
+      // redrawn when the rows or an arrow change, so arrows go away on time
+      key: JSON.stringify([shown.map(x => rowKey(x.r)), arrows]), rekey: true,
+      html: `<div class="panel panel--side panel--splits panel--tower">${header(esc(shownClass(data, ctx)), esc(L(ctx, 'estimated', 'Estimated')), data)}` +
+        `<div class="rows">${rows}</div>${footer(esc(`${L(ctx, 'gps', 'GPS')} · ${L(ctx, 'estimated', 'Estimated')}`), data)}</div>`
     };
   },
 

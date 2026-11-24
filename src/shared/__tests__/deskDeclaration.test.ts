@@ -37,6 +37,19 @@ describe('manifest desk declarations', () => {
     expect(result.desk).toBeUndefined();
     expect(result.warnings.length).toBeGreaterThan(0);
   });
+  it('accepts timing plugin fields a graphic needs, and rejects malformed ones', () => {
+    const ok = resolveDeskDeclaration(manifest({
+      v_olgrafik_kind: 'gps-board',
+      v_olgrafik_desk: { label: 'GPS board', inputs: ['class'], feeds: ['timing'], sourceFields: ['results[].x.gps-track.speedKmh', 'x.gps-track.sponsor'] }
+    }));
+    expect(ok.warnings).toEqual([]);
+    expect(ok.desk?.sourceFields).toEqual(['results[].x.gps-track.speedKmh', 'x.gps-track.sponsor']);
+    for (const bad of [['speedKmh'], ['results[].x.GPS.speed'], 'x.gps.speed', ['x.gps']]) {
+      const result = resolveDeskDeclaration(manifest({ v_olgrafik_kind: 'results', v_olgrafik_desk: { sourceFields: bad } }));
+      expect(result.warnings.join(' ')).toContain('sourceFields');
+      expect(result.desk?.sourceFields).toBeUndefined();
+    }
+  });
 });
 
 describe('desk entries for a look', () => {

@@ -40,12 +40,15 @@
 .gfx--name-strap .panel,
 .gfx--runner-identity .panel,
 .gfx--runner-start .panel,
+.gfx--gps-progress .panel,
+.gfx--gps-pace .panel,
 .gfx--free-text .panel,
 .gfx--speaker .panel   { left: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--lower-w, 760px); }
 .gfx--runner-splits .panel,
 .gfx--relay-team .panel,
 .gfx--course-info .panel,
 .gfx--weather .panel      { right: var(--margin-x, 96px); bottom: var(--margin-y, 96px); width: var(--side-w, 440px); }
+.gfx--gps-tower .panel    { left: var(--margin-x, 96px); top: var(--tower-top, var(--margin-y, 96px)); width: var(--tower-w, 440px); }
 .gfx--clock .panel        { right: var(--margin-x, 96px); top: var(--margin-y, 96px); flex-direction: row; align-items: stretch; }
 .gfx--event-title .panel  { left: var(--title-x, 320px); right: var(--title-x, 320px); bottom: var(--margin-y, 96px); }
 
@@ -280,3 +283,39 @@
 /* Sponsor branding stays on the title card, leaving race tables unobstructed. */
 .title-sponsors { display: flex; gap: 32px; align-items: center; justify-content: center; padding: 20px 36px; background: #fff; }
 .title-sponsors img { width: 200px; height: 72px; object-fit: contain; }
+
+/* GPS tower: a thin course-progress line under each row; lost GPS dimmed; marks small */
+/* its own columns: rank, name, mark, gap (split panels put the name first) */
+.panel.panel--tower > .rows { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+.panel.panel--tower .c-place { min-width: 1.6em; text-align: center; }
+/* the mark column (F for finished, GPS when lost) only takes room when a row has a mark */
+.panel.panel--tower .c-change { width: auto; min-width: 0; padding: 0 .35em; }
+.panel--tower .row { position: relative; }
+.panel--tower .c-progress { position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 1%); background: currentColor; opacity: .35; pointer-events: none; }
+.panel--tower .row.is-lost { opacity: .5; }
+.panel--tower .row.is-lost .c-progress { display: none; }
+.panel--tower .c-change { font-size: .7em; font-weight: 700; letter-spacing: .06em; }
+
+/* GPS course progress: a bar the runner fills, the leader marked on it. Colours follow the look's
+   accent where it has one. */
+.panel--progress { --gps-accent: var(--accent, var(--hot, var(--red, var(--yellow, var(--primary, currentColor))))); }
+.panel--progress .gps-bar { position: relative; height: 12px; margin: 10px 22px 30px; border-radius: 99px; background: color-mix(in srgb, currentColor 18%, transparent); }
+.panel--progress .gps-fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 1%); border-radius: inherit; background: var(--gps-accent); transition: width .9s ease; }
+.panel--progress .gps-bar.is-unknown .gps-fill { display: none; }
+.panel--progress .gps-leader { position: absolute; top: -5px; bottom: -5px; left: calc(var(--l, 0) * 1%); width: 3px; margin-left: -1.5px; background: currentColor; transition: left .9s ease; }
+.panel--progress .gps-leader-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 4px; white-space: nowrap; font-size: 15px; font-weight: 700; letter-spacing: .03em; opacity: .85; }
+/* a label near either end stays on the bar */
+.panel--progress .gps-bar[style*="--l:9"] .gps-leader-label, .panel--progress .gps-bar[style*="--l:8"] .gps-leader-label { left: auto; right: 0; transform: none; }
+
+/* GPS pace and heart rate: three readings side by side; the heart beats at the runner's rate */
+.panel--vitals .gps-vitals { display: flex; gap: 34px; align-items: flex-end; padding: 10px 22px 12px; }
+.panel--vitals .v { display: grid; grid-template-columns: auto auto auto; align-items: baseline; column-gap: 6px; }
+.panel--vitals .v b { font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.panel--vitals .v small { font-size: 16px; opacity: .75; }
+.panel--vitals .v em { grid-column: 1 / -1; order: -1; font-style: normal; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.panel--vitals .v-hr { grid-template-columns: auto auto auto; }
+.panel--vitals .v-heart { width: 22px; height: 20px; align-self: center; background: var(--accent, var(--hot, var(--red, #e30420)));
+  clip-path: path('M11 20 L1.6 10.4 A5.6 5.6 0 0 1 11 3.6 A5.6 5.6 0 0 1 20.4 10.4 Z'); animation: gps-beat var(--beat, 1s) ease-out infinite; }
+@keyframes gps-beat { 0% { transform: scale(1); } 14% { transform: scale(1.22); } 28% { transform: scale(1); } 42% { transform: scale(1.12); } 70% { transform: scale(1); } }
+.panel--vitals .v .c-change { align-self: center; font-size: 15px; }
+.panel--vitals.is-lost .gps-vitals { opacity: .5; }

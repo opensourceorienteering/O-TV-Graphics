@@ -182,3 +182,12 @@
     padding: 12px;
   }
 }
+
+/* Timing plugins (TimingPluginsPanel) */
+.timing-plugins {
+  margin-top: 32px;
+}
+
+.timing-plugins code {
+  word-break: break-all;
+}

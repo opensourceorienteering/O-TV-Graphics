@@ -146,6 +146,8 @@
 .panel--splits .c-place { width: 56px; padding-left: 0; font-size: 28px; }
 .panel--splits .c-change { width: 56px; justify-content: center; }
 .panel--splits .c-time { min-width: 130px; font-size: 28px; }
+/* GPS tower: the outlined rank clear of the edge bar */
+.panel--tower .c-place { width: 64px; padding-left: 22px; }
 .panel--splits .c-time.is-best { color: var(--gain); }
 .panel--splits .c-time.is-behind { color: var(--paper); }
 

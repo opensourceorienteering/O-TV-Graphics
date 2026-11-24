@@ -27,8 +27,11 @@ export interface TemplateDataSourceConfig {
  * API data source configuration
  */
 export interface ApiDataSourceConfig {
-  /** Which API provider to use */
-  provider: 'liveresults' | 'custom';
+  /**
+   * Which data the template reads: 'timing' = the event's timing source (Liveresultat or any
+   * timing plugin). 'liveresults' is the original name for the same thing.
+   */
+  provider: 'timing' | 'liveresults' | 'custom';
 
   /** Optional class selection: an empty class combines every class in the event. */
   classScope?: 'optional';

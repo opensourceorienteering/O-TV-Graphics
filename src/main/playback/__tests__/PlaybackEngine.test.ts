@@ -4,7 +4,6 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SPXRundown, SPXRundownItem } from '../../../shared/types/spx';
-import { LiveResultsClient } from '../../data/LiveResultsClient';
 
 // Mock dependencies
 const mockTemplateManager = {
@@ -40,7 +39,7 @@ const mockDataStore = {
   loadCompetitions: vi.fn()
 };
 
-const mockLiveResultsClient = {
+const mockTimingHub = {
   getClassResults: vi.fn(() => ({
     data: {
       className: 'M21',
@@ -93,29 +92,8 @@ vi.mock('../../data/DataStore', () => ({
   getDataStore: () => mockDataStore
 }));
 
-vi.mock('../../data/LiveResultsClient', () => ({
-  getLiveResultsClient: () => mockLiveResultsClient,
-  LiveResultsClient: vi.fn().mockImplementation((options) => ({
-    getClassResults: vi.fn(() => ({
-      data: {
-        className: 'M21',
-        splitcontrols: [],
-        results: [
-          {
-            place: '1',
-            name: 'Test Runner',
-            club: 'Test Club',
-            result: '3600',
-            status: 0,
-            timeplus: '0',
-            progress: 100,
-            start: 0
-          }
-        ],
-        hash: 'test-hash'
-      }
-    }))
-  }))
+vi.mock('../../data/timing/defaultHub', () => ({
+  getDefaultTimingHub: () => mockTimingHub
 }));
 
 vi.mock('../../data/LiveResultsMapper', () => ({
@@ -168,10 +146,6 @@ describe('PlaybackEngine - Rundown-Level Configuration', () => {
 
       mockRundownManager.loadRundown.mockResolvedValue(rundown);
 
-      // Verify that LiveResultsClient constructor would be called with custom baseUrl
-      // This is tested by checking the mock implementation
-      const clientConstructor = vi.mocked(LiveResultsClient);
-      
       // The actual PlaybackEngine would create a new client with the custom baseUrl
       // We're testing the logic that determines which baseUrl to use
       const baseUrl = rundown.dataSource?.baseUrl || 'https://global.liveresults.com';

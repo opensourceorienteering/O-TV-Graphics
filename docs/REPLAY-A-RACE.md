@@ -45,7 +45,8 @@ Leave the terminal open: the replay runs until you close it or press **Ctrl+C**.
 |---|---|---|
 | `--speed` | How many times faster than the real race. All times are divided by it: a radio control passed 10 minutes after the start comes in 2.5 minutes after the start. | `--speed 4` |
 | `--from` | The time in the original race to begin from. Without it, the replay begins 2 minutes before the first start. | `--from 16:20` |
-| `--port` | Another port, if 5800 is taken. | `--port 5801` |
+| `--port` | The port to serve on (default 5800). `0` picks a free one; the first line printed names it. | `--port 5801` |
+| `--data` | Replay a recorded race file instead of downloading the race. Record one with `node scripts/record-liveresultat.js --competition 33124`; two are in `test-data/liveresultat`. | `--data test-data/liveresultat/33124.json` |
 | `--refresh` | Download the results again instead of using the saved copy. | `--refresh` |
 
 To find a good `--from`, open the race on Liveresultat and look at the start times of the

@@ -42,7 +42,8 @@ describe('additions to a look', () => {
     writeGraphic(path.join(tmp, 'user', 'additions', 'standard', 'guest-strap'), 'guest-strap');
     const m = await manager();
     expect(m.getTemplateById('guest-strap')).toMatchObject({ setId: 'standard', addition: true, directoryName: 'additions/standard/guest-strap' });
-    expect(m.getTemplateSets().find((s) => s.id === 'standard')).toMatchObject({ additions: 1, templateCount: 21 });
+    // 23 bundled graphics (with the GPS tower, pace and progress) + the addition
+    expect(m.getTemplateSets().find((s) => s.id === 'standard')).toMatchObject({ additions: 1, templateCount: 24 });
   });
   it('lists an addition for a look this computer does not have as not in a look', async () => {
     writeGraphic(path.join(tmp, 'user', 'additions', 'nowhere', 'x'), 'x-1');

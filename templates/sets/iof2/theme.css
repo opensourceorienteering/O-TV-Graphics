@@ -61,6 +61,7 @@
   --side-w: 470px;
   --podium-x: 320px;
   --title-x: 300px;
+  --tower-top: calc(var(--margin-y) + 96px);   /* under the scorebug clock (top left) */
   /* chart lines: IOF colours, then the brand's WOD colours */
   --line-0: var(--red); --line-1: #fff; --line-2: var(--sky); --line-3: var(--gain);
   --line-4: #f9b122; --line-5: #e5007d; --line-6: #009ee3; --line-7: #ec6607;
@@ -371,3 +372,7 @@
   --presentation-surface: var(--deep);
   --presentation-on-focus: var(--deep);
 }
+
+/* GPS graphics: the course-progress bar and the heart in the look's own accent */
+.panel--progress { --gps-accent: var(--red); }
+.panel--vitals .v-heart { background: var(--red); }

@@ -16,7 +16,12 @@ export interface DeskDeclaration {
   behaviours?: DeskTemplate['behaviours'];
   rowsPartner?: string;
   previewData?: PreviewData | null;
+  /** Timing plugin fields the graphic needs (see DeskTemplate.sourceFields) */
+  sourceFields?: string[];
 }
+
+/** results[].x.<plugin>.<key> (per runner) or x.<plugin>.<key> (class / competition) */
+export const SOURCE_FIELD_RE = /^(results\[\]\.)?x\.[a-z][a-z0-9-]*\.[A-Za-z_]\w*$/;
 
 /** Invalid declarations fall back as a whole; they never prevent a graphic from loading. */
 export function resolveDeskDeclaration(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: string[] } {
@@ -40,7 +45,7 @@ function resolveDesk(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: 
     return { desk: fallback, warnings };
   }
   const d = raw as Record<string, unknown>;
-  const allowed = new Set(['key', 'label', 'short', 'inputs', 'required', 'fields', 'settingsFields', 'feeds', 'behaviours', 'rowsPartner', 'previewData']);
+  const allowed = new Set(['key', 'label', 'short', 'inputs', 'required', 'fields', 'settingsFields', 'feeds', 'behaviours', 'rowsPartner', 'previewData', 'sourceFields']);
   for (const key of Object.keys(d)) if (!allowed.has(key)) warn(`unknown property "${key}"`);
   for (const key of ['key', 'label', 'short', 'rowsPartner']) {
     if (d[key] !== undefined && (typeof d[key] !== 'string' || !(d[key] as string).trim())) warn(`${key} must be a non-empty string`);
@@ -52,6 +57,9 @@ function resolveDesk(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: 
     if (!Array.isArray(value) || value.some(v => typeof v !== 'string' || !v.trim() || (values && !(values as readonly string[]).includes(v))) || new Set(value).size !== value.length) {
       warn(`${key} must contain unique, supported names`);
     }
+  }
+  if (d.sourceFields !== undefined && (!Array.isArray(d.sourceFields) || d.sourceFields.some(f => typeof f !== 'string' || !SOURCE_FIELD_RE.test(f)))) {
+    warn('sourceFields must look like "results[].x.<plugin>.<key>" or "x.<plugin>.<key>"');
   }
   if (d.previewData !== undefined && d.previewData !== null && !['results', 'splits', 'starts'].includes(d.previewData as string)) warn('unknown previewData');
   if (!known && !kind) warn('a new desk graphic needs v_olgrafik_kind');
@@ -71,6 +79,7 @@ function resolveDesk(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: 
     feeds: declaration.feeds ?? known?.feeds ?? [],
     behaviours: declaration.behaviours ?? known?.behaviours ?? [],
     rowsPartner: declaration.rowsPartner ?? known?.rowsPartner,
+    ...(declaration.sourceFields?.length ? { sourceFields: declaration.sourceFields } : {}),
     previewData: declaration.previewData === null ? undefined : declaration.previewData ?? fallback?.previewData,
     live: false
   };

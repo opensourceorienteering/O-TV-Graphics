@@ -409,6 +409,9 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td><code>runner-lower-third</code></td><td>Runner lower third</td><td>No default Live entry</td></tr>
           <tr><td><code>runner-splits</code></td><td>Split comparison</td><td><code>runner-splits</code></td></tr>
           <tr><td><code>relay-team</code></td><td>Relay team</td><td><code>relay-team</code></td></tr>
+          <tr><td><code>gps-tower</code></td><td>GPS tower</td><td><code>gps-tower</code></td></tr>
+          <tr><td><code>gps-progress</code></td><td>Course progress</td><td><code>gps-progress</code></td></tr>
+          <tr><td><code>gps-pace</code></td><td>Pace and heart rate</td><td><code>gps-pace</code></td></tr>
           <tr><td><code>runner-start</code></td><td>Runner focus</td><td><code>runner-start</code></td></tr>
           <tr><td><code>speaker</code></td><td>Commentators / speaker</td><td><code>speaker</code></td></tr>
           <tr><td><code>standings-lower-third</code></td><td>Live split</td><td><code>live-feed</code></td></tr>
@@ -416,7 +419,7 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
           <tr><td><code>start-list</code></td><td>Start list</td><td><code>start-list</code></td></tr>
           <tr><td><code>weather</code></td><td>Weather</td><td><code>weather</code></td></tr></tbody>
       </table>
-      </div><p>All looks except IOF and ČO declare <code>runner-presentations</code>, <code>finish-watch</code> and <code>relay-team</code>. Its Next action lifts chosen runners one at a time; start-list favourites are selected by default. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/RUNNER-PRESENTATIONS.md">Runner presentations guide</a>. Finish watch uses a prewarning to reveal runners, shows total race time and class placing, and freezes at a measuring point before removing completed rows. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/FINISH-WATCH.md">Finish watch guide</a>.</p><h3 id="live-keys">Live keyboard controls</h3><p>Use these in Live with focus outside a text field. Command numbers are configurable—check the current desk rather than assuming a fixed number.</p><div class="table-wrap">
+      </div><p>All looks except IOF and ČO declare <code>runner-presentations</code>, <code>finish-watch</code>, <code>relay-team</code>, <code>gps-tower</code>, <code>gps-progress</code> and <code>gps-pace</code>. Its Next action lifts chosen runners one at a time; start-list favourites are selected by default. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/RUNNER-PRESENTATIONS.md">Runner presentations guide</a>. Finish watch uses a prewarning to reveal runners, shows total race time and class placing, and freezes at a measuring point before removing completed rows. See the <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/FINISH-WATCH.md">Finish watch guide</a>.</p><h3 id="live-keys">Live keyboard controls</h3><p>Use these in Live with focus outside a text field. Command numbers are configurable—check the current desk rather than assuming a fixed number.</p><div class="table-wrap">
       <table>
         <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
         <tbody><tr><td><code>Space</code></td><td>Show/hide the selected graphic</td></tr>
@@ -598,22 +601,190 @@ export default createGraphic(&#x27;welcome-card&#x27;, set, welcomeCard);</code>
         capture. Don't follow the computer's Reduce Motion setting: broadcast output must look the
         same on every machine.</p>
 
-      <h2 id="data">The data graphics get</h2>
-      <p>The app sends the same data to every look. The main fields:</p>
+      <h2 id="data">The data graphics get: base tags</h2>
+      <p>The app sends the same data to every look, whatever the timing source: Liveresultat,
+        MeOS, a MOP database, IOF XML or a timing plugin. These fields are the <strong>base
+        tags</strong>. The app's tests check that every built-in source gives exactly these, with
+        these types, so a look built on them works with any source. The same list is in
+        <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/BASE-TAGS.md">docs/BASE-TAGS.md</a>.</p>
+      <p>Besides these, a graphic gets the fields its own schema declares (typed by the operator)
+        and the fields a timing plugin adds under <code>x.&lt;plugin&gt;</code> and
+        <code>results[].x.&lt;plugin&gt;</code> (see <a href="#timing-plugins">Timing sources
+        and plugins</a>). The preview's <strong>More data (JSON)</strong> box shows and edits all
+        of them.</p>
+      <!-- base-tags:start (generated from src/shared/baseTags.ts) -->
+      <h3 id="tags-timing">Timing</h3>
+      <p>Every graphic with the timing feed (a <code>.datasource.json</code> with <code>provider: "timing"</code>) gets these for the chosen class and timing point.</p>
       <div class="table-wrap">
       <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
         <tbody>
-          <tr><td><code>results[]</code></td><td>Runners at the shown timing point: <code>name</code>, <code>club</code>, <code>country</code>, <code>bib</code>, <code>position</code>, <code>time</code>, <code>diff</code>, <code>statusCode</code> (0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ), <code>startTimeMs</code> (the runner's own start; in a relay the changeover), <code>teamStartTimeMs</code> (relays: the team's start, which times and splits count from; use <code>clockStartMs(r)</code> from <code>_core/util.js</code> for running times), <code>splitTimes[]</code></td></tr>
-          <tr><td><code>relayLegs[]</code></td><td>Relays, for graphics whose <code>.datasource.json</code> maps <code>relayLegs</code>: the selected runner's team on every leg, <code>{ leg, className, controls[], runner: { name, club, status, result, place, timeplus, splits[] } }</code>, all from the team's start. A relay leg class is named like <code>Mixed-2</code>; show it with <code>classLabel()</code> from <code>_core/util.js</code> ("Mixed · Leg 2").</td></tr>
-          <tr><td><code>className</code>, <code>controlCode</code>, <code>splitControls[]</code></td><td>Class, timing point (<code>S</code>, a control code or <code>F</code>) and the class's radio controls</td></tr>
-          <tr><td><code>runnerName</code>, <code>runnerClub</code>, <code>runnerBib</code></td><td>The runner in focus (lower thirds, identity, runner focus)</td></tr>
-          <tr><td><code>title</code>, <code>series</code>, <code>place</code>, <code>date</code>, <code>text</code>, <code>name</code>…</td><td>Fields the operator fills in</td></tr>
-          <tr><td><code>presentation</code></td><td><code>language</code>, <code>identity</code> (club, flag, both), <code>themeColors</code>, <code>logoMode</code> (template, custom, none), <code>logoUrl</code> (only with custom)</td></tr>
-          <tr><td><code>clockOffsetMs</code></td><td>Server time minus this computer's time, for running clocks</td></tr>
+          <tr><td><code>className</code></td><td>string</td><td>The class shown. Relay legs are classes of their own ("Mixed-2"; show them with <code>classLabel()</code>). Empty when the graphic combines every class. Example: <code>H21</code>.</td><td>always</td></tr>
+          <tr><td><code>competitionName</code></td><td>string</td><td>The competition's name (the event's override when set).</td><td>when the source names the competition</td></tr>
+          <tr><td><code>competitionDate</code></td><td>string</td><td>The competition day, YYYY-MM-DD. Example: <code>2026-06-30</code>.</td><td>when the source knows it</td></tr>
+          <tr><td><code>competitionTimeZone</code></td><td>string</td><td>IANA time zone start times are read in. Example: <code>Europe/Stockholm</code>.</td><td>when the date is known</td></tr>
+          <tr><td><code>competitionTimediff</code></td><td>number (hours)</td><td>Extra hours on top of the zone (Liveresultat's legacy offset); almost always 0.</td><td>when the date is known</td></tr>
+          <tr><td><code>raceLocation</code></td><td>string</td><td>The event's place, from the event settings.</td><td>when set</td></tr>
+          <tr><td><code>controlCode</code></td><td>string</td><td>The timing point: "" or "F" for the finish, "Start" for start times, or a radio control's code (see <code>splitControls</code>). Example: <code>1062</code>.</td><td>always</td></tr>
+          <tr><td><code>controlName</code></td><td>string</td><td>"Finish", "Start" or the radio control's name. Example: <code>Radio 2</code>.</td><td>always</td></tr>
+          <tr><td><code>splitControls</code></td><td>array</td><td>The class's radio controls in course order.</td><td>always</td></tr>
+          <tr><td><code>splitControls[].code</code></td><td>number</td><td>Control code as Split Control numbers it: 1000 × visit + the code on the map (1062 = first visit to 62, 2062 = second). Example: <code>1062</code>.</td><td>always</td></tr>
+          <tr><td><code>splitControls[].name</code></td><td>string</td><td>The control's name (Plan → Radio controls can rename it).</td><td>always</td></tr>
+          <tr><td><code>clockOffsetMs</code></td><td>number (ms)</td><td>Timing source clock minus this computer's clock. Running time now = <code>Date.now() + clockOffsetMs - startTimeMs</code>.</td><td>always</td></tr>
+          <tr><td><code>dataTimestamp</code></td><td>number (epoch ms)</td><td>When this data was put together.</td><td>always</td></tr>
+          <tr><td><code>x</code></td><td>object</td><td>Fields timing plugins add for the class and competition, from the timing source or an additional source: map <code>x.&lt;plugin&gt;.&lt;key&gt;</code> to a field in <code>.datasource.json</code> (docs/TIMING-PLUGINS.md).</td><td>when mapped</td></tr>
         </tbody>
       </table>
       </div>
-      <p>The preview's <strong>More data (JSON)</strong> box shows and edits these fields.</p>
+      <h3 id="tags-runner">Runners: <code>results[]</code></h3>
+      <p>The runners of the class at the chosen timing point, in display order. Placed runners first; at a radio control, by place there; for start times, in start order.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>results</code></td><td>array</td><td>The runners (see the list below).</td><td>when the class has runners</td></tr>
+          <tr><td><code>results[].position</code></td><td>string / number</td><td>Place at the timing point: "1", "2" …, "=" for the same place as the runner before, "" when not placed (running, not started, MP, DNF …). In start lists the start order. Example: <code>1</code>.</td><td>always</td></tr>
+          <tr><td><code>results[].name</code></td><td>string</td><td>The runner.</td><td>always</td></tr>
+          <tr><td><code>results[].club</code></td><td>string</td><td>Club (short name when the source has one). Relays: the team.</td><td>always</td></tr>
+          <tr><td><code>results[].country</code></td><td>string</td><td>Nation code (IOC or ISO). Example: <code>SWE</code>.</td><td>when the source has it (IOF XML, MeOS)</td></tr>
+          <tr><td><code>results[].bib</code></td><td>string</td><td>Bib number, from the event's start list (Plan → Start lists). Virtual bibs never reach graphics.</td><td>when the start list has one</td></tr>
+          <tr><td><code>results[].favourite</code></td><td>boolean</td><td>Marked as a favourite in the event's start list.</td><td>when the runner is in the start list</td></tr>
+          <tr><td><code>results[].note</code></td><td>string</td><td>The operator's note from the start list.</td><td>when there is one</td></tr>
+          <tr><td><code>results[].time</code></td><td>string</td><td>Time at the timing point (h:mm:ss or m:ss); "--:--" for none; the start time in start lists. Example: <code>31:47</code>.</td><td>always</td></tr>
+          <tr><td><code>results[].diff</code></td><td>string</td><td>Behind the leader at the timing point ("+1:23"); "" for the leader and runners without a time. Example: <code>+1:23</code>.</td><td>always</td></tr>
+          <tr><td><code>results[].status</code></td><td>string</td><td>Status text for <code>statusCode</code>: "OK", "DNS", "DNF", "MP", "DSQ", "OT", "WO", "Moved up", or "" while not started or running.</td><td>always</td></tr>
+          <tr><td><code>results[].statusCode</code></td><td>number</td><td>Status: 0 OK, 1 DNS, 2 DNF, 3 MP, 4 DSQ, 5 overtime, 9 not started, 10 running, 11 walkover / cancelled, 12 moved up, 20 OK without time. At a radio control, 0 for runners who have passed it.</td><td>always</td></tr>
+          <tr><td><code>results[].progress</code></td><td>number (%)</td><td>Share of the course done: radio controls passed, 100 once finished or out.</td><td>always</td></tr>
+          <tr><td><code>results[].className</code></td><td>string</td><td>The runner's class (useful when the graphic combines every class).</td><td>always</td></tr>
+          <tr><td><code>results[].startTime</code></td><td>string</td><td>Start time of day (h:mm:ss); "0:00" when unknown. Example: <code>10:02:00</code>.</td><td>except in start lists, where <code>time</code> is the start time</td></tr>
+          <tr><td><code>results[].startTimeMs</code></td><td>number (epoch ms)</td><td>The runner's own start (relays: the changeover). Use for running clocks.</td><td>when the start time and competition date are known</td></tr>
+          <tr><td><code>results[].teamStartTimeMs</code></td><td>number (epoch ms)</td><td>Relays: when the team started; times and splits count from it. <code>clockStartMs(r)</code> from <code>_core/util.js</code> picks the right start.</td><td>relay legs after the first, when the source knows the team's start</td></tr>
+          <tr><td><code>results[].finishTimeMs</code></td><td>number (ms)</td><td>The result as a duration (relays: from the team's start).</td><td>finished with status OK</td></tr>
+          <tr><td><code>results[].clubLogo</code></td><td>string</td><td>Address of the club's logo (bundled or Plan → Theme).</td><td>when there is a logo for the club</td></tr>
+          <tr><td><code>results[].splitTimes</code></td><td>array</td><td>Times at the radio controls (see below).</td><td>when the class has radio controls</td></tr>
+          <tr><td><code>results[].x</code></td><td>object</td><td>Fields timing plugins add for the runner, from the timing source or an event's additional sources (GPS …): <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code>.</td><td>when a source's plugin declares runner fields</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-split">Split times: <code>results[].splitTimes[]</code></h3>
+      <p>A runner's times at the class's radio controls they have passed, in course order. Relays: from the team's start.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>results[].splitTimes[].code</code></td><td>number</td><td>The control (as in <code>splitControls</code>).</td><td>always</td></tr>
+          <tr><td><code>results[].splitTimes[].time</code></td><td>number (hundredths)</td><td>Time at the control.</td><td>always</td></tr>
+          <tr><td><code>results[].splitTimes[].place</code></td><td>number</td><td>Place at the control; 0 when not ranked there.</td><td>always</td></tr>
+          <tr><td><code>results[].splitTimes[].timeplus</code></td><td>number (hundredths)</td><td>Behind the best time at the control.</td><td>always</td></tr>
+          <tr><td><code>results[].splitTimes[].status</code></td><td>number</td><td>Status at the control (0 = passed normally).</td><td>always</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-relay">Relay line-up: <code>relayLegs[]</code></h3>
+      <p>Only for graphics whose <code>.datasource.json</code> maps <code>relayLegs</code>: the selected runner's team on every leg of the relay. Times are hundredths of a second from the team's start.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>relayLegs</code></td><td>array</td><td>One item per leg, in leg order.</td><td>mapped, relay class, runner chosen</td></tr>
+          <tr><td><code>relayLegs[].leg</code></td><td>number</td><td>Leg number.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].className</code></td><td>string</td><td>The leg's class ("Mixed-2").</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].controls</code></td><td>array</td><td>The leg's radio controls in course order.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].controls[].code</code></td><td>number</td><td>Control code (as in <code>splitControls</code>).</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].controls[].name</code></td><td>string</td><td>Control name.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner</code></td><td>object</td><td>The team's runner on the leg; null when not known yet.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.name</code></td><td>string</td><td>The runner.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.club</code></td><td>string</td><td>The team.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.status</code></td><td>number</td><td>Status code (as <code>statusCode</code>).</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.result</code></td><td>number (hundredths)</td><td>The team's time at the end of the leg; 0 until then.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.place</code></td><td>number</td><td>The team's place at the end of the leg; 0 when not placed (or tied).</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.timeplus</code></td><td>number (hundredths)</td><td>Behind the best team at the end of the leg.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.legTime</code></td><td>number (hundredths)</td><td>The runner's own time on the leg; 0 until known.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.legPlace</code></td><td>number</td><td>Rank of the leg time among all teams; 0 until known.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.legTimeplus</code></td><td>number (hundredths)</td><td>Behind the fastest leg time.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.splits</code></td><td>array</td><td>The team's times at the leg's radio controls.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.splits[].code</code></td><td>number</td><td>Control code.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.splits[].time</code></td><td>number (hundredths)</td><td>Time at the control.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.splits[].place</code></td><td>number</td><td>Place at the control.</td><td>always</td></tr>
+          <tr><td><code>relayLegs[].runner.splits[].timeplus</code></td><td>number (hundredths)</td><td>Behind the best team at the control.</td><td>always</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-operator">Runner in focus</h3>
+      <p>Values the operator chose in Live (runner search, palette), passed on to the graphic.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>runnerName</code></td><td>string</td><td>The runner in focus (lower thirds, runner identity, focus steps).</td><td>when chosen</td></tr>
+          <tr><td><code>runnerClub</code></td><td>string</td><td>Their club or team.</td><td>when chosen</td></tr>
+          <tr><td><code>runnerBib</code></td><td>string</td><td>Their bib.</td><td>when chosen</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-course">Course (<code>course</code> feed)</h3>
+      <p>Course facts for the chosen class, when the timing source has them (IOF XML), or typed by the operator.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>title</code></td><td>string</td><td>The class name, as the title.</td><td>with the course feed</td></tr>
+          <tr><td><code>length</code></td><td>string (km)</td><td>Course length, one decimal. Example: <code>5.4</code>.</td><td>when known</td></tr>
+          <tr><td><code>climb</code></td><td>string (m)</td><td>Climb. Example: <code>120</code>.</td><td>when known</td></tr>
+          <tr><td><code>controls</code></td><td>string</td><td>Number of controls. Example: <code>18</code>.</td><td>when known</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-weather">Weather (<code>weather</code> feed)</h3>
+      <p>Conditions at the venue, read again while the graphic is on air; the operator can type over them.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>condition</code></td><td>string</td><td>Conditions in words.</td><td>with the weather feed</td></tr>
+          <tr><td><code>temperature</code></td><td>string (°C)</td><td>Temperature.</td><td>with the weather feed</td></tr>
+          <tr><td><code>wind</code></td><td>string (m/s)</td><td>Wind speed.</td><td>with the weather feed</td></tr>
+          <tr><td><code>humidity</code></td><td>string (%)</td><td>Relative humidity.</td><td>with the weather feed</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <h3 id="tags-event">Event and theme (every graphic)</h3>
+      <p>Added to every graphic's data.</p>
+      <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tag</th><th>Type</th><th>Description</th><th>When</th></tr></thead>
+        <tbody>
+          <tr><td><code>event</code></td><td>object</td><td>The event (Plan → Event info).</td><td>always</td></tr>
+          <tr><td><code>event.name</code></td><td>string</td><td>Event name (the override, the competition, or "").</td><td>always</td></tr>
+          <tr><td><code>event.location</code></td><td>string</td><td>Place.</td><td>always</td></tr>
+          <tr><td><code>event.date</code></td><td>string</td><td>Date, YYYY-MM-DD.</td><td>always</td></tr>
+          <tr><td><code>event.series</code></td><td>string</td><td>Series or championship.</td><td>always</td></tr>
+          <tr><td><code>event.organiser</code></td><td>string</td><td>Organiser.</td><td>always</td></tr>
+          <tr><td><code>event.timeZone</code></td><td>string</td><td>IANA time zone set for the event ("" when not set).</td><td>always</td></tr>
+          <tr><td><code>presentation</code></td><td>object</td><td>The theme (Plan → Theme): <code>language</code>, <code>identity</code> (club, flag, both), <code>themeColors</code>, <code>logoMode</code>, <code>logoUrl</code>, <code>clubLogos</code>, <code>relayNames</code> …</td><td>always</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <!-- base-tags:end -->
+
+      <h2 id="timing-plugins">Timing sources and plugins</h2>
+      <p>Every timing source is a <strong>timing plugin</strong>: it reports facts (who started
+        when, passed which radio control, finished in what time) and the app works out places,
+        time behind, split standings and relay times the same way for every source, then makes
+        the base tags. Official results services such as Liveresultat pass their own published
+        standings, which the app shows unchanged.</p>
+      <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>A MySQL/MariaDB timing database</td><td>An <strong>SQL profile</strong>: a YAML file of queries, no code. The app keeps the database driver and the safety rules (read only).</td></tr>
+          <tr><td>Anything else (an API, a file format, a push connection)</td><td>A small <strong>code plugin</strong>: <code>manifest</code> + <code>create(config, ctx)</code> answering competitions, classes and entries.</td></tr>
+          <tr><td>Extra data, such as GPS speed or heart rate</td><td>Declare <code>extFields</code>; graphics read them as <code>results[].x.&lt;plugin&gt;.&lt;key&gt;</code> and list them in <code>sourceFields</code>. Such a source can be an event's <strong>additional source</strong> next to its timing source: it only adds its own fields, matched to the timing source's runners, and never changes places, times or runners. Built in: <strong>Trace / Track</strong> GPS (heart rate, pace, speed, position and experimental virtual standings under <code>results[].x['trace-track']</code>; see <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/TRACE-TRACK.md">docs/TRACE-TRACK.md</a>).</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p>Install a plugin by copying it to the plugins folder (<strong>Settings → Data sources →
+        Open plugins folder</strong>) and pressing <strong>Reload</strong>. The full guide, with
+        working examples: <a href="https://github.com/opensourceorienteering/O-TV-Graphics/blob/main/docs/TIMING-PLUGINS.md">docs/TIMING-PLUGINS.md</a>.</p>
 
       <h2 id="test">Test before race day</h2>
       <p>In the repository, run <code>npm run type-check</code>, <code>npm test -- --run</code>

@@ -53,6 +53,15 @@ parameter order; `required` must be a subset. `fields` selects manual Live inspe
 from `<manifest-id>.datasource.json`: select the timing feed and provide the datasource mapping.
 `live` is derived from the timing feed, rather than declared separately.
 
+The datasource's `api.provider` is `"timing"`: the event's timing source, whichever it is
+(Liveresultat or any [timing plugin](TIMING-PLUGINS.md)). `"liveresults"` is the original name
+for the same thing and stays accepted; the bundled looks still use it so they keep working in
+older versions of Split Control. Map the [base tags](BASE-TAGS.md): the library lists every
+field, its type, its unit and when it is there. Fields a
+timing plugin adds are under `results[].x.<plugin-id>.<key>` (per runner) and
+`x.<plugin-id>.<key>` (per class); list the ones a graphic needs in the desk declaration's
+`sourceFields`.
+
 Known kinds inherit the existing desk entry when declarations/properties are absent, so old
 look zips continue to work. Unknown kinds need a kind and label. Arrays replace inherited
 arrays; `[]` clears them. `previewData: null` clears an inherited preview requirement. Invalid
