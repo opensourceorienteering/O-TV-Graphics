@@ -3256,13 +3256,393 @@ export const translations: Record<string, { sv: string; nb: string }> = {
     "sv": "Exportera…",
     "nb": "Eksporter…"
   },
-  "Save this look as a zip file, to share it or use it on another computer": {
-    "sv": "Spara temat som en zip-fil, för att dela det eller använda det på en annan dator",
-    "nb": "Lagre temaet som en zip-fil, for å dele det eller bruke det på en annen datamaskin"
+  "Added to this look": {
+    "sv": "Tillagd i det här temat",
+    "nb": "Lagt til i dette temaet"
   },
-  "Import this zip?": {
-    "sv": "Importera den här zip-filen?",
-    "nb": "Importere denne zip-filen?"
+  "Replaced by": {
+    "sv": "Ersatt av",
+    "nb": "Erstattet av"
+  },
+  "Remove this graphic from the look": {
+    "sv": "Ta bort den här grafiken från temat",
+    "nb": "Fjern denne grafikken fra temaet"
+  },
+  "Graphics added to this look": {
+    "sv": "Grafik som lagts till i det här temat",
+    "nb": "Grafikk som er lagt til i dette temaet"
+  },
+  "added": {
+    "sv": "tillagda",
+    "nb": "lagt til"
+  },
+  "Graphic removed": {
+    "sv": "Grafik borttagen",
+    "nb": "Grafikk fjernet"
+  },
+  "Remove {graphic} from {look}?": {
+    "sv": "Ta bort {graphic} från {look}?",
+    "nb": "Fjerne {graphic} fra {look}?"
+  },
+  "Remove {graphic} from {look}? Live uses {original} again.": {
+    "sv": "Ta bort {graphic} från {look}? Live använder {original} igen.",
+    "nb": "Fjerne {graphic} fra {look}? Live bruker {original} igjen."
+  },
+  "Save this look as a .splitlook file, to share it or use it on another computer": {
+    "sv": "Spara temat som en .splitlook-fil, för att dela det eller använda det på en annan dator",
+    "nb": "Lagre temaet som en .splitlook-fil, for å dele det eller bruke det på en annen datamaskin"
+  },
+  "Save the graphics added to this look as a .splitlook file, for another computer that has the look": {
+    "sv": "Spara grafiken som lagts till i temat som en .splitlook-fil, för en annan dator som har temat",
+    "nb": "Lagre grafikken som er lagt til i temaet som en .splitlook-fil, for en annen datamaskin som har temaet"
+  },
+  "Remote access": {
+    "sv": "Fjärråtkomst",
+    "nb": "Fjerntilgang"
+  },
+  "Key for other computers": {
+    "sv": "Nyckel för andra datorer",
+    "nb": "Nøkkel for andre datamaskiner"
+  },
+  "Other computers on the network need this key to control Split Control or read its live data.": {
+    "sv": "Andra datorer i nätverket behöver den här nyckeln för att styra Split Control eller läsa dess livedata.",
+    "nb": "Andre datamaskiner i nettverket trenger denne nøkkelen for å styre Split Control eller lese livedataene."
+  },
+  "Could not save the setting": {
+    "sv": "Kunde inte spara inställningen",
+    "nb": "Kunne ikke lagre innstillingen"
+  },
+  "Key copied": {
+    "sv": "Nyckeln kopierad",
+    "nb": "Nøkkelen er kopiert"
+  },
+  "Could not copy: select the key and copy it.": {
+    "sv": "Kunde inte kopiera: markera nyckeln och kopiera den.",
+    "nb": "Kunne ikke kopiere: merk nøkkelen og kopier den."
+  },
+  "Make a new key? Companion, OBS/vMix and director pages on other computers stop working until they get the new key.": {
+    "sv": "Skapa en ny nyckel? Companion, OBS/vMix och regisidor på andra datorer slutar fungera tills de får den nya nyckeln.",
+    "nb": "Lage en ny nøkkel? Companion, OBS/vMix og regisider på andre datamaskiner slutter å virke til de får den nye nøkkelen."
+  },
+  "New key made. Other computers using the old key were disconnected.": {
+    "sv": "Ny nyckel skapad. Andra datorer som använde den gamla nyckeln kopplades bort.",
+    "nb": "Ny nøkkel laget. Andre datamaskiner som brukte den gamle nøkkelen ble koblet fra."
+  },
+  "Other computers now need the key.": {
+    "sv": "Andra datorer behöver nu nyckeln.",
+    "nb": "Andre datamaskiner trenger nå nøkkelen."
+  },
+  "Other computers need the access key": {
+    "sv": "Andra datorer behöver åtkomstnyckeln",
+    "nb": "Andre datamaskiner trenger tilgangsnøkkelen"
+  },
+  "Anyone on the network can control the graphics and read the live data.": {
+    "sv": "Vem som helst i nätverket kan styra grafiken och läsa livedata.",
+    "nb": "Hvem som helst i nettverket kan styre grafikken og lese livedataene."
+  },
+  "Access key": {
+    "sv": "Åtkomstnyckel",
+    "nb": "Tilgangsnøkkel"
+  },
+  "Make a new key": {
+    "sv": "Skapa ny nyckel",
+    "nb": "Lag ny nøkkel"
+  },
+  "Where the key goes": {
+    "sv": "Var nyckeln används",
+    "nb": "Hvor nøkkelen brukes"
+  },
+  "Companion (Stream Deck): the Access key field of the Split Control connection.": {
+    "sv": "Companion (Stream Deck): fältet Access key i Split Control-anslutningen.",
+    "nb": "Companion (Stream Deck): feltet Access key i Split Control-tilkoblingen."
+  },
+  "OBS or vMix on another computer: copy the network link in Output → Web output. It already ends in ?key=.": {
+    "sv": "OBS eller vMix på en annan dator: kopiera nätverkslänken under Utgång → Webbutgång. Den slutar redan med ?key=.",
+    "nb": "OBS eller vMix på en annen datamaskin: kopier nettverkslenken under Utgang → Nettutgang. Den slutter allerede med ?key=."
+  },
+  "Director page on a phone or laptop: the link on the Live desk already carries the key.": {
+    "sv": "Regisidan på en telefon eller bärbar dator: länken i Live-vyn innehåller redan nyckeln.",
+    "nb": "Regisiden på en telefon eller bærbar PC: lenken i Live-visningen har allerede nøkkelen."
+  },
+  "OGraf controllers and other tools: send it as Authorization: Bearer <key>, or add ?key= to the address.": {
+    "sv": "OGraf-styrningar och andra verktyg: skicka den som Authorization: Bearer <nyckel>, eller lägg till ?key= i adressen.",
+    "nb": "OGraf-styringer og andre verktøy: send den som Authorization: Bearer <nøkkel>, eller legg til ?key= i adressen."
+  },
+  "This computer never needs the key. The key travels unencrypted on the network: it keeps other devices out, not someone who can watch the traffic.": {
+    "sv": "Den här datorn behöver aldrig nyckeln. Nyckeln skickas okrypterad i nätverket: den stänger ute andra enheter, inte någon som kan avlyssna trafiken.",
+    "nb": "Denne datamaskinen trenger aldri nøkkelen. Nøkkelen sendes ukryptert i nettverket: den holder andre enheter ute, ikke noen som kan avlytte trafikken."
+  },
+  "Copy": {
+    "sv": "Kopiera",
+    "nb": "Kopier"
+  },
+  "(a graphic already in a look stays there)": {
+    "sv": "(en grafik som redan finns i ett tema stannar där)",
+    "nb": "(en grafikk som allerede er i et tema, blir der)"
+  },
+  "Add to look": {
+    "sv": "Lägg till i tema",
+    "nb": "Legg til i tema"
+  },
+  "Behind": {
+    "sv": "Efter",
+    "nb": "Etter"
+  },
+  "Behind in seconds": {
+    "sv": "Efter i sekunder",
+    "nb": "Etter i sekunder"
+  },
+  "Check": {
+    "sv": "Kontroll",
+    "nb": "Kontroll"
+  },
+  "Choose…": {
+    "sv": "Välj…",
+    "nb": "Velg…"
+  },
+  "Class and timing point": {
+    "sv": "Klass och tidpunkt",
+    "nb": "Klasse og tidspunkt"
+  },
+  "Corner": {
+    "sv": "Hörn",
+    "nb": "Hjørne"
+  },
+  "Country": {
+    "sv": "Land",
+    "nb": "Land"
+  },
+  "Course length": {
+    "sv": "Banlängd",
+    "nb": "Løypelengde"
+  },
+  "Data for": {
+    "sv": "Data för",
+    "nb": "Data for"
+  },
+  "Event location": {
+    "sv": "Tävlingsplats",
+    "nb": "Arrangementssted"
+  },
+  "Event title": {
+    "sv": "Tävlingens titel",
+    "nb": "Arrangementets tittel"
+  },
+  "Example in graphic": {
+    "sv": "Exempel i grafiken",
+    "nb": "Eksempel i grafikken"
+  },
+  "Full screen": {
+    "sv": "Helskärm",
+    "nb": "Fullskjerm"
+  },
+  "Full width (tables)": {
+    "sv": "Full bredd (tabeller)",
+    "nb": "Full bredde (tabeller)"
+  },
+  "In the graphic": {
+    "sv": "I grafiken",
+    "nb": "I grafikken"
+  },
+  "Keep all typed in Live": {
+    "sv": "Skriv in allt i Live",
+    "nb": "Skriv inn alt i Live"
+  },
+  "Keep the graphic's own": {
+    "sv": "Behåll grafikens eget",
+    "nb": "Behold grafikkens eget"
+  },
+  "Label in Live": {
+    "sv": "Namn i Live",
+    "nb": "Navn i Live"
+  },
+  "Look": {
+    "sv": "Tema",
+    "nb": "Tema"
+  },
+  "Lower third": {
+    "sv": "Nedre tredjedel",
+    "nb": "Nedre tredjedel"
+  },
+  "Match the graphic's fields to Split Control data. Fields typed in Live are filled in by the operator.": {
+    "sv": "Koppla grafikens fält till Split Controls data. Fält som skrivs in i Live fylls i av operatören.",
+    "nb": "Koble grafikkens felt til Split Controls data. Felt som skrives inn i Live, fylles ut av operatøren."
+  },
+  "Match their fields to Split Control data, or keep them typed in Live, and give them a place in a look": {
+    "sv": "Koppla fälten till Split Controls data, eller skriv in dem i Live, och ge grafiken en plats i ett tema",
+    "nb": "Koble feltene til Split Controls data, eller skriv dem inn i Live, og gi grafikken en plass i et tema"
+  },
+  "Matched": {
+    "sv": "Kopplat",
+    "nb": "Koblet"
+  },
+  "Matched automatically": {
+    "sv": "Kopplat automatiskt",
+    "nb": "Koblet automatisk"
+  },
+  "Name": {
+    "sv": "Namn",
+    "nb": "Navn"
+  },
+  "Needs a choice": {
+    "sv": "Behöver ett val",
+    "nb": "Trenger et valg"
+  },
+  "New look": {
+    "sv": "Nytt tema",
+    "nb": "Nytt tema"
+  },
+  "New look name": {
+    "sv": "Namn på nytt tema",
+    "nb": "Navn på nytt tema"
+  },
+  "Place": {
+    "sv": "Placering",
+    "nb": "Plassering"
+  },
+  "Position": {
+    "sv": "Position",
+    "nb": "Posisjon"
+  },
+  "Ready in Live": {
+    "sv": "Klar i Live",
+    "nb": "Klar i Live"
+  },
+  "Render requirements": {
+    "sv": "Krav vid rendering",
+    "nb": "Krav ved gjengivelse"
+  },
+  "Runner bib": {
+    "sv": "Löparens nummerlapp",
+    "nb": "Løperens startnummer"
+  },
+  "Runner club": {
+    "sv": "Löparens klubb",
+    "nb": "Løperens klubb"
+  },
+  "Runner name": {
+    "sv": "Löparens namn",
+    "nb": "Løperens navn"
+  },
+  "Runners at a timing point": {
+    "sv": "Löpare vid en tidpunkt",
+    "nb": "Løpere ved et tidspunkt"
+  },
+  "Series": {
+    "sv": "Serie",
+    "nb": "Serie"
+  },
+  "Set up": {
+    "sv": "Ställ in",
+    "nb": "Sett opp"
+  },
+  "Set up this graphic": {
+    "sv": "Ställ in den här grafiken",
+    "nb": "Sett opp denne grafikken"
+  },
+  "Short label": {
+    "sv": "Kort namn",
+    "nb": "Kort navn"
+  },
+  "Side": {
+    "sv": "Sida",
+    "nb": "Side"
+  },
+  "Skip": {
+    "sv": "Hoppa över",
+    "nb": "Hopp over"
+  },
+  "Split Control data": {
+    "sv": "Split Control-data",
+    "nb": "Split Control-data"
+  },
+  "Start time": {
+    "sv": "Starttid",
+    "nb": "Starttid"
+  },
+  "Status": {
+    "sv": "Status",
+    "nb": "Status"
+  },
+  "The graphic on the sample race, with these matches. Show it, step it and hide it.": {
+    "sv": "Grafiken på exempeltävlingen, med de här kopplingarna. Visa, stega och dölj den.",
+    "nb": "Grafikken på eksempelløpet, med disse koblingene. Vis, bla og skjul den."
+  },
+  "The operator fills in every field in Live; no automatic data": {
+    "sv": "Operatören fyller i alla fält i Live; ingen automatisk data",
+    "nb": "Operatøren fyller ut alle felt i Live; ingen automatiske data"
+  },
+  "This graphic has no fields: Live shows it as it is.": {
+    "sv": "Grafiken har inga fält: Live visar den som den är.",
+    "nb": "Grafikken har ingen felt: Live viser den som den er."
+  },
+  "Time": {
+    "sv": "Tid",
+    "nb": "Tid"
+  },
+  "Time in seconds": {
+    "sv": "Tid i sekunder",
+    "nb": "Tid i sekunder"
+  },
+  "Timing point name": {
+    "sv": "Tidpunktens namn",
+    "nb": "Tidspunktets navn"
+  },
+  "Typed in Live": {
+    "sv": "Skrivs in i Live",
+    "nb": "Skrives inn i Live"
+  },
+  "Use instead of": {
+    "sv": "Använd i stället för",
+    "nb": "Bruk i stedet for"
+  },
+  "Where": {
+    "sv": "Var",
+    "nb": "Hvor"
+  },
+  "Where and name": {
+    "sv": "Var och namn",
+    "nb": "Hvor og navn"
+  },
+  "also asks for the same in Live. This graphic takes its place, with its command number and favourites. Choose nothing to add it alongside.": {
+    "sv": "frågar också efter samma sak i Live. Den här grafiken tar dess plats, med kommandonummer och favoriter. Välj ingenting för att lägga till den bredvid.",
+    "nb": "spør også etter det samme i Live. Denne grafikken tar plassen, med kommandonummer og favoritter. Velg ingenting for å legge den til ved siden av."
+  },
+  "fields have a choice": {
+    "sv": "fält har ett val",
+    "nb": "felt har et valg"
+  },
+  "list": {
+    "sv": "lista",
+    "nb": "liste"
+  },
+  "nothing (add alongside)": {
+    "sv": "ingenting (lägg till bredvid)",
+    "nb": "ingenting (legg til ved siden av)"
+  },
+  "rows": {
+    "sv": "rader",
+    "nb": "rader"
+  },
+  "The settings file could not be saved, so this key changes every time Split Control starts. Check that the settings folder can be written to.": {
+    "sv": "Inställningsfilen kunde inte sparas, så nyckeln ändras varje gång Split Control startar. Kontrollera att inställningsmappen går att skriva till.",
+    "nb": "Innstillingsfilen kunne ikke lagres, så nøkkelen endres hver gang Split Control starter. Sjekk at innstillingsmappen kan skrives til."
+  },
+  "A look file was opened. Open the Graphics library to import it.": {
+    "sv": "En temafil öppnades. Öppna grafikbiblioteket för att importera den.",
+    "nb": "En temafil ble åpnet. Åpne grafikkbiblioteket for å importere den."
+  },
+  "Import this file?": {
+    "sv": "Importera den här filen?",
+    "nb": "Importere denne filen?"
+  },
+  "adds graphics to this look": {
+    "sv": "lägger till grafik i det här temat",
+    "nb": "legger til grafikk i dette temaet"
+  },
+  "adds graphics to a look this computer doesn't have. They appear under Needs attention.": {
+    "sv": "lägger till grafik i ett tema som den här datorn inte har. Den visas under Behöver åtgärdas.",
+    "nb": "legger til grafikk i et tema denne datamaskinen ikke har. Den vises under Trenger oppfølging."
   },
   "new look": {
     "sv": "nytt tema",
@@ -3319,5 +3699,185 @@ export const translations: Record<string, { sv: string; nb: string }> = {
   "This look is not installed. Import it in Graphics library, or choose another look.": {
     "sv": "Temat är inte installerat. Importera det i Grafikbibliotek, eller välj ett annat tema.",
     "nb": "Temaet er ikke installert. Importer det i Grafikkbibliotek, eller velg et annet tema."
+  },
+  "Sample race speed": {
+    "sv": "Fart för exempelloppet",
+    "nb": "Fart for eksempelløpet"
+  },
+  "Sample race": {
+    "sv": "Exempellopp",
+    "nb": "Eksempelløp"
+  },
+  "Data used": {
+    "sv": "Data som används",
+    "nb": "Data som brukes"
+  },
+  "typed fields only": {
+    "sv": "bara inskrivna fält",
+    "nb": "bare innskrevne felt"
+  },
+  "graphic": {
+    "sv": "grafik",
+    "nb": "grafikk"
+  },
+  "Fix…": {
+    "sv": "Åtgärda…",
+    "nb": "Fiks…"
+  },
+  "The import helper comes in a later version": {
+    "sv": "Importhjälpen kommer i en senare version",
+    "nb": "Importhjelpen kommer i en senere versjon"
+  },
+  "Not in a look": {
+    "sv": "Inte i något tema",
+    "nb": "Ikke i noe tema"
+  },
+  "Not in a look yet: see Needs attention": {
+    "sv": "Inte i något tema än: se Behöver åtgärdas",
+    "nb": "Ikke i noe tema ennå: se Trenger oppfølging"
+  },
+  "Try another name.": {
+    "sv": "Prova ett annat namn.",
+    "nb": "Prøv et annet navn."
+  },
+  "Looks": {
+    "sv": "Teman",
+    "nb": "Temaer"
+  },
+  "steps": {
+    "sv": "steg",
+    "nb": "steg"
+  },
+  "look": {
+    "sv": "tema",
+    "nb": "tema"
+  },
+  "looks": {
+    "sv": "teman",
+    "nb": "temaer"
+  },
+  "Version": {
+    "sv": "Version",
+    "nb": "Versjon"
+  },
+  "Internet access": {
+    "sv": "Internetåtkomst",
+    "nb": "Internettilgang"
+  },
+  "Addresses graphics may use": {
+    "sv": "Adresser som grafiken får använda",
+    "nb": "Adresser grafikken kan bruke"
+  },
+  "Internet access for graphics": {
+    "sv": "Internetåtkomst för grafik",
+    "nb": "Internettilgang for grafikk"
+  },
+  "Let graphics load from addresses on the internet, such as a GPS viewer or map tiles. Applies to every output: the app, NDI, the previews and the OBS/vMix web output.": {
+    "sv": "Låt grafiken hämta från adresser på internet, till exempel en GPS-visare eller kartbilder. Gäller alla utgångar: appen, NDI, förhandsvisningarna och webbutgången för OBS/vMix.",
+    "nb": "La grafikken hente fra adresser på internett, for eksempel en GPS-visning eller kartfliser. Gjelder alle utganger: appen, NDI, forhåndsvisningene og nettutgangen for OBS/vMix."
+  },
+  "Graphics can only load from this computer, plus the addresses below.": {
+    "sv": "Grafiken kan bara hämta från den här datorn och adresserna nedan.",
+    "nb": "Grafikken kan bare hente fra denne datamaskinen og adressene nedenfor."
+  },
+  "Allowed addresses can show anything in your graphics and see what graphics send them.": {
+    "sv": "Tillåtna adresser kan visa vad som helst i grafiken och se vad grafiken skickar till dem.",
+    "nb": "Tillatte adresser kan vise hva som helst i grafikken og se hva grafikken sender til dem."
+  },
+  "Address": {
+    "sv": "Adress",
+    "nb": "Adresse"
+  },
+  "Add address": {
+    "sv": "Lägg till adress",
+    "nb": "Legg til adresse"
+  },
+  "Allowed address": {
+    "sv": "Tillåten adress",
+    "nb": "Tillatt adresse"
+  },
+  "No addresses allowed: graphics use only this computer.": {
+    "sv": "Inga adresser tillåtna: grafiken använder bara den här datorn.",
+    "nb": "Ingen adresser tillatt: grafikken bruker bare denne datamaskinen."
+  },
+  "Applies to graphics loaded from now on. A graphic already on air keeps its rules until it is shown again.": {
+    "sv": "Gäller grafik som laddas från och med nu. Grafik som redan är i sändning behåller sina regler tills den visas igen.",
+    "nb": "Gjelder grafikk som lastes fra nå av. Grafikk som allerede er på lufta beholder reglene til den vises igjen."
+  },
+  "Could not save the addresses": {
+    "sv": "Kunde inte spara adresserna",
+    "nb": "Kunne ikke lagre adressene"
+  },
+  "Start the address with https://": {
+    "sv": "Börja adressen med https://",
+    "nb": "Start adressen med https://"
+  },
+  "Only https:// addresses can be allowed": {
+    "sv": "Bara https://-adresser kan tillåtas",
+    "nb": "Bare https://-adresser kan tillates"
+  },
+  "Add a host name after https://": {
+    "sv": "Skriv ett värdnamn efter https://",
+    "nb": "Skriv et vertsnavn etter https://"
+  },
+  "Leave out the path: just https:// and the host name": {
+    "sv": "Utelämna sökvägen: bara https:// och värdnamnet",
+    "nb": "Utelat stien: bare https:// og vertsnavnet"
+  },
+  "Leave out the port": {
+    "sv": "Utelämna porten",
+    "nb": "Utelat porten"
+  },
+  "That is not a host name, e.g. https://www.example.com or https://*.example.com": {
+    "sv": "Det är inget värdnamn, t.ex. https://www.example.com eller https://*.example.com",
+    "nb": "Det er ikke et vertsnavn, f.eks. https://www.example.com eller https://*.example.com"
+  },
+  "Looks contain code. Only import looks from people you trust.": {
+    "sv": "Teman innehåller kod. Importera bara teman från personer du litar på.",
+    "nb": "Temaer inneholder kode. Importer bare temaer fra personer du stoler på."
+  },
+  "These graphics ask for internet access. Allow these addresses for graphics:": {
+    "sv": "Den här grafiken vill ha internetåtkomst. Tillåt de här adresserna för grafik:",
+    "nb": "Denne grafikken ber om internettilgang. Tillat disse adressene for grafikk:"
+  },
+  "You can change this later in Settings → Internet access.": {
+    "sv": "Du kan ändra det senare i Inställningar → Internetåtkomst.",
+    "nb": "Du kan endre dette senere i Innstillinger → Internettilgang."
+  },
+  "Import": {
+    "sv": "Importera",
+    "nb": "Importer"
+  },
+  "Saved as": {
+    "sv": "Sparad som",
+    "nb": "Lagret som"
+  },
+  "These addresses were asked for but can't be allowed, so graphics won't reach them:": {
+    "sv": "De här adresserna efterfrågades men kan inte tillåtas, så grafiken når dem inte:",
+    "nb": "Disse adressene ble etterspurt, men kan ikke tillates, så grafikken når dem ikke:"
+  },
+  "Blocked recently": {
+    "sv": "Nyligen blockerade",
+    "nb": "Nylig blokkert"
+  },
+  "Graphics tried to reach these addresses and were refused. Allow only what you trust.": {
+    "sv": "Grafiken försökte nå de här adresserna och nekades. Tillåt bara det du litar på.",
+    "nb": "Grafikken prøvde å nå disse adressene og ble nektet. Tillat bare det du stoler på."
+  },
+  "Last": {
+    "sv": "Senast",
+    "nb": "Sist"
+  },
+  "Allow": {
+    "sv": "Tillåt",
+    "nb": "Tillat"
+  },
+  "Clear list": {
+    "sv": "Töm listan",
+    "nb": "Tøm listen"
+  },
+  "Nothing blocked right now. Show a graphic in a preview to see what it tries to reach.": {
+    "sv": "Inget blockerat just nu. Visa en grafik i en förhandsvisning för att se vad den försöker nå.",
+    "nb": "Ingenting blokkert akkurat nå. Vis en grafikk i en forhåndsvisning for å se hva den prøver å nå."
   }
 };

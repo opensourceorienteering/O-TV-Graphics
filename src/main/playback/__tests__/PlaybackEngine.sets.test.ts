@@ -17,7 +17,9 @@ const templates = [
   tpl('iof-results', 'iof', 'main'),
   tpl('iof-name-strap', 'iof', 'lower'),
   tpl('iof-clock', 'iof', 'corner'),
-  tpl('cz-podium', 'cz', 'main')
+  tpl('cz-podium', 'cz', 'main'),
+  // Made elsewhere: its own field names, filled from ours by its field map
+  { ...tpl('guest-strap', 'iof', 'lower'), manifest: { id: 'guest-strap', name: 'Guest strap', stepCount: 1, v_olgrafik_fieldMap: { headline: 'runnerName', where: 'event.location' } } }
 ];
 vi.mock('../../templates/OGrafManager', () => ({
   getTemplateManager: () => ({ getAllTemplates: () => templates })
@@ -49,10 +51,11 @@ describe('PlaybackEngine and template sets', () => {
     project = { id: 'p1', name: 'WOC', templateSet: 'iof', settings: { presentation: { international: true, logoUrl: '/assets/iof.png' } } };
     rundown = {
       id: 'r1', projectId: 'p1', settings: { raceLocation: 'Genova' }, dataSource: { competitionName: 'WOC 2026' },
-      items: [item('strap', 'iof-name-strap', { name: 'Tove Alexandersson' }), item('clock', 'iof-clock'), item('table', 'iof-results'), item('cz', 'cz-podium')]
+      items: [item('strap', 'iof-name-strap', { name: 'Tove Alexandersson' }), item('clock', 'iof-clock'), item('table', 'iof-results'), item('cz', 'cz-podium'), item('guest', 'guest-strap', { runnerName: 'Tove Alexandersson' })]
     };
     engine = new PlaybackEngine();
-    engine.sendCommand = vi.fn(async () => ({ success: true, result: { currentStep: 1 } }));
+    // Graphics reply as OGraf v1 says: zero-based steps (step 0 is the first page)
+    engine.sendCommand = vi.fn(async () => ({ success: true, result: { currentStep: 0 } }));
   });
 
   const commands = (name: string) => engine.sendCommand.mock.calls.filter((c: any[]) => c[0] === name).map((c: any[]) => c[1]);
@@ -72,6 +75,34 @@ describe('PlaybackEngine and template sets', () => {
     });
   });
 
+  it("fills a graphic's own fields from ours through its field map, on Show and on Update", async () => {
+    await engine.playItem('p1', 'r1', 'guest');
+    expect(commands('load')[0].data).toMatchObject({ headline: 'Tove Alexandersson', where: 'Genova' });
+    await engine.updateItem('p1', 'r1', 'guest', { runnerName: 'Simona Aebersold' });
+    expect(commands('update').at(-1).data).toMatchObject({ headline: 'Simona Aebersold' });
+  });
+
+  it('leaves data from an outside OGraf controller as it was sent', async () => {
+    await engine.apiLoad('guest-strap', { runnerName: 'X' });
+    expect(commands('load').at(-1).data).toEqual({ runnerName: 'X' });
+  });
+
+  it('resumes on the same page when shown again within the undo window, with a zero-based goto', async () => {
+    vi.useFakeTimers();
+    try {
+      await engine.playItem('p1', 'r1', 'table');
+      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 2 } }); // third page
+      await engine.nextItem('p1', 'r1', 'table');
+      expect(engine.getActiveGraphics().find((g: any) => g.itemId === 'table').currentStep).toBe(3);
+      await engine.stopItem('p1', 'r1', 'table');
+      engine.sendCommand.mockClear();
+      await engine.playItem('p1', 'r1', 'table');
+      expect(commands('play').find((c: any) => c.id === 'p1-r1-table').options.goto).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('a results table takes the lower third off air but leaves the clock', async () => {
     await engine.playItem('p1', 'r1', 'strap');
     await engine.playItem('p1', 'r1', 'clock');
@@ -87,5 +118,80 @@ describe('PlaybackEngine and template sets', () => {
     engine.sendCommand.mockClear();
     await engine.playItem('p1', 'r1', 'table');
     expect(commands('stop')).toHaveLength(0);
+  });
+
+  it('a graphic taken off air by a clash is disposed, and starts on its first page when shown again', async () => {
+    vi.useFakeTimers();
+    try {
+      await engine.playItem('p1', 'r1', 'table');
+      engine.sendCommand.mockResolvedValueOnce({ success: true, result: { currentStep: 2 } });
+      await engine.nextItem('p1', 'r1', 'table');
+      await engine.playItem('p1', 'r1', 'strap'); // lower clashes with main: the table goes off air
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).toContain('p1-r1-table');
+      engine.sendCommand.mockClear();
+      await engine.playItem('p1', 'r1', 'table');
+      expect(commands('load').map((c: any) => c.id)).toEqual(['p1-r1-table']);
+      expect(commands('play').find((c: any) => c.id === 'p1-r1-table').options.goto).toBeUndefined();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a graphic shown again keeps the new data for renderers that connect later', async () => {
+    await engine.playItem('p1', 'r1', 'strap');
+    await engine.stopItem('p1', 'r1', 'strap');
+    rundown.items[0].fields = { name: 'Simona Aebersold' };
+    await engine.playItem('p1', 'r1', 'strap'); // within the undo window: the loaded graphic is reused
+    const sent: any[] = [];
+    engine.wsServer = { sendToClient: (_id: string, msg: any) => sent.push(msg) };
+    await engine.syncGraphicsToNewClient('socket-1', 'program-output');
+    const load = sent.find((m) => m.command === 'load' && m.payload.id === 'p1-r1-strap');
+    expect(load.payload.data.name).toBe('Simona Aebersold');
+  });
+
+  it('keeps a graphic loaded by an external OGraf controller when a solo graphic takes it off air', async () => {
+    vi.useFakeTimers();
+    try {
+      const { graphicInstanceId } = await engine.apiLoad('iof-name-strap', { name: 'Guest' });
+      await engine.apiPlay(graphicInstanceId, {});
+      rundown.items[2].playbackMode = 'solo'; // a solo graphic takes everything else off air
+      await engine.playItem('p1', 'r1', 'table');
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).not.toContain(graphicInstanceId);
+      expect(engine.listGraphicInstances().map((g: any) => g.graphicInstanceId)).toContain(graphicInstanceId);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('never disposes a graphic that is back on air when its removal comes due', async () => {
+    vi.useFakeTimers();
+    try {
+      let releaseUpdate: () => void = () => {};
+      engine.sendCommand = vi.fn(async (cmd: string, p: any) => {
+        if (cmd === 'update' && p.id === 'p1-r1-strap') await new Promise<void>((r) => { releaseUpdate = r; });
+        return { success: true, result: { currentStep: 1 } };
+      });
+      await engine.playItem('p1', 'r1', 'strap');
+      const reshow = engine.playItem('p1', 'r1', 'strap'); // shown again: waits on its update
+      await vi.advanceTimersByTimeAsync(0);
+      await engine.playItem('p1', 'r1', 'table'); // meanwhile the table clears the strap
+      releaseUpdate();
+      await reshow; // the strap ends up on air
+      expect(engine.activeGraphics.get('p1-r1-strap')?.isPlaying).toBe(true);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(commands('dispose').map((c: any) => c.id)).not.toContain('p1-r1-strap');
+      expect(engine.activeGraphics.has('p1-r1-strap')).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tells each output page that connects the current content rules version', async () => {
+    const sent: any[] = [];
+    engine.wsServer = { sendToClient: (_id: string, msg: any) => sent.push(msg) };
+    await engine.syncGraphicsToNewClient('socket-1', 'program-output');
+    expect(sent[0]).toEqual({ spxcmd: 'graphics:rulesVersion', version: 0 });
   });
 });

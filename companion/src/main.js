@@ -46,6 +46,13 @@ export default class OLGrafik extends InstanceBase {
         max: 65535,
         width: 3,
       },
+      {
+        type: "secret-text",
+        id: "key",
+        label: "Access key (Split Control → Settings → Remote access; not needed on the same computer)",
+        default: "",
+        width: 12,
+      },
     ];
   }
   async configUpdated(config) {
@@ -53,8 +60,10 @@ export default class OLGrafik extends InstanceBase {
     this.config = config;
     const host = config.host || "127.0.0.1";
     this.base = `http://${host}:${config.port || 5657}/api/control`;
+    this.key = String(config.key ?? "").trim();
     this.socket = io(`http://${host}:${config.wsPort || 5656}/control`, {
       transports: ["websocket"],
+      auth: { key: this.key },
     });
     this.socket.on("connect", () => this.updateStatus(InstanceStatus.Ok));
     const offline = (message) => {
@@ -72,6 +81,7 @@ export default class OLGrafik extends InstanceBase {
     try {
       const response = await fetch(`${this.base}${path}`, {
         method: "POST",
+        headers: this.key ? { authorization: `Bearer ${this.key}` } : {},
         signal: AbortSignal.timeout(5000),
       });
       const body = await response.json();

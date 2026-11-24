@@ -1,6 +1,7 @@
 import { DESK_BEHAVIOURS, DESK_FEEDS, DESK_PARAMS, previewDataForKind, type PreviewData } from './capabilities';
 import { DESK_TEMPLATES, type DeskTemplate } from './desk';
-import type { OGrafManifest } from './types/ograf';
+import { fieldMapWarnings } from './fieldMap';
+import type { OGrafManifest, OGrafTemplateInfo } from './types/ograf';
 
 /** Optional manifest contract. Omitted properties inherit the known kind's defaults. */
 export interface DeskDeclaration {
@@ -19,6 +20,13 @@ export interface DeskDeclaration {
 
 /** Invalid declarations fall back as a whole; they never prevent a graphic from loading. */
 export function resolveDeskDeclaration(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: string[] } {
+  const result = resolveDesk(manifest);
+  const mapWarnings = fieldMapWarnings((manifest as { v_olgrafik_fieldMap?: unknown }).v_olgrafik_fieldMap, manifest.schema)
+    .map((w) => `v_olgrafik_fieldMap: ${w}`);
+  return mapWarnings.length ? { ...result, warnings: [...result.warnings, ...mapWarnings] } : result;
+}
+
+function resolveDesk(manifest: OGrafManifest): { desk?: DeskTemplate; warnings: string[] } {
   const kind = typeof manifest.v_olgrafik_kind === 'string' ? manifest.v_olgrafik_kind : '';
   const known = DESK_TEMPLATES.find(t => t.kind === kind)
     ?? DESK_TEMPLATES.find(t => t.fallbackIds?.includes(manifest.id));
@@ -74,4 +82,39 @@ export function resolveDeskDeclaration(manifest: OGrafManifest): { desk?: DeskTe
     if (!Object.prototype.hasOwnProperty.call(manifest.schema?.properties ?? {}, field)) warn(`field "${field}" is missing from schema.properties`);
   }
   return { desk: warnings.length ? fallback : desk, warnings };
+}
+
+export type DeskEntry = { def: DeskTemplate; template: OGrafTemplateInfo };
+
+/**
+ * The desk graphics of one look, by desk key. A graphic named in `replaces` (new id → replaced id,
+ * from overrides.json) is left out and its key goes to the graphic that replaces it; everything
+ * else in the replacing graphic's entry is its own (if it declares nothing, it takes the replaced
+ * graphic's entry). Otherwise the first graphic of a key wins.
+ */
+export function deskEntriesForLook(templates: OGrafTemplateInfo[], replaces: Record<string, string>): Map<string, DeskEntry> {
+  const defOf = (t: OGrafTemplateInfo) => t.desk ?? resolveDeskDeclaration(t.manifest).desk;
+  const byId = new Map(templates.map(t => [t.manifest.id, t]));
+  const replaced = new Set<string>();
+  const entries = new Map<string, DeskEntry>();
+  // Replacements first, so they hold the replaced graphic's key whatever the folder order
+  // A graphic that is itself replaced replaces nothing (chains and cycles stay predictable)
+  const targets = new Set(Object.values(replaces));
+  for (const [newId, oldId] of Object.entries(replaces)) {
+    if (targets.has(newId)) continue;
+    const template = byId.get(newId);
+    const old = byId.get(oldId);
+    if (!template || !old || newId === oldId) continue;
+    const oldDef = defOf(old);
+    const ownDef = defOf(template);
+    const def = ownDef ? { ...ownDef, key: oldDef?.key ?? ownDef.key } : oldDef;
+    replaced.add(oldId);
+    if (def && !entries.has(def.key)) entries.set(def.key, { def, template });
+  }
+  for (const template of templates) {
+    if (replaced.has(template.manifest.id) || [...entries.values()].some(e => e.template === template)) continue;
+    const def = defOf(template);
+    if (def && !entries.has(def.key)) entries.set(def.key, { def, template });
+  }
+  return entries;
 }

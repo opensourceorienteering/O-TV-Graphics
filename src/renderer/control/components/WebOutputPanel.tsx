@@ -109,7 +109,10 @@ export function WebOutputPanel() {
             </button>
             <button
               className="studio-button"
-              onClick={() => window.open(url, "_blank")}
+              onClick={() =>
+                // In the default browser: windows of the app itself can't open popups
+                void window.electronAPI.invoke("window:openExternal", url).catch(() => undefined)
+              }
             >
               <ExternalLink size={15} aria-hidden="true" />
                {tr("Open")} </button>

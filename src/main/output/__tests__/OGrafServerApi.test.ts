@@ -90,6 +90,8 @@ describe('OGraf Server API', () => {
     const info = await call('GET', '/renderers/program');
     expect(info.json.renderer).toMatchObject({ id: 'program', status: { status: 'OK' }, renderTargets: [expect.objectContaining({ renderTarget: target })] });
     expect(info.json.renderer.renderTargetSchema.properties.output.enum).toEqual(['program']);
+    // Graphics reach only this computer and the operator's allowlist, not the open internet
+    expect(info.json.renderer.renderCharacteristics.accessToPublicInternet).toBe(false);
     expect((await call('GET', '/renderers/other')).status).toBe(404);
   });
 

@@ -3,6 +3,7 @@
  * Handles window visibility and control operations
  */
 
+import { isOperatorMainFrame, operatorWindows } from '../security/callers';
 import { ipcMain, BrowserWindow, shell } from 'electron';
 import { getLogger } from '../utils/logger';
 
@@ -147,9 +148,15 @@ export function registerWindowHandlers() {
   });
 
   // Open external URL in default browser
-  ipcMain.handle('window:openExternal', async (_event, url: string) => {
+  ipcMain.handle('window:openExternal', async (event, url: string) => {
     try {
       logger.debug('Opening external URL', { url });
+
+      // Only the operator UI may open pages in the browser, never a graphic or a frame
+      if (!isOperatorMainFrame(event, operatorWindows)) {
+        logger.warn('Refused to open external URL for a caller outside the operator UI', { url });
+        throw new Error('Only the operator screens can open web pages');
+      }
 
       // Validate URL to prevent security issues
       if (!url.startsWith('http://') && !url.startsWith('https://')) {

@@ -8,12 +8,22 @@ import * as fs from 'fs';
 import { getTemplateManager } from '../templates/OGrafManager';
 import {
   exportLookZip,
+  lookFileName,
   importTemplateZip,
   previewTemplateZip,
+  removeAddition,
   removeImportedLook,
 } from '../templates/TemplatePackages';
+import { takePendingLookFile } from '../utils/lookFiles';
+import { finishGraphic, type FinishRequest } from '../templates/ImportHelper';
 import { listEvents } from '../events/EventService';
 import { logger } from '../utils/logger';
+import { getConfig, saveConfig } from '../utils/config';
+import { normalizeAllowedOrigin } from '../security/csp';
+import { PickedFile } from '../security/callers';
+import { graphicsRulesChanged } from '../security/rulesReload';
+
+const pickedImport = new PickedFile();
 import { SYSTEM_TEMPLATE_SET } from '../../shared/types/ograf';
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : 'Unknown error');
@@ -154,7 +164,7 @@ export function registerTemplateHandlers(): void {
     }
   });
 
-  // --- import / export looks as zip files ---
+  // --- import / export looks as .splitlook (zip) files ---
 
   /** Choose a zip and describe what importing it would do (nothing is installed yet) */
   ipcMain.handle('templates:pickImport', async (event) => {
@@ -163,12 +173,13 @@ export function registerTemplateHandlers(): void {
       const options: Electron.OpenDialogOptions = {
         title: 'Import look',
         properties: ['openFile'],
-        filters: [{ name: 'Look or OGraf graphic (zip)', extensions: ['zip'] }],
+        filters: [{ name: 'Look or OGraf graphic (.splitlook, .zip)', extensions: ['splitlook', 'zip'] }],
       };
       const pick = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
       if (pick.canceled || !pick.filePaths[0]) return { success: true, cancelled: true };
       const filePath = pick.filePaths[0];
-      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath));
+      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath), getConfig().graphicsAllowedOrigins ?? []);
+      pickedImport.remember(filePath);
       return { success: true, filePath, preview };
     } catch (error) {
       logger.warn('Look import check failed', { error: errorMessage(error) });
@@ -176,9 +187,36 @@ export function registerTemplateHandlers(): void {
     }
   });
 
-  ipcMain.handle('templates:import', async (_event, filePath: string) => {
+  /** A .splitlook opened from the system and waiting for the operator: describe it, once */
+  ipcMain.handle('templates:pendingOpen', async () => {
+    const filePath = takePendingLookFile();
+    if (!filePath) return { success: true, data: null };
     try {
+      const preview = previewTemplateZip(getTemplateManager(), fs.readFileSync(filePath), getConfig().graphicsAllowedOrigins ?? []);
+      pickedImport.remember(filePath);
+      return { success: true, data: { filePath, preview } };
+    } catch (error) {
+      logger.warn('Opened look file check failed', { filePath, error: errorMessage(error) });
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  ipcMain.handle('templates:import', async (_event, filePath: string, allow?: unknown) => {
+    try {
+      // Only the file the operator just picked in the dialog, and only once
+      if (!pickedImport.take(filePath)) throw new Error('Choose the file in Import look… first');
       const preview = await importTemplateZip(getTemplateManager(), fs.readFileSync(filePath));
+      // Internet addresses the operator agreed to in the import confirmation
+      const added = (Array.isArray(allow) ? allow : [])
+        .map((entry) => normalizeAllowedOrigin(String(entry)))
+        .flatMap((r) => (r.ok ? [r.value] : []));
+      if (added.length) {
+        const current = getConfig();
+        const merged = [...new Set([...(current.graphicsAllowedOrigins ?? []), ...added])].sort();
+        await saveConfig({ ...current, graphicsAllowedOrigins: merged });
+        logger.info('Internet addresses allowed at import', { added });
+        graphicsRulesChanged();
+      }
       logger.info('Looks imported', { filePath, looks: preview.looks.map((l) => l.id), graphics: preview.graphics.length });
       return { success: true, preview };
     } catch (error) {
@@ -192,10 +230,11 @@ export function registerTemplateHandlers(): void {
       const manager = getTemplateManager();
       const zip = exportLookZip(manager, setId);
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
+      const lookName = manager.getTemplateSets().find((s) => s.id === setId)?.name || setId;
       const options: Electron.SaveDialogOptions = {
         title: 'Export look',
-        defaultPath: `${setId}.zip`,
-        filters: [{ name: 'Zip', extensions: ['zip'] }],
+        defaultPath: `${lookFileName(lookName)}.splitlook`,
+        filters: [{ name: 'Split Control look', extensions: ['splitlook'] }, { name: 'Zip', extensions: ['zip'] }],
       };
       const save = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
       if (save.canceled || !save.filePath) return { success: true, cancelled: true };
@@ -226,6 +265,34 @@ export function registerTemplateHandlers(): void {
     } catch (error) {
       return { success: false, error: errorMessage(error) };
     }
+  });
+
+  /** The import helper's Finish: the graphic gets its place in a look and its Live entry */
+  ipcMain.handle('templates:finishHelper', async (_event, request: FinishRequest) => {
+    try {
+      const done = await finishGraphic(getTemplateManager(), request);
+      logger.info('Graphic set up with the import helper', done);
+      return { success: true, data: done };
+    } catch (error) {
+      logger.warn('Import helper could not finish', { error: errorMessage(error) });
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  /** Remove a graphic added to a look; a graphic it replaced comes back */
+  ipcMain.handle('templates:removeAddition', async (_event, lookId: string, graphicId: string) => {
+    try {
+      await removeAddition(getTemplateManager(), String(lookId), String(graphicId));
+      logger.info('Graphic removed from look', { lookId, graphicId });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: errorMessage(error) };
+    }
+  });
+
+  /** Which graphics replace which in a look (new graphic id → replaced id) */
+  ipcMain.handle('templates:getReplacements', async (_event, setId: string) => {
+    return { success: true, data: getTemplateManager().getReplacements(String(setId)) };
   });
 
   ipcMain.handle('templates:openFolder', async () => {

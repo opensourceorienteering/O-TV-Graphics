@@ -20,7 +20,8 @@ const templates: any[] = [tpl('iof-runner-identity', 'runner-identity'), tpl('io
 // Like classic's results-list-paginated: requires fields that the timing data fills in
 templates[1].manifest.schema.required = ['className', 'results'];
 templates[1].dataSourceConfig = { mode: 'api', api: { fieldMappings: [{ templateField: 'className' }, { templateField: 'results' }] } };
-vi.mock('../../templates/OGrafManager', () => ({ getTemplateManager: () => ({ getAllTemplates: () => templates }) }));
+let replacements: Record<string, string> = {};
+vi.mock('../../templates/OGrafManager', () => ({ getTemplateManager: () => ({ getAllTemplates: () => templates, getReplacements: () => replacements }) }));
 
 let project: any;
 vi.mock('../../projects/ProjectManager', () => ({
@@ -68,7 +69,21 @@ describe('live desk', () => {
   beforeEach(() => {
     project = { id: 'p1', name: 'Bohemian Forest Open', templateSet: 'iof', dataSource: { sourceId: 'lr', competitionId: 7 }, info: {}, settings: {} };
     active.length = 0;
+    replacements = {};
     vi.clearAllMocks();
+  });
+
+  it('offers a graphic added to the look under the key of the graphic it replaces', async () => {
+    templates.push({ ...tpl('guest-strap', 'free-text', false), directoryName: 'additions/iof/guest-strap', addition: true });
+    replacements = { 'guest-strap': 'iof-free-text' };
+    try {
+      const list = await desk.deskTemplates('p1');
+      expect(list.find(t => t.key === 'free-text')).toMatchObject({ available: true, templateId: 'guest-strap' });
+      replacements = {};
+      expect((await desk.deskTemplates('p1')).find(t => t.key === 'free-text')?.templateId).toBe('iof-free-text');
+    } finally {
+      templates.pop();
+    }
   });
 
   it('lists the desk graphics the look provides', async () => {
@@ -161,6 +176,28 @@ describe('live desk', () => {
     state = await desk.deskHide('p1', 'runner-identity');
     expect(state.onAir).toHaveLength(0);
     await expect(desk.deskUpdate('p1', changed)).rejects.toThrow('not on air');
+  });
+
+  it('sends the picked runner to a mapped graphic, and the Preview monitor maps it too', async () => {
+    templates.push({
+      manifest: {
+        id: 'guest', name: 'Guest', stepCount: 1, v_olgrafik_kind: 'iof-guest',
+        v_olgrafik_desk: { label: 'Guest', inputs: ['runner'], required: ['runner'], fields: ['role'] },
+        v_olgrafik_fieldMap: { headline: 'runnerName', sub: 'runnerClub' },
+        schema: { type: 'object', properties: { headline: { type: 'string' }, sub: { type: 'string' }, role: { type: 'string' } } },
+      },
+      setId: 'iof', zone: 'lower', directoryName: 'sets/iof/guest', dataSourceConfig: null,
+    });
+    try {
+      const draft = { key: 'iof-guest', values: { runnerName: 'Jan Novák', runnerClub: 'OK Praha' }, fields: { role: 'Guest' } };
+      const preview = await desk.deskPreviewData('p1', draft);
+      expect(preview.data).toMatchObject({ headline: 'Jan Novák', sub: 'OK Praha', role: 'Guest' });
+      await desk.deskShow('p1', draft);
+      const item = pages[0].items.find((i: any) => i.templateId === 'guest');
+      expect(item.fields).toMatchObject({ role: 'Guest', runnerName: 'Jan Novák', runnerClub: 'OK Praha' });
+    } finally {
+      templates.pop();
+    }
   });
 
   it('opens paged graphics on the requested page and pages the one on air', async () => {

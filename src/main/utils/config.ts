@@ -3,11 +3,13 @@
  * config.json handling
  */
 
+import { cleanRemoteAccess, type RemoteAccessSettings } from '../security/accessKey';
 import fs from 'fs';
 import type { EventorLogoSettings } from '../data/ClubLogoService';
 import path from 'path';
 import { app } from 'electron';
 import { getLogger } from './logger';
+import { normalizeAllowedOrigin } from '../security/csp';
 import { DataSourceConfig } from '../../shared/types/dataSource';
 import { BUILT_IN_DATA_SOURCES, mergeBuiltInDataSources } from '../../shared/builtInDataSources';
 
@@ -80,6 +82,10 @@ export interface AppConfig {
   eventor?: EventorLogoSettings;
   /** Club name library: name as the data source sends it -> name on air (see data/clubNames.ts) */
   clubNames?: Record<string, string>;
+  /** Addresses graphics may load from (Settings → Internet access for graphics), normalised https origins */
+  graphicsAllowedOrigins?: string[];
+  /** Other computers need this key (Settings → Remote access); changed only through remoteAccess:* */
+  remoteAccess?: RemoteAccessSettings;
   output: {
     ndi: {
       enabled: boolean;
@@ -103,6 +109,7 @@ function getDefaultConfig(): AppConfig {
   const logDir = getLogDirectory();
 
   return {
+    remoteAccess: cleanRemoteAccess(undefined).value,
     general: {
       hostname: 'Split Control',
       port: 5657,
@@ -157,6 +164,14 @@ export async function loadConfig(configPath?: string): Promise<AppConfig> {
       // Merge with defaults (in case new fields were added)
       // Use getDefaultConfig() to get proper paths for the current environment
       config = mergeConfig(getDefaultConfig(), loadedConfig);
+      // A new access key must be the same on the next start: save it now
+      if (config.remoteAccess?.key !== loadedConfig.remoteAccess?.key || config.remoteAccess?.requireKey !== loadedConfig.remoteAccess?.requireKey) {
+        // A read-only settings file must not stop the app: the key then changes on each start
+        await saveConfig(config, cfgPath).catch((error) => {
+          accessKeyUnsaved = true;
+          logger.warn('Could not save the new access key', { error: String(error) });
+        });
+      }
 
       logger.info('Configuration loaded from file', { path: cfgPath });
     } else {
@@ -200,6 +215,24 @@ export function getConfig(): AppConfig {
   return config;
 }
 
+let accessKeyUnsaved = false;
+
+/** The access key made at this start could not be saved: it will be different next start */
+export function isAccessKeyUnsaved(): boolean {
+  return accessKeyUnsaved;
+}
+
+/** The allowlist as stored, checked again: a hand-edited entry must never reach the content rules */
+function cleanAllowedOrigins(list: unknown): string[] {
+  const out = new Set<string>();
+  for (const entry of Array.isArray(list) ? list : []) {
+    if (typeof entry !== 'string') continue;
+    const result = normalizeAllowedOrigin(entry);
+    if (result.ok) out.add(result.value);
+  }
+  return [...out].sort();
+}
+
 function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig {
   const merged = {
     general: { ...defaults.general, ...loaded.general },
@@ -209,6 +242,8 @@ function mergeConfig(defaults: AppConfig, loaded: Partial<AppConfig>): AppConfig
     ),
     ...(loaded.eventor ? { eventor: loaded.eventor } : {}),
     ...(loaded.clubNames ? { clubNames: loaded.clubNames } : {}),
+    ...(loaded.graphicsAllowedOrigins ? { graphicsAllowedOrigins: cleanAllowedOrigins(loaded.graphicsAllowedOrigins) } : {}),
+    remoteAccess: cleanRemoteAccess(loaded.remoteAccess).value,
     output: {
       ndi: { ...defaults.output.ndi, ...loaded.output?.ndi },
       web: { ...defaults.output.web, ...loaded.output?.web }

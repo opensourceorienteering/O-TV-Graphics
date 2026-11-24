@@ -69,8 +69,13 @@ for (const { manifest, folder } of catalogue) {
       data.results = data.results.map((r, i) => i < 2 ? { ...r, className: i ? 'H21' : 'D21', statusCode: 10, time: '--:--',
         startTimeMs: race.end - (35 + i) * 60000 } : { ...r, className: 'D21' });
     }
-    await el.load({ data, renderType: 'realtime' });
+    // OGraf v1: load() gets renderType and renderCharacteristics; returns use statusCode/statusMessage
+    const loaded = await el.load({ data, renderType: 'realtime', renderCharacteristics: { resolution: { width: 1920, height: 1080 }, frameRate: 50 } });
+    assert(loaded === undefined || (loaded.statusCode === 200 && !('message' in loaded)), 'load() must return { statusCode, statusMessage? }');
+    // Steps are zero-based: the first play shows step 0
     const shown = await el.playAction({ skipAnimation: true });
+    assert(shown.currentStep === 0, `First play must report step 0, got ${shown.currentStep}`);
+    assert(!('totalSteps' in shown), 'Vendor fields need the v_ prefix (v_totalSteps)');
     await document.fonts.ready;
     await frames();
     assert(el.shadowRoot?.textContent?.trim(), 'Empty graphic');
@@ -88,10 +93,10 @@ for (const { manifest, folder } of catalogue) {
       try { await img.decode(); } catch { throw new Error(`Broken image: ${img.src}`); }
     }
     await capture(manifest.id);
-    result.steps = shown.totalSteps ?? el.steps ?? 1;
+    result.steps = shown.v_totalSteps ?? el.steps ?? 1;
     if (result.steps > 1) {
       const next = await el.playAction({ delta: 1, skipAnimation: true });
-      assert(next.currentStep === 2, 'Next did not advance');
+      assert(next.currentStep === 1, 'Next did not advance to step 1');
       await capture(`${manifest.id}-step2`);
       if (manifest.v_olgrafik_kind === 'runner-presentations') {
         const focus = el.shadowRoot.querySelector('.is-presented');
@@ -100,9 +105,9 @@ for (const { manifest, folder } of catalogue) {
         assert(getComputedStyle(focus.querySelector('.presentation-focus-name')).opacity === '1', 'Focused name did not finish fading in');
       }
       const previous = await el.playAction({ delta: -1, skipAnimation: true });
-      assert(previous.currentStep === 1, 'Previous did not reverse');
-      const last = await el.playAction({ goto: result.steps, skipAnimation: true });
-      assert(last.currentStep === result.steps, 'Cannot reach last step');
+      assert(previous.currentStep === 0, 'Previous did not reverse to step 0');
+      const last = await el.playAction({ goto: result.steps - 1, skipAnimation: true });
+      assert(last.currentStep === result.steps - 1, 'goto (zero-based) cannot reach the last step');
       await capture(`${manifest.id}-last`);
     }
     if (manifest.v_olgrafik_kind === 'finish-watch') {
@@ -138,7 +143,17 @@ for (const { manifest, folder } of catalogue) {
     await el.updateAction({ data: { ...data, results: [], presentation: { ...data.presentation, logoMode: 'none' } } });
     await frames();
     assert(!el.shadowRoot.textContent.includes('Unknown graphic:'), 'Empty data broke view');
-    await el.stopAction({ skipAnimation: true });
+    if (manifest.stepCount === undefined || manifest.stepCount === 1) {
+      // OGraf v1: playing past the last step of a graphic with a known step count ends it
+      const end = await el.playAction({ delta: 1, skipAnimation: true });
+      assert(end.currentStep === undefined, 'Playing past the only step must report no step');
+      const ended = el.shadowRoot.querySelector('.gfx');
+      if (ended) assert(ended.dataset.state === 'out', 'Playing past the only step must take the graphic off');
+      const again = await el.playAction({ skipAnimation: true });
+      assert(again.currentStep === 0, 'Play after the end must show step 0 again');
+    }
+    const stopped = await el.stopAction({ skipAnimation: true });
+    assert(stopped === undefined || !('currentStep' in stopped), 'stopAction() returns no step');
     const gfx = el.shadowRoot.querySelector('.gfx');
     if (gfx) assert(gfx.dataset.state === 'out', 'Hide did not set out state');
     await el.dispose();

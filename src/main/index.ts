@@ -3,13 +3,16 @@
  * Electron main process - handles app lifecycle, windows, and backend services
  */
 
+import { buildAppCsp, buildGraphicsCsp, isGraphicsPage } from './security/csp';
+import { RulesReloader, setRulesReloader } from './security/rulesReload';
+import { setBlockedNotifier } from './security/blocked';
 import './utils/appIdentity';
 import { app, BrowserWindow, session, dialog } from 'electron';
 import * as path from 'path';
 import { initLogger } from './utils/logger';
 import { loadConfig, getConfig, saveConfig } from './utils/config';
 import { findAvailablePort, PortInUseError } from './utils/portAvailability';
-import { WebSocketServer } from './data/WebSocketServer';
+import { WebSocketServer, SocketRoom } from './data/WebSocketServer';
 import { WebServer } from './output/WebServer';
 import { createMainWindow, createGraphicsWindow } from './windows';
 import { initTemplateManager } from './templates/OGrafManager';
@@ -39,6 +42,7 @@ import { validateNodeVersionOrExit } from './utils/version-check';
 import { initDataSourceRegistry, getDataSourceRegistry } from './data/DataSourceRegistry';
 import { registerBuiltInDataSources } from './data/sources';
 import { claimSingleInstance } from './utils/singleInstance';
+import { lookFileFromArgv, setPendingLookFile } from './utils/lookFiles';
 
 const logger = initLogger();
 
@@ -262,6 +266,23 @@ async function initializeServices() {
     const playbackEngine = initPlaybackEngine();
     playbackEngine.setWebSocketServer(wsServer!);
 
+    // A changed internet allowlist reaches graphics pages when they reload: output pages reload
+    // once nothing is on air, preview frames before their next graphic
+    // New blocked-address reports refresh Settings → Internet access
+    setBlockedNotifier(() => BrowserWindow.getAllWindows().forEach((w) => {
+      if (!w.isDestroyed()) w.webContents.send('fromMain', { type: 'graphicsBlocked' });
+    }));
+    setRulesReloader(new RulesReloader({
+      // Anything still loaded counts: a hidden graphic stays loaded through its out-animation and
+      // the undo window, and a graphic being shown is loaded before it plays. Graphics of external
+      // OGraf controllers count only while playing (they may stay loaded for good)
+      onAirCount: () => playbackEngine.getActiveGraphics().filter((g) => g.isPlaying || g.source !== 'api').length,
+      reloadPages: () => wsServer?.broadcastToRoom(SocketRoom.PROGRAM_OUTPUT, { spxcmd: 'graphics:reloadPage' } as any),
+      notifyPreviews: () => BrowserWindow.getAllWindows().forEach((w) => {
+        if (!w.isDestroyed()) w.webContents.send('fromMain', { type: 'graphicsAccessChanged' });
+      }),
+    }));
+
     // Mark services as initialized to prevent duplicate initialization
     servicesInitialized = true;
 
@@ -370,15 +391,17 @@ async function createWindows() {
     windowsCreated = false; // Allow recreation if window is closed
   });
 
-  // Create graphics output window (hidden by default)
-  graphicsWindow = createGraphicsWindow();
-
-  graphicsWindow.on('closed', () => {
-    graphicsWindow = null;
-  });
-
-  // Set graphics window reference for IPC handlers
-  setGraphicsWindow(graphicsWindow);
+  // Graphics output window (hidden by default). When only the main window was closed (macOS keeps
+  // the app running; a look file reopens it), the graphics window is still on air: keep it, or a
+  // second renderer would join the program output
+  if (!graphicsWindow || graphicsWindow.isDestroyed()) {
+    graphicsWindow = createGraphicsWindow();
+    graphicsWindow.on('closed', () => {
+      graphicsWindow = null;
+    });
+    // Set graphics window reference for IPC handlers
+    setGraphicsWindow(graphicsWindow);
+  }
 
   windowsCreated = true;
   logger.info('Application windows created');
@@ -391,61 +414,12 @@ function setupContentSecurityPolicy() {
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const webOrigin = `http://localhost:${getConfig().general.port}`;
-    const socketOrigin = `ws://localhost:${getConfig().general.wsPort}`;
-    // Build CSP based on environment
-    const cspDirectives = [
-      // Default: only allow resources from same origin
-      "default-src 'self'",
-
-      // Scripts: allow self and localhost for Vite dev server and web output server
-      // Production also needs localhost:5657 for dynamic ES module imports from web server
-      // Allow cdnjs.cloudflare.com for highlight.js in documentation
-      isDev
-        ? "script-src 'self' 'unsafe-inline' http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
-        : "script-src 'self' http://localhost:5657 https://cdnjs.cloudflare.com",
-
-      // Styles: allow self and inline styles (required for React inline styles)
-      // Allow cdnjs.cloudflare.com for highlight.js CSS in documentation
-      `style-src 'self' 'unsafe-inline' ${webOrigin} https://cdnjs.cloudflare.com`,
-
-      // Images: allow self, data URIs, and localhost
-      isDev
-        ? "img-src 'self' data: http://localhost:5175 http://localhost:5657"
-        : `img-src 'self' data: ${webOrigin}`,
-
-      // Fonts: allow self and data URIs
-      `font-src 'self' data: ${webOrigin}`,
-
-      // Connect: allow WebSocket and HTTP connections to localhost
-      // Allow cdnjs.cloudflare.com for documentation assets
-      isDev
-        ? "connect-src 'self' ws://localhost:5656 ws://localhost:5175 http://localhost:5175 http://localhost:5657 https://cdnjs.cloudflare.com"
-        : "connect-src 'self' ws://localhost:5656 http://localhost:5657 https://cdnjs.cloudflare.com",
-
-      // Media: allow self
-      "media-src 'self'",
-
-      // Workers: allow self
-      "worker-src 'self' blob:",
-
-      // Child frames: allow self and localhost web server
-      // Production also needs localhost:5657 for web output pages
-      isDev
-        ? "frame-src 'self' http://localhost:5657"
-        : "frame-src 'self' http://localhost:5657",
-
-      // Object/embed: disallow
-      "object-src 'none'",
-
-      // Base URI: restrict to self
-      "base-uri 'self'",
-
-      // Form actions: restrict to self
-      "form-action 'self'"
-    ];
-
-    const csp = cspDirectives.join('; ').split('http://localhost:5657').join(webOrigin).split('ws://localhost:5656').join(socketOrigin);
+    const { port, wsPort } = getConfig().general;
+    // Pages that run graphics also get the operator's internet allowlist, read on every load
+    const graphics = (details.resourceType === 'mainFrame' || details.resourceType === 'subFrame') && isGraphicsPage(details.url);
+    const csp = graphics
+      ? buildGraphicsCsp({ dev: isDev, webPort: port, wsPort, wsHost: 'localhost', allowed: getConfig().graphicsAllowedOrigins ?? [] })
+      : buildAppCsp({ dev: isDev, webPort: port, wsPort });
 
     callback({
       responseHeaders: {
@@ -472,15 +446,42 @@ if (process.env.OLG_REMOTE_DEBUGGING_PORT) {
 // One app at a time; in development the newest start takes over and orphans quit themselves
 let instanceClaimed = false;
 
+/** A .splitlook file opened from the system: the library shows its import confirmation */
+function openLookFile(filePath: string) {
+  logger.info('Look file opened from the system', { filePath });
+  setPendingLookFile(filePath);
+  const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+  // The operator UI also asks when it starts, so a message it misses while loading does no harm
+  if (window) window.webContents.send('fromMain', { type: 'openLookFile' });
+  // macOS keeps the app running with no window: open one, which asks for the file
+  else if (instanceClaimed && app.isReady()) void createWindows();
+}
+
+// macOS hands files over in an event, also before the app is ready (opened while closed)
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  if (filePath.toLowerCase().endsWith('.splitlook')) openLookFile(filePath);
+});
+
+// Windows and Linux: the file is on the command line of the first start
+{
+  const startFile = lookFileFromArgv(process.argv);
+  if (startFile) setPendingLookFile(startFile);
+}
+
 app.whenReady().then(async () => {
   instanceClaimed = claimSingleInstance({
     dev: !app.isPackaged,
-    focus: () => {
+    focus: (argv) => {
       const window = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
-      if (!window) return;
-      if (window.isMinimized()) window.restore();
-      window.show();
-      window.focus();
+      if (window) {
+        if (window.isMinimized()) window.restore();
+        window.show();
+        window.focus();
+      }
+      // Opening a .splitlook while the app runs starts a second copy with the file: take it over
+      const file = lookFileFromArgv(argv);
+      if (file) openLookFile(file);
     },
     log: (message) => logger.info(message)
   });

@@ -3,6 +3,9 @@
  * Express server serving graphics HTML pages
  */
 
+import { additionFallbackPath } from '../templates/additionPaths';
+import { requireAccessKey } from '../security/accessGuard';
+import { localContext, remoteAccessSettings } from '../security/remoteAccess';
 import express, { Express } from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -18,12 +21,24 @@ import { createControlApiRouter } from './ControlApi';
 import { getPlaybackEngine } from '../playback/PlaybackEngine';
 import { getConfig } from '../utils/config';
 import { PortInUseError } from '../utils/portAvailability';
+import { graphicsCspMiddleware } from '../security/cspMiddleware';
 
 const logger = getLogger();
 const isDev = process.env.NODE_ENV === 'development';
 
 // Singleton instance
 let webServerInstance: WebServer | null = null;
+
+/** An address for the log, without the access key */
+const withoutKey = (url: string) => url.replace(/([?&]key=)[^&]*/g, '$1…');
+
+function appVersion(): string {
+  try {
+    return require('electron').app.getVersion();
+  } catch {
+    return process.env.npm_package_version || '';
+  }
+}
 
 export class WebServer {
   private app: Express;
@@ -44,10 +59,26 @@ export class WebServer {
   private setupMiddleware(): void {
     const config = getConfig();
 
+    // Graphics pages (OBS/vMix web output, preview frame, template preview) get the same
+    // content rules as in the app, including the internet allowlist
+    this.app.use(graphicsCspMiddleware(() => {
+      const current = getConfig();
+      return { dev: isDev, webPort: current.general.port, wsPort: current.general.wsPort, allowed: current.graphicsAllowedOrigins ?? [] };
+    }));
+
     // CORS
     if (config.output.web.cors) {
       this.app.use(cors());
     }
+
+    // Other computers need the access key to control the app or read live data
+    // (Settings → Remote access); this computer never does
+    this.app.use(
+      ['/api/control', '/ograf/v1', '/api/director', '/director', '/output', '/preview', '/api/output/info', '/api/graphics'],
+      requireAccessKey(remoteAccessSettings, localContext, undefined, (address) =>
+        logger.warn('Web output refused: the link has no access key. Copy it again from Output → Web output', { address })
+      ),
+    );
 
     // JSON body parser
     this.app.use(express.json());
@@ -84,6 +115,12 @@ export class WebServer {
     // set of the same id, and imported graphics still load the shared code (sets/_core/)
     // that ships with the app. The folder is known once the template manager has started.
     let importedStatic: { dir: string; handler: express.RequestHandler } | undefined;
+    // Graphics added to a look load the look's own files (set.js, theme, fonts, sets/_core)
+    this.app.use('/templates', (req, _res, next) => {
+      const fallback = additionFallbackPath(req.path, findTemplateManager()?.getUserDirectory() ?? null);
+      if (fallback) req.url = fallback + req.url.slice(req.path.length);
+      next();
+    });
     this.app.use('/templates', (req, res, next) => {
       const dir = findTemplateManager()?.getUserDirectory();
       if (!dir) return next();
@@ -147,6 +184,19 @@ export class WebServer {
       res.json({ status: 'ok', timestamp: Date.now() });
     });
 
+    // Sealed preview frame for the operator window's previews: always on 127.0.0.1, a different
+    // origin from the operator UI, and never given the app's preload bridge
+    this.app.get('/preview-frame', (req, res) => {
+      const query = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+      if (isDev) {
+        res.redirect(`http://127.0.0.1:5175/preview-frame.html${query}`);
+        return;
+      }
+      const htmlPath = path.join(__dirname, '../../dist/preview-frame.html');
+      if (fs.existsSync(htmlPath)) res.sendFile(htmlPath);
+      else res.status(404).send('Preview frame not found. Please build the application first.');
+    });
+
     // Template preview page
     this.app.get('/preview', (req, res) => {
       if (isDev) {
@@ -155,7 +205,7 @@ export class WebServer {
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
         const viteUrl = `http://${hostname}:5175/template-preview.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server for preview', { viteUrl, originalHost: host });
+        logger.debug('Redirecting to Vite dev server for preview', { viteUrl: withoutKey(viteUrl), originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -181,7 +231,7 @@ export class WebServer {
         const host = req.get('host') || 'localhost:5657';
         const hostname = host.split(':')[0];
         const viteUrl = `http://${hostname}:5175/web-output.html${req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''}`;
-        logger.debug('Redirecting to Vite dev server', { viteUrl, originalHost: host });
+        logger.debug('Redirecting to Vite dev server', { viteUrl: withoutKey(viteUrl), originalHost: host });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory
@@ -212,7 +262,7 @@ export class WebServer {
         const queryParams = new URLSearchParams(req.query as any);
         queryParams.set('id', id);
         const viteUrl = `http://${hostname}:5175/web-output.html?${queryParams.toString()}`;
-        logger.debug('Redirecting to Vite dev server with ID', { viteUrl, originalHost: host, id });
+        logger.debug('Redirecting to Vite dev server with ID', { viteUrl: withoutKey(viteUrl), originalHost: host, id });
         res.redirect(viteUrl);
       } else {
         // In production, serve built file from dist/ directory (ID will be in URL for client to read)
@@ -341,7 +391,8 @@ export class WebServer {
         apiClear: (f) => engine().apiClear(f)
       },
       serverName: getConfig().general.hostname || 'Split Control',
-      version: process.env.npm_package_version || '1.1.0',
+      // The app's own version (npm_package_version only exists when started through npm)
+      version: appVersion(),
       frameRate: getConfig().output.ndi?.fps
     }));
 

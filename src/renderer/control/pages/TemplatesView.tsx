@@ -1,15 +1,21 @@
 import { t as tr } from "../i18n";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Download,
   ExternalLink,
   FolderOpen,
   Package,
   RefreshCw,
   Search,
-  Trash2,
   Upload,
 } from "lucide-react";
+import { LibraryHome } from "../library/LibraryHome";
+import { LookPage } from "../library/LookPage";
+import { lookCards, needsAttention, searchGraphics } from "../library/libraryModel";
+import "../library/library.css";
+import { ImportConfirm, type ImportPreview } from "../library/ImportConfirm";
+import { ImportHelper } from "../library/ImportHelper";
+import { takeParkedLookFile, type OpenedLookFile } from "../library/LookFileOpener";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "../contexts/ToastContext";
 import type {
   OGrafTemplateInfo,
@@ -19,35 +25,14 @@ import type {
 /** Every look as a zip, on the website */
 const LOOKS_URL = "https://opensourceorienteering.github.io/O-TV-Graphics/looks.html";
 
-interface ImportPreview {
-  looks: Array<{ id: string; name: string; graphics: number; replaces?: "imported" | "built-in" }>;
-  graphics: Array<{ id: string; name: string; replaces?: boolean }>;
-}
-
-/** The confirmation shown before an import, in plain words */
-function importQuestion(preview: ImportPreview): string {
-  const lines = [
-    ...preview.looks.map((look) =>
-      look.replaces === "built-in"
-        ? `${look.name}: ${tr("replaces the built-in look")}`
-        : look.replaces === "imported"
-          ? `${look.name}: ${tr("replaces the imported look")}`
-          : `${look.name}: ${tr("new look")} (${look.graphics} ${tr("graphics")})`,
-    ),
-    ...preview.graphics.map(
-      (g) => `${g.name}: ${g.replaces ? tr("replaces the imported graphic") : tr("new graphic")}`,
-    ),
-  ];
-  return `${tr("Import this zip?")}\n\n${lines.join("\n")}`;
-}
-
 export function TemplatesView() {
   const [templates, setTemplates] = useState<OGrafTemplateInfo[]>([]);
   const [sets, setSets] = useState<TemplateSetInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
-  const [setId, setSetId] = useState("all");
+  /** The look whose page is open (and the graphic to select), or null for the looks */
+  const [open, setOpen] = useState<{ lookId: string; templateId?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
@@ -70,6 +55,7 @@ export function TemplatesView() {
         throw new Error(result.error || "Unable to load the graphics library.");
       setTemplates(result.templates || []);
       if (setResult?.success) setSets(setResult.sets || []);
+      return (result.templates || []) as OGrafTemplateInfo[];
     } catch (cause) {
       const detail =
         cause instanceof Error
@@ -85,21 +71,55 @@ export function TemplatesView() {
     void loadTemplates();
   }, []);
 
+  /** Graphics the import helper is going through (Fix…, or right after an import) */
+  const [helperQueue, setHelperQueue] = useState<OGrafTemplateInfo[] | null>(null);
+
+  /** The picked file waiting for the operator's confirmation */
+  const [pending, setPending] = useState<{ filePath: string; preview: ImportPreview } | null>(null);
+
+  // A .splitlook opened from the system (LookFileOpener brought us here with it)
+  const location = useLocation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const opened = (location.state as { openLook?: OpenedLookFile } | null)?.openLook ?? takeParkedLookFile();
+    if (!opened) return;
+    setPending(opened);
+    // Shown once: going back here later doesn't ask again
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
+
   const importLook = async () => {
     setBusy(true);
     try {
       const picked = await window.electronAPI.invoke("templates:pickImport");
       if (!picked.success) throw new Error(picked.error);
       if (picked.cancelled) return;
-      if (!confirm(importQuestion(picked.preview))) return;
-      const result = await window.electronAPI.invoke("templates:import", picked.filePath);
+      setPending({ filePath: picked.filePath, preview: picked.preview });
+    } catch (cause) {
+      toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmImport = async (filePath: string, allow: string[]) => {
+    setPending(null);
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:import", filePath, allow);
       if (!result.success) throw new Error(result.error);
       const names = [
         ...result.preview.looks.map((l: { name: string }) => l.name),
         ...result.preview.graphics.map((g: { name: string }) => g.name),
+        ...(result.preview.additions ?? []).map((a: { lookId: string; lookName: string | null; graphics: number }) => `${a.lookName ?? a.lookId} (+${a.graphics})`),
       ].join(", ");
       toast.showToast("success", `${tr("Imported")}: ${names}`);
-      await loadTemplates();
+      const loaded = await loadTemplates();
+      // Graphics from this file that Live can't offer yet: straight into the helper
+      const ids = new Set<string>(result.preview.graphics.map((g: { id: string }) => g.id));
+      const lookIds = new Set<string>(result.preview.looks.map((l: { id: string }) => l.id));
+      const waiting = needsAttention(loaded ?? []).filter((t) => ids.has(t.manifest.id) || lookIds.has(t.setId));
+      if (waiting.length) setHelperQueue(waiting);
     } catch (cause) {
       toast.showToast("error", `${tr("Import failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
     } finally {
@@ -115,6 +135,44 @@ export function TemplatesView() {
       if (!result.cancelled) toast.showToast("success", `${tr("Look exported")}: ${result.filePath}`);
     } catch (cause) {
       toast.showToast("error", `${tr("Export failed")}: ${cause instanceof Error ? cause.message : String(cause)}`, 10000);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Which graphics replace which in the open look */
+  const [replaces, setReplaces] = useState<Record<string, string>>({});
+  const openLookId = open?.lookId;
+  useEffect(() => {
+    let alive = true;
+    setReplaces({});
+    if (!openLookId) return;
+    window.electronAPI
+      .invoke("templates:getReplacements", openLookId)
+      .then((result: { success?: boolean; data?: Record<string, string> }) => alive && result?.success && setReplaces(result.data ?? {}))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [openLookId, templates]);
+
+  const removeAddition = async (set: TemplateSetInfo, template: OGrafTemplateInfo) => {
+    const replacing = replaces[template.manifest.id];
+    const original = replacing ? templates.find((t) => t.manifest.id === replacing && t.setId === set.id) : undefined;
+    const fill = (text: string) =>
+      text.replace("{graphic}", template.manifest.name).replace("{look}", set.name).replace("{original}", original?.manifest.name ?? "");
+    const message = original
+      ? fill(tr("Remove {graphic} from {look}? Live uses {original} again."))
+      : fill(tr("Remove {graphic} from {look}?"));
+    if (!confirm(message)) return;
+    setBusy(true);
+    try {
+      const result = await window.electronAPI.invoke("templates:removeAddition", set.id, template.manifest.id);
+      if (!result.success) throw new Error(result.error);
+      toast.showToast("success", `${tr("Graphic removed")}: ${template.manifest.name}`);
+      await loadTemplates();
+    } catch (cause) {
+      toast.showToast("error", cause instanceof Error ? cause.message : String(cause), 10000);
     } finally {
       setBusy(false);
     }
@@ -139,7 +197,7 @@ export function TemplatesView() {
       const result = await window.electronAPI.invoke("templates:removeSet", set.id);
       if (!result.success) throw new Error(result.error);
       toast.showToast("success", `${tr("Look removed")}: ${set.name}`);
-      if (setId === set.id && !set.replacesBuiltIn) setSetId("all");
+      if (open?.lookId === set.id && !set.replacesBuiltIn) setOpen(null);
       await loadTemplates();
     } catch (cause) {
       toast.showToast("error", cause instanceof Error ? cause.message : String(cause), 10000);
@@ -148,27 +206,13 @@ export function TemplatesView() {
     }
   };
 
-  const shown = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return templates.filter(
-      (template) =>
-        (setId === "all" || template.setId === setId) &&
-        (!needle ||
-          `${template.manifest.name} ${template.description || ""} ${template.manifest.id}`
-            .toLowerCase()
-            .includes(needle)),
-    );
-  }, [query, setId, templates]);
-
-  const visibleSets = sets.length
-    ? sets
-    : [
-        {
-          id: "",
-          name: "Graphics",
-          templateCount: templates.length,
-        } as TemplateSetInfo,
-      ];
+  const cards = useMemo(() => lookCards(sets, templates), [sets, templates]);
+  const needs = useMemo(() => needsAttention(templates), [templates]);
+  const results = useMemo(
+    () => (query.trim() ? searchGraphics(templates, sets, query) : null),
+    [query, sets, templates],
+  );
+  const openCard = open ? cards.find((c) => c.set.id === open.lookId) : undefined;
 
   return (
     <div className="library-screen">
@@ -227,185 +271,85 @@ export function TemplatesView() {
         </div>
       )}
 
-      <div className="library-toolbar studio-panel">
-        <label className="search-field">
-           {tr("Find a graphic")} <span className="input-with-icon">
-            <Search size={16} aria-hidden="true" />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={tr("Name or ID")}
-            />
-          </span>
-        </label>
-        <label>
-           {tr("Graphic set")} <select
-            value={setId}
-            onChange={(event) => setSetId(event.target.value)}
-          >
-            <option value="all">{tr("All sets")}</option>
-            {sets.map((set) => (
-              <option key={set.id} value={set.id}>
-                {set.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="library-count" role="status">
-          {shown.length} {shown.length === 1 ? "graphic" : tr("graphics")}
-        </p>
-      </div>
+      {!openCard && (
+        <div className="library-toolbar studio-panel">
+          <label className="search-field">
+            {tr("Find a graphic")}{" "}
+            <span className="input-with-icon">
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={tr("Name or ID")}
+              />
+            </span>
+          </label>
+          <p className="library-count" role="status">
+            {cards.length} {cards.length === 1 ? tr("look") : tr("looks")}
+          </p>
+        </div>
+      )}
 
       {loading && !templates.length ? (
         <div className="screen-state" role="status">
           <RefreshCw className="icon-spin" aria-hidden="true" />
           <p>{tr("Loading graphics…")}</p>
         </div>
-      ) : shown.length ? (
-        <div className="template-groups">
-          {(setId === "all"
-            ? visibleSets
-            : visibleSets.filter((set) => set.id === setId)
-          ).map((set) => {
-            const group = shown.filter(
-              (template) => !set.id || template.setId === set.id,
-            );
-            if (!group.length) return null;
-            return (
-              <section className="template-group" key={set.id || "all"}>
-                <div className="template-group-heading">
-                  <div>
-                    <h2>
-                      {set.name}{" "}
-                      {set.source && (
-                        <span className="look-source">
-                          {set.source === "imported"
-                            ? set.replacesBuiltIn
-                              ? tr("Imported · replaces built-in")
-                              : tr("Imported")
-                            : tr("Built in")}
-                        </span>
-                      )}
-                      {set.approvedEventsOnly && (
-                        <span className="look-source look-source--approved">
-                          {tr("Only use at approved events")}
-                        </span>
-                      )}
-                    </h2>
-                    {set.description && <p>{set.description}</p>}
-                  </div>
-                  <div className="look-actions">
-                    <span>{group.length}  {tr("graphics")}</span>
-                    {set.source && (
-                      <button
-                        className="studio-button"
-                        onClick={() => void exportLook(set)}
-                        disabled={busy}
-                        title={tr("Save this look as a zip file, to share it or use it on another computer")}
-                      >
-                        <Download size={15} aria-hidden="true" />
-                        {tr("Export…")}
-                      </button>
-                    )}
-                    {set.source === "imported" && (
-                      <button
-                        className="studio-button"
-                        onClick={() => void removeLook(set)}
-                        disabled={busy}
-                      >
-                        <Trash2 size={15} aria-hidden="true" />
-                        {tr("Remove")}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="template-grid">
-                  {group.map((template) => (
-                    <article
-                      className="template-card"
-                      key={template.manifest.id}
-                    >
-                      <div className="template-card-heading">
-                        <h3>{template.manifest.name}</h3>
-                        <span>v{template.manifest.version}</span>
-                      </div>
-                      <p>
-                        {template.description ||
-                          template.manifest.description ||
-                          "Graphic template"}
-                      </p>
-                      {template.deskWarnings?.map((warning) => (
-                        <p role="status" key={warning}>{warning}</p>
-                      ))}
-                      <div className="template-badges">
-                        {(template as any).dataSourceConfig && (
-                          <span>{tr("Timing data")}</span>
-                        )}
-                        {template.manifest.stepCount !== undefined && (
-                          <span>
-                            {template.manifest.stepCount === -1
-                              ? tr("Dynamic pages")
-                              : template.manifest.stepCount === 0
-                                ? tr("Automatic")
-                                : template.manifest.stepCount === 1
-                                  ? tr("Single step")
-                                  : `${template.manifest.stepCount} steps`}
-                          </span>
-                        )}
-                      </div>
-                      <details>
-                        <summary>{tr("Technical details")}</summary>
-                        <dl>
-                          <div>
-                            <dt>{tr("ID")}</dt>
-                            <dd>
-                              <code>{template.manifest.id}</code>
-                            </dd>
-                          </div>
-                          {template.manifest.author && (
-                            <div>
-                              <dt>{tr("Author")}</dt>
-                              <dd>{template.manifest.author.name}</dd>
-                            </div>
-                          )}
-                        </dl>
-                      </details>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
+      ) : openCard ? (
+        <LookPage
+          key={openCard.set.id}
+          card={openCard}
+          initialTemplateId={open?.templateId}
+          busy={busy}
+          onBack={() => setOpen(null)}
+          replaces={replaces}
+          onExport={() => void exportLook(openCard.set)}
+          onRemove={() => void removeLook(openCard.set)}
+          onRemoveAddition={(template) => void removeAddition(openCard.set, template)}
+        />
+      ) : cards.length || needs.length ? (
+        <LibraryHome
+          cards={cards}
+          needs={needs}
+          results={results}
+          onFix={(list) => setHelperQueue(list)}
+          onOpen={(lookId, templateId) => {
+            setQuery("");
+            setOpen({ lookId, templateId });
+          }}
+        />
       ) : (
         <div className="screen-state studio-panel">
           <Package size={36} aria-hidden="true" />
-          <h2>
-            {templates.length ? tr("No matching graphics") : tr("No graphics found")}
-          </h2>
+          <h2>{tr("No graphics found")}</h2>
           <p>
-            {templates.length
-              ? tr("Change the search or graphic-set filter.")
-              : tr("Import a look, or add an OGraf package to the templates folder, then scan the library.")}
+            {tr("Import a look, or add an OGraf package to the templates folder, then scan the library.")}
           </p>
-          {templates.length ? (
-            <button
-              className="studio-button"
-              onClick={() => {
-                setQuery("");
-                setSetId("all");
-              }}
-            >
-               {tr("Clear filters")} </button>
-          ) : (
-            <button
-              className="studio-button primary"
-              onClick={() => void loadTemplates(true)}
-            >
-               {tr("Scan library")} </button>
-          )}
+          <button className="studio-button primary" onClick={() => void loadTemplates(true)}>
+            {tr("Scan library")}
+          </button>
         </div>
+      )}
+      {helperQueue && helperQueue.length > 0 && (
+        <ImportHelper
+          queue={helperQueue}
+          templates={templates}
+          sets={sets}
+          onFinished={async (done) => {
+            toast.showToast("success", tr("Ready in Live"));
+            await loadTemplates();
+            if (!open) setOpen({ lookId: done.setId, templateId: done.id });
+          }}
+          onClose={() => setHelperQueue(null)}
+        />
+      )}
+      {pending && (
+        <ImportConfirm
+          preview={pending.preview}
+          onCancel={() => setPending(null)}
+          onConfirm={(allow) => void confirmImport(pending.filePath, allow)}
+        />
       )}
     </div>
   );

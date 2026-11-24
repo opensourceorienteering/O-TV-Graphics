@@ -1,0 +1,76 @@
+/** What the Graphics library shows: looks, graphics needing attention, and search across looks */
+import { CUSTOM_TEMPLATE_SET, SYSTEM_TEMPLATE_SET } from '../../../shared/types/ograf';
+import type { OGrafTemplateInfo, TemplateSetInfo } from '../../../shared/types/ograf';
+
+export interface LookCard {
+  set: TemplateSetInfo;
+  graphics: OGrafTemplateInfo[];
+}
+
+const byName = (a: OGrafTemplateInfo, b: OGrafTemplateInfo) => a.manifest.name.localeCompare(b.manifest.name);
+
+/**
+ * A graphic's title in the library: its desk label (shared by every graphic of a kind), but
+ * the operator's own name for a graphic added to a look, so it stands apart from the original
+ */
+export function graphicTitle(template: OGrafTemplateInfo): string {
+  return template.addition ? template.manifest.name : template.desk?.label ?? template.manifest.name;
+}
+
+/** Every look, built-in first then imported, each by name, with its graphics by name */
+export function lookCards(sets: TemplateSetInfo[], templates: OGrafTemplateInfo[]): LookCard[] {
+  return sets
+    .filter((s) => s.id !== CUSTOM_TEMPLATE_SET && s.id !== SYSTEM_TEMPLATE_SET)
+    .sort((a, b) => Number(a.source === 'imported') - Number(b.source === 'imported') || a.name.localeCompare(b.name))
+    .map((set) => ({ set, graphics: templates.filter((t) => t.setId === set.id).sort(byName) }));
+}
+
+/**
+ * Graphics Live can't offer as they are: outside any look, with a desk declaration problem, or
+ * in a look but with no Live entry (e.g. a Name strap); the system test pattern is never offered
+ */
+export function needsAttention(templates: OGrafTemplateInfo[]): OGrafTemplateInfo[] {
+  return templates
+    .filter((t) => t.setId !== SYSTEM_TEMPLATE_SET)
+    // A graphic used instead of another takes that graphic's Live entry, so it works without its own
+    .filter((t) => t.setId === CUSTOM_TEMPLATE_SET || (t.deskWarnings?.length ?? 0) > 0 || (!t.desk && !t.replaces))
+    .sort(byName);
+}
+
+/** Graphics in any look matching name, description or id; each with the name of its look */
+export function searchGraphics(
+  templates: OGrafTemplateInfo[],
+  sets: TemplateSetInfo[],
+  query: string,
+): Array<{ template: OGrafTemplateInfo; lookName: string }> {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [];
+  return templates
+    .filter((t) => `${t.manifest.name} ${t.description || ''} ${t.manifest.id}`.toLowerCase().includes(needle))
+    .sort(byName)
+    .map((template) => ({
+      template,
+      lookName: template.setId === CUSTOM_TEMPLATE_SET ? 'Not in a look' : sets.find((s) => s.id === template.setId)?.name ?? template.setId,
+    }));
+}
+
+/** Technical details of a graphic (label, value); the ID is what OGraf Server API controllers use */
+export function graphicDetails(template: OGrafTemplateInfo): Array<[string, string]> {
+  const { id, version, author } = template.manifest;
+  return [
+    ['ID', id],
+    ...(version ? [['Version', version] as [string, string]] : []),
+    ...(author?.name ? [['Author', author.name] as [string, string]] : []),
+  ];
+}
+
+/** Replaced graphic id → the name of the graphic in the look that replaces it (overrides.json) */
+export function replacedBy(templates: OGrafTemplateInfo[], replaces: Record<string, string>): Map<string, string> {
+  const byId = new Map(templates.map((t) => [t.manifest.id, t]));
+  const out = new Map<string, string>();
+  for (const [newId, oldId] of Object.entries(replaces)) {
+    const replacing = byId.get(newId);
+    if (replacing && byId.has(oldId) && newId !== oldId) out.set(oldId, replacing.manifest.name);
+  }
+  return out;
+}

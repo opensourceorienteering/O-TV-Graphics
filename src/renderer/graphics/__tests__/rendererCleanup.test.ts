@@ -81,3 +81,22 @@ describe("Renderer recovery from third-party graphic lifecycle failures", () => 
     expect(renderer.getGraphic("g")?.isPlaying).toBe(false);
   });
 });
+describe("OGraf v1 parameters", () => {
+  it("loads graphics in realtime with render characteristics", async () => {
+    const renderer = new OGrafRenderer(container);
+    await renderer.loadGraphic("g", manifest, "test", { a: 1 });
+    expect(element.load).toHaveBeenCalledWith({
+      data: { a: 1 },
+      renderType: "realtime",
+      renderCharacteristics: { resolution: { width: 1920, height: 1080 }, accessToPublicInternet: false },
+    });
+  });
+  it("plays the next step when neither goto nor delta is given", async () => {
+    const renderer = new OGrafRenderer(container);
+    await renderer.loadGraphic("g", manifest, "test", {});
+    await renderer.playGraphic("g");
+    expect(element.playAction).toHaveBeenLastCalledWith({ delta: 1 });
+    await renderer.playGraphic("g", { goto: 0, skipAnimation: true });
+    expect(element.playAction).toHaveBeenLastCalledWith({ goto: 0, skipAnimation: true });
+  });
+});

@@ -73,7 +73,8 @@ export default defineConfig({
         main: path.resolve(__dirname, 'index.html'),
         graphics: path.resolve(__dirname, 'graphics.html'),
         webOutput: path.resolve(__dirname, 'web-output.html'),
-        templatePreview: path.resolve(__dirname, 'template-preview.html')
+        templatePreview: path.resolve(__dirname, 'template-preview.html'),
+        previewFrame: path.resolve(__dirname, 'preview-frame.html')
       }
     }
   },
