@@ -144,6 +144,8 @@ export interface UpdateActionOptions {
   data: any;
   /** OGraf 2026-01: optional; render the update without animating */
   skipAnimation?: boolean;
+  /** Split Control: data is the whole state (a cleared field goes), not a partial update to merge */
+  v_replace?: boolean;
 }
 
 export interface CustomActionOptions {
@@ -153,8 +155,20 @@ export interface CustomActionOptions {
   skipAnimation?: boolean;
 }
 
+/** What the renderer can do (OGraf v1 load() parameter) */
+/** OGraf v1 RenderCharacteristics (render.ts): what the renderer offers the graphic */
+export interface RenderCharacteristics {
+  resolution?: { width: number; height: number };
+  frameRate?: number;
+  /** Whether the graphic may reach the public internet (Split Control: no, only its allowlist) */
+  accessToPublicInternet?: boolean;
+}
+
 export interface LoadOptions {
   data: any;
+  /** Required by OGraf v1; Split Control always renders in realtime */
+  renderType: 'realtime' | 'non-realtime';
+  renderCharacteristics: RenderCharacteristics;
 }
 
 export interface GoToTimeOptions {
@@ -221,6 +235,10 @@ export interface OGrafTemplateInfo {
   setId: string;
   /** Screen zone (manifest v_olgrafik_zone): graphics in clashing zones replace each other */
   zone?: GraphicZone;
+  /** Added to its look by the operator (stored in the user's additions folder) */
+  addition?: true;
+  /** The id of the graphic this one is used instead of in Live (overrides.json) */
+  replaces?: string;
 }
 
 export type GraphicZone = 'main' | 'lower' | 'side' | 'corner' | 'full';
@@ -238,6 +256,8 @@ export interface TemplateSetInfo {
   /** The look's own logo (set.json "logo") as a data URL, for previews in Plan */
   logoPreview?: string;
   templateCount: number;
+  /** Graphics the operator added to this look */
+  additions?: number;
   /** built-in: ships with the app; imported: installed from a zip into the templates folder */
   source?: 'built-in' | 'imported';
   /** An imported look with the id of a built-in one: it is used instead of the built-in copy */

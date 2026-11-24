@@ -66,6 +66,26 @@ describe('custom graphic views', () => {
     expect(states.mock.calls.map((c: any) => c[0])).toEqual(['step-out', 'step', 'on']);
     await instance.dispose();
   });
+  it('follows OGraf steps: zero-based, and a one-step graphic played again ends', async () => {
+    const single = graphic(() => ({ html: 'once', steps: 1 }));
+    expect((await single.playAction({ skipAnimation: true })).currentStep).toBe(0);
+    const end = await single.playAction({ delta: 1, skipAnimation: true });
+    expect(end.currentStep).toBeUndefined();
+    expect(single.root.dataset.state).toBe('out');
+    const paged = graphic(() => ({ html: 'p', steps: 3 }));
+    await paged.playAction({ skipAnimation: true });
+    expect((await paged.playAction({ goto: 2, skipAnimation: true })).currentStep).toBe(2);
+    expect((await paged.playAction({ delta: 1, skipAnimation: true })).currentStep).toBe(2); // stays on the last page
+  });
+  it('merges a partial update (OGraf), but takes the app\'s full update as it is', async () => {
+    const view = vi.fn((data: any) => ({ html: `${data.title}|${data.sub ?? ''}` }));
+    const instance = graphic(view);
+    instance.data = { title: 'A', sub: 'B' };
+    await instance.updateAction({ data: { title: 'C' } });
+    expect(instance.data).toEqual({ title: 'C', sub: 'B' });
+    await instance.updateAction({ data: { title: 'D' }, v_replace: true });
+    expect(instance.data).toEqual({ title: 'D' });
+  });
   it('rejects invalid view contracts clearly', () => {
     expect(() => createGraphic('relay', {}, {})).toThrow('must be a function');
     expect(() => graphic(() => 'markup').render()).toThrow('must return { html: string }');

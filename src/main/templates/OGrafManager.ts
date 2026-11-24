@@ -1,4 +1,5 @@
 import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
+import { pickManifestFile } from './manifestFile';
 /**
  * OGRAF Template Manager
  * Discovers, loads, and manages OGRAF templates
@@ -58,6 +59,11 @@ async function readLookLogo(setDir: string, file: unknown): Promise<string | und
     return undefined;
   }
 }
+
+/** Folder (in the user templates folder) of graphics added to looks */
+export const ADDITIONS = 'additions';
+/** What a desk patch may set on a graphic: nothing that changes its code or identity */
+export const DESK_PATCH_KEYS = ['v_olgrafik_kind', 'v_olgrafik_desk', 'v_olgrafik_fieldMap', 'v_olgrafik_zone'] as const;
 
 export class OGrafManager {
   private templatesDir: string;
@@ -138,7 +144,7 @@ export class OGrafManager {
       for (const root of roots) {
         const entries = await fs.readdir(root.dir, { withFileTypes: true });
         for (const entry of entries) {
-          if (!entry.isDirectory() || entry.name === 'sets' || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
+          if (!entry.isDirectory() || entry.name === 'sets' || entry.name === ADDITIONS || entry.name === SYSTEM_TEMPLATE_SET || entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
           candidates.push({ dir: path.join(root.dir, entry.name), name: entry.name, setId: CUSTOM_TEMPLATE_SET, root: root.dir });
         }
         const setsDir = path.join(root.dir, 'sets');
@@ -177,34 +183,48 @@ export class OGrafManager {
           }
         }
       }
+      // Graphics added to a look (Graphics library, import helper, .splitlook "extends" files):
+      // <user>/additions/<lookId>/<graphic>/. A look this computer doesn't have: not in a look.
+      const additionsDir = this.userDir ? path.join(this.userDir, ADDITIONS) : null;
+      if (additionsDir && fsSync.existsSync(additionsDir)) {
+        for (const look of await fs.readdir(additionsDir, { withFileTypes: true })) {
+          if (!look.isDirectory() || look.name.startsWith('.') || look.name.startsWith('_')) continue;
+          const setId = this.sets.has(look.name) ? look.name : CUSTOM_TEMPLATE_SET;
+          for (const g of await fs.readdir(path.join(additionsDir, look.name), { withFileTypes: true })) {
+            if (!g.isDirectory() || g.name.startsWith('.') || g.name.startsWith('_')) continue;
+            candidates.push({ dir: path.join(additionsDir, look.name, g.name), name: g.name, setId, root: this.userDir! });
+          }
+        }
+      }
       if (fsSync.existsSync(systemDir)) {
         for (const g of await fs.readdir(systemDir, { withFileTypes: true })) {
           if (g.isDirectory() && !g.name.startsWith('_')) candidates.push({ dir: path.join(systemDir, g.name), name: g.name, setId: SYSTEM_TEMPLATE_SET, root: this.templatesDir });
         }
       }
 
-      // Check for manifest files in parallel; .ograf.json first (spec), manifest.json as fallback
+      // Find each folder's manifest in parallel (see pickManifestFile for the order)
       const templateDirs = await Promise.all(
         candidates.map(async ({ dir: templateDir, name, setId, root }) => {
-          const ografManifestPath = path.join(templateDir, `${name}.ograf.json`);
+          let names: string[];
           try {
-            await fs.access(ografManifestPath);
-            this.setOfManifest.set(ografManifestPath, setId);
-            this.rootOfManifest.set(ografManifestPath, root);
-            return ografManifestPath;
+            names = (await fs.readdir(templateDir, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name);
           } catch {
-            const legacyManifestPath = path.join(templateDir, 'manifest.json');
-            try {
-              await fs.access(legacyManifestPath);
-              logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
-              this.setOfManifest.set(legacyManifestPath, setId);
-              this.rootOfManifest.set(legacyManifestPath, root);
-              return legacyManifestPath;
-            } catch {
-              logger.debug('Skipping directory without manifest', { dir: name });
-              return null;
-            }
+            return null;
           }
+          const pick = pickManifestFile(name, names);
+          if (!pick) {
+            logger.debug('Skipping directory without manifest', { dir: name });
+            return null;
+          }
+          if ('ambiguous' in pick) {
+            logger.warn('Skipping graphic folder with several manifests: keep one .ograf.json, or name it after the folder', { dir: templateDir, files: pick.ambiguous });
+            return null;
+          }
+          if (pick.file === 'manifest.json') logger.debug('Found legacy manifest.json (should be renamed to .ograf.json)', { dir: name });
+          const manifestPath = path.join(templateDir, pick.file);
+          this.setOfManifest.set(manifestPath, setId);
+          this.rootOfManifest.set(manifestPath, root);
+          return manifestPath;
         })
       );
 
@@ -248,6 +268,7 @@ export class OGrafManager {
       for (const entry of this.cache.values()) {
         const set = this.sets.get(entry.templateInfo.setId);
         if (set) set.templateCount++;
+        if (set && entry.templateInfo.addition) set.additions = (set.additions ?? 0) + 1;
       }
       if ([...this.cache.values()].some(e => e.templateInfo.setId === CUSTOM_TEMPLATE_SET)) {
         this.sets.set(CUSTOM_TEMPLATE_SET, {
@@ -415,7 +436,10 @@ export class OGrafManager {
   /**
    * Create template info for UI
    */
-  private async createTemplateInfo(manifestPath: string, manifest: OGrafManifest): Promise<OGrafTemplateInfo> {
+  private async createTemplateInfo(manifestPath: string, original: OGrafManifest): Promise<OGrafTemplateInfo> {
+    const setOf = this.setOfManifest.get(manifestPath) ?? CUSTOM_TEMPLATE_SET;
+    // The import helper's settings for a graphic in a look (desk.json beside the look)
+    const manifest = { ...original, ...this.getDeskPatch(setOf, original.id) } as OGrafManifest;
     // Extract vendor-specific UI color if available
     const uicolor = (manifest as any).v_tvgrafik_uicolor ||
                     (manifest as any).v_spx_uicolor ||
@@ -430,7 +454,11 @@ export class OGrafManager {
     const zoneValue = (manifest as any).v_olgrafik_zone;
     const zone: GraphicZone | undefined = ['main', 'lower', 'side', 'corner', 'full'].includes(zoneValue) ? zoneValue : undefined;
 
-    const declaration = resolveDeskDeclaration(manifest);
+    const resolved = resolveDeskDeclaration(manifest);
+    // OGraf: supportsRealTime false means the graphic only renders offline (goToTime); Live can't play it
+    const declaration = manifest.supportsRealTime === false
+      ? { ...resolved, warnings: [...resolved.warnings, 'This graphic does not support real-time rendering (supportsRealTime is false), so it cannot be played live'] }
+      : resolved;
     for (const warning of declaration.warnings) logger.warn(warning, { id: manifest.id });
 
     // Load datasource configuration (if exists)
@@ -448,8 +476,50 @@ export class OGrafManager {
       directoryName, // URL path below templates/
       dataSourceConfig, // Add datasource config (null if not found)
       setId,
-      zone
+      zone,
+      ...(root === this.userDir && directoryName.startsWith(`${ADDITIONS}/`) ? { addition: true as const } : {}),
+      ...(this.getReplacements(setId)[manifest.id] ? { replaces: this.getReplacements(setId)[manifest.id] } : {})
     };
+  }
+
+  /**
+   * Graphics used instead of others in a look: new graphic id -> replaced graphic id. From
+   * <user>/additions/<look>/overrides.json and, for an imported look, <user>/sets/<look>/overrides.json.
+   */
+  /**
+   * Desk settings the import helper saved for a graphic of a look whose files it can't change
+   * (a built-in look's graphic, e.g. the Name strap): only the desk entry, field map and position
+   */
+  getDeskPatch(setId: string, graphicId: string): Partial<Pick<OGrafManifest, 'v_olgrafik_zone'>> & Record<string, unknown> {
+    if (!this.userDir || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(String(setId))) return {};
+    const out: Record<string, unknown> = {};
+    for (const file of [path.join(this.userDir, ADDITIONS, setId, 'desk.json'), path.join(this.userDir, 'sets', setId, 'desk.json')]) {
+      try {
+        const patch = JSON.parse(fsSync.readFileSync(file, 'utf-8'))?.[graphicId];
+        if (!patch || typeof patch !== 'object') continue;
+        for (const key of DESK_PATCH_KEYS) if (patch[key] !== undefined) out[key] = patch[key];
+      } catch {
+        // no patches for this look
+      }
+    }
+    return out;
+  }
+
+  getReplacements(setId: string): Record<string, string> {
+    // A look id is one folder name; anything else would read outside the templates folder
+    if (!this.userDir || !/^[a-z0-9][a-z0-9_-]{0,63}$/i.test(String(setId))) return {};
+    const out: Record<string, string> = {};
+    for (const file of [path.join(this.userDir, ADDITIONS, setId, 'overrides.json'), path.join(this.userDir, 'sets', setId, 'overrides.json')]) {
+      try {
+        const replaces = JSON.parse(fsSync.readFileSync(file, 'utf-8'))?.replaces;
+        if (replaces && typeof replaces === 'object') {
+          for (const [k, v] of Object.entries(replaces)) if (typeof v === 'string') out[k] = v;
+        }
+      } catch {
+        // no overrides for this look
+      }
+    }
+    return out;
   }
 
   /**

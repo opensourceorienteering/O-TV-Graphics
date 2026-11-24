@@ -4,6 +4,8 @@
  * Used by OBS Browser Source, vMix Web Input, and remote browsers
  */
 
+import { createBlockReporter } from "../graphics/blockReporter";
+import { createRulesVersionGate } from "../graphics/rulesVersionGate";
 import { io, Socket } from "socket.io-client";
 import { RendererCommandQueue } from "../graphics/RendererCommandQueue";
 import { OGrafRenderer } from "../graphics/ograf-renderer";
@@ -11,6 +13,19 @@ import { OGrafManifest } from "../../shared/types/ograf";
 
 // Global renderer instance
 let renderer: OGrafRenderer | null = null;
+// Reloads this page for changed content rules once it shows nothing (see rulesVersionGate)
+const rulesGate = createRulesVersionGate({
+  reload: () => window.location.reload(),
+  showing: () => renderer?.getPlayingCount() ?? 0,
+});
+// What the content rules block here is listed in Settings → Internet access, with an Allow button
+document.addEventListener(
+  "securitypolicyviolation",
+  createBlockReporter(
+    (blocked) => socket?.emit("SPXMessage2Server", { spxcmd: "graphics:blocked", ...blocked }),
+    () => renderer?.getLoadedGraphics().map((g) => g.manifest.name) ?? [],
+  ),
+);
 let socket: Socket | null = null;
 const commands = new RendererCommandQueue();
 let connectionVersion = 0;
@@ -144,6 +159,8 @@ function initWebSocket() {
   // Connect to WebSocket server
   socket = io(wsUrl, {
     transports: ["websocket"],
+    // On another computer the link carries the access key (?key=); the live connection needs it too
+    auth: { key: urlParams.get("key") ?? "" },
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionAttempts: Infinity,
@@ -207,10 +224,10 @@ function initWebSocket() {
       logger.log("[WebOutput] 📨 Message from server:", data);
     }
     if (data.command === "clear")
-      await commands.barrier(() => withRequestId(data, () => handleCommand(data)));
+      await commands.barrier(() => withRequestId(data, () => handleCommand(data)).finally(() => rulesGate.check()));
     else
       await commands.enqueue(data.payload?.id || "__control__", () =>
-        withRequestId(data, () => handleCommand(data)),
+        withRequestId(data, () => handleCommand(data)).finally(() => rulesGate.check()),
       );
   });
 }
@@ -219,6 +236,17 @@ function initWebSocket() {
  * Handle graphics commands from WebSocket
  */
 async function handleCommand(data: any) {
+  // The internet allowlist changed: reload to take the new content rules (sent only when nothing is on air)
+  if (data.spxcmd === "graphics:reloadPage") {
+    window.location.reload();
+    return;
+  }
+  // The current content rules version, on every connect: reload if this page missed a change
+  if (data.spxcmd === "graphics:rulesVersion") {
+    rulesGate.version(Number(data.version) || 0);
+    return;
+  }
+
   // Filter for graphics commands only
   if (data.spxcmd !== "graphics:command") {
     logger.log("[WebOutput] ⏭️  Ignoring non-graphics message:", data.spxcmd);
@@ -425,6 +453,7 @@ async function handleUpdate(payload: any) {
       id,
       data,
       payload.skipAnimation,
+      payload.partial === true,
     );
     logger.log("[WebOutput] ✅ Graphic updated successfully!", { id, result });
 

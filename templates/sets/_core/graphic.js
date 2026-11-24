@@ -11,7 +11,16 @@
  *   data-state="out" -> "in" (entry animation) -> "on" (steady; updates never re-animate)
  *   -> "step" (page change) -> "on" ... -> "leave" (exit animation) -> "out"
  * Multi-step graphics (paged tables) advance a page per play with delta 1.
+ *
+ * Steps follow OGraf v1: zero-based (the first play shows step 0; goto is zero-based). A graphic
+ * with one step (stepCount 1) played past it ends: it leaves and reports no step. Paged graphics
+ * (stepCount -1, a number of pages that depends on the data) stay on their last page. A look's own
+ * paged kinds go in set.js as paged: ['my-kind'] (in its manifest: "stepCount": -1).
+ * Internally this.step is the 1-based page shown.
  */
+
+/** Kinds whose manifests say stepCount -1 (pages depend on the data) */
+export const PAGED_KINDS = new Set(['results', 'start-list', 'runner-presentations']);
 
 import { renderView } from './views.js';
 import { clock, now, timeOfDay } from './util.js';
@@ -139,6 +148,19 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
       this.ticker = null;
     }
 
+    /**
+     * Pages that depend on the data (stepCount -1): Split Control's paged kinds, kinds a look lists
+     * in set.js as paged, and any graphic whose data gives it more than one page right now
+     */
+    get paged() {
+      return PAGED_KINDS.has(kind) || (Array.isArray(set.paged) && set.paged.includes(kind)) || this.steps > 1;
+    }
+
+    /** OGraf v1 PlayActionReturnPayload: zero-based step; the page count as a vendor field */
+    stepPayload() {
+      return { statusCode: 200, currentStep: this.step - 1, v_totalSteps: this.steps };
+    }
+
     async load(params = {}) {
       this.data = params.data ?? {};
       this.memory = {};
@@ -160,7 +182,7 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
       this.root.addEventListener('load', this.refit, true);
       document.fonts?.addEventListener?.('loadingdone', this.refit);
       this.render();
-      return { statusCode: 200, message: 'Loaded' };
+      return { statusCode: 200, statusMessage: 'Loaded' };
     }
 
     /** Graphics are designed at 1920x1080 and scaled to the output size */
@@ -291,18 +313,26 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
     async playAction(params = {}) {
       const skip = !!params.skipAnimation;
       const d = set.durations ?? {};
+      // OGraf v1: goto (zero-based) wins; otherwise current step + delta (default 1), from -1 when not shown
+      const current = this.visible ? this.step - 1 : -1;
+      const target = Number.isInteger(params.goto) && params.goto >= 0 ? params.goto : current + (Number.isFinite(params.delta) ? params.delta : 1);
+      if (!this.paged && target >= 1) {
+        // Past the only step: the graphic ends
+        if (this.visible) await this.stopAction({ skipAnimation: skip });
+        return { statusCode: 200, currentStep: undefined };
+      }
+      const page = Math.min(Math.max(1, target + 1), this.steps);
       if (!this.visible) {
-        this.step = params.goto ? Math.min(Math.max(1, params.goto), this.steps) : 1;
+        this.step = page;
         this.render();
         this.visible = true;
         this.startTicker();
         await imagesReady(this.root);
         if (skip) await this.setState('on');
         else { await this.setState('in', d.in ?? 800); if (this.visible) await this.setState('on'); }
-        return { statusCode: 200, currentStep: this.step, totalSteps: this.steps };
+        return this.stepPayload();
       }
-      const target = params.goto ?? this.step + (params.delta ?? 1);
-      const next = Math.min(Math.max(1, target), this.steps);
+      const next = page;
       if (next !== this.step) {
         const previousPage = this.pageKey;
         this.step = next;
@@ -316,7 +346,7 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
           await this.setState('on');
         }
       }
-      return { statusCode: 200, currentStep: this.step, totalSteps: this.steps };
+      return this.stepPayload();
     }
 
     async stopAction(params = {}) {
@@ -324,25 +354,28 @@ export function createGraphic(kind, set, view = (data, context) => renderView(ki
       this.visible = false;
       this.stopTicker();
       await this.setState('out');
-      return { statusCode: 200, currentStep: this.step, totalSteps: this.steps };
+      return { statusCode: 200 };
     }
 
     async updateAction(params = {}) {
-      this.data = params.data ?? this.data;
+      // OGraf v1: data is a (potentially partial) update, merged into what the graphic has.
+      // Split Control sends whole data with v_replace, so a field the operator cleared goes.
+      const update = params.data && typeof params.data === 'object' ? params.data : null;
+      if (update) this.data = params.v_replace ? update : { ...this.data, ...update };
       // An update during an entry, page change or exit waits for the animation to finish
-      if (this.visible && this.animating) { this.pending = true; return { statusCode: 200, currentStep: this.step }; }
+      if (this.visible && this.animating) { this.pending = true; return { statusCode: 200 }; }
       this.render({ live: this.visible && !params.skipAnimation });
       // Updates of a visible graphic change the content in place (no re-entry)
       if (this.step > this.steps) { this.step = this.steps; this.render({ live: this.visible }); }
-      return { statusCode: 200, currentStep: this.step };
+      return { statusCode: 200 };
     }
 
     async customAction(params = {}) {
       const id = params.id;
       if (id === 'next-page') return this.playAction({ delta: 1, skipAnimation: params.skipAnimation });
       if (id === 'previous-page') return this.playAction({ delta: -1, skipAnimation: params.skipAnimation });
-      if (id === 'first-page') return this.playAction({ goto: 1, skipAnimation: params.skipAnimation });
-      return { statusCode: 404, message: `Unknown action: ${id}` };
+      if (id === 'first-page') return this.playAction({ goto: 0, skipAnimation: params.skipAnimation });
+      return { statusCode: 404, statusMessage: `Unknown action: ${id}` };
     }
 
     async dispose() {

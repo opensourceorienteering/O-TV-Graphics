@@ -1,3 +1,5 @@
+import { applyFieldMap, mappedListsSignature } from '../../shared/fieldMap';
+import { graphicsRulesVersion } from '../security/rulesReload';
 import { timingClasses } from '../data/timingScope';
 /**
  * Playback Engine
@@ -20,7 +22,7 @@ import { applyStartList } from '../events/EventService';
 import { clubNameLibrary } from '../data/clubNames';
 import { assertTemplateInProjectSet } from '../templates/templateSets';
 import { presentationForGraphics } from '../../shared/branding';
-import { isMultiStep, zonesClash, type GraphicZone } from '../../shared/types/ograf';
+import { isMultiStep, zonesClash, type GraphicZone, type OGrafManifest } from '../../shared/types/ograf';
 import type { ProjectPresentation, SPXRundown } from '../../shared/types/spx';
 
 const logger = getLogger();
@@ -28,14 +30,25 @@ const logger = getLogger();
 /**
  * Renderers reply { success, result: ReturnPayload }, so the step is result.result.currentStep.
  * (Reading result.currentStep always gave 1, which broke multi-step resync and undo.)
+ *
+ * Graphics count steps from 0 (OGraf v1); the engine and the desk count pages from 1. These
+ * convert at the boundary: page = step + 1 when reading, goto = page - 1 when sending.
  */
-function stepFromPlayResult(playResult: any): number {
-  const step = playResult?.result?.currentStep ?? playResult?.currentStep;
-  return Number.isFinite(step) && step > 0 ? step : 1;
+function rawStep(playResult: any): unknown {
+  return playResult?.result?.currentStep ?? playResult?.currentStep;
 }
 
+function stepFromPlayResult(playResult: any): number {
+  const step = rawStep(playResult);
+  return Number.isInteger(step) && (step as number) >= 0 ? (step as number) + 1 : 1;
+}
+
+/** The page to resume on, as OGraf's zero-based goto */
+const gotoForPage = (page: number | undefined) => Math.max(0, (page || 1) - 1);
+
 function totalStepsFromPlayResult(playResult: any): number | undefined {
-  const steps = playResult?.result?.totalSteps ?? playResult?.totalSteps;
+  // Split Control graphics send their page count as the vendor field v_totalSteps
+  const steps = playResult?.result?.v_totalSteps ?? playResult?.v_totalSteps ?? playResult?.result?.totalSteps ?? playResult?.totalSteps;
   return Number.isFinite(steps) && steps > 0 ? steps : undefined;
 }
 
@@ -466,13 +479,18 @@ export class PlaybackEngine {
           logger.warn('Live update skipped: mapper returned no data', { graphicId });
           continue;
         }
-        mappedData = await this.decorateData(graphic.projectId, rundown, { ...(item.fields || {}), ...mappedData });
+        mappedData = await this.decorateData(graphic.projectId, rundown, { ...(item.fields || {}), ...mappedData }, graphic.manifest);
         // The graphic may have been stopped and disposed while we were fetching
         if (!this.activeGraphics.has(graphicId)) continue;
         // Operator chose to hold this graphic's data on air: only note that what it would show changed
         if (graphic.isPlaying && item.liveResultsData?.holdOnAir) {
           const withSplits = /splits|position-history/.test(graphic.templateId);
-          graphic.newData = shownResults(mappedData, withSplits) !== shownResults(graphic.data, withSplits);
+          // A graphic made elsewhere shows our lists under its own names: compare those
+          const map = (graphic.manifest as { v_olgrafik_fieldMap?: unknown } | undefined)?.v_olgrafik_fieldMap;
+          const mappedNow = mappedListsSignature(map, mappedData);
+          graphic.newData = mappedNow !== null
+            ? mappedNow !== mappedListsSignature(map, graphic.data ?? {})
+            : shownResults(mappedData, withSplits) !== shownResults(graphic.data, withSplits);
           continue;
         }
 
@@ -522,7 +540,7 @@ export class PlaybackEngine {
         rundown.additionalSources
       ).then(mapped => ({ ...(item.fields || {}), ...mapped }));
     }
-    data = await this.decorateData(projectId, rundown, data);
+    data = await this.decorateData(projectId, rundown, data, template.manifest);
     await this.sendCommand('update', { id: graphicId, data });
     graphic.data = data;
     graphic.newData = false;
@@ -551,6 +569,9 @@ export class PlaybackEngine {
       logger.error('Cannot sync graphics: WebSocket server not attached');
       return;
     }
+
+    // First the content rules version: a page that missed an allowlist change reloads itself
+    this.wsServer.sendToClient(socketId, { spxcmd: 'graphics:rulesVersion', version: graphicsRulesVersion() } as any);
 
     const loadedGraphics = Array.from(this.activeGraphics.values());
 
@@ -608,7 +629,7 @@ export class PlaybackEngine {
               id: graphic.id,
               options: {
                 skipAnimation: true, // Skip animation for sync
-                goto: graphic.currentStep || 1
+                goto: gotoForPage(graphic.currentStep)
               }
             }
           });
@@ -642,7 +663,12 @@ export class PlaybackEngine {
    * (club/flag rule, logos) and event info from the rundown. Template sets read
    * data.presentation and data.event; other graphics ignore them.
    */
-  private async decorateData(projectId: string, rundown: SPXRundown, data: Record<string, any>): Promise<Record<string, any>> {
+  private async decorateData(projectId: string, rundown: SPXRundown, data: Record<string, any>, manifest?: OGrafManifest): Promise<Record<string, any>> {
+    // A graphic made elsewhere gets our data under its own field names (v_olgrafik_fieldMap)
+    return applyFieldMap((manifest as { v_olgrafik_fieldMap?: unknown } | undefined)?.v_olgrafik_fieldMap, await this.decorateOwn(projectId, rundown, data));
+  }
+
+  private async decorateOwn(projectId: string, rundown: SPXRundown, data: Record<string, any>): Promise<Record<string, any>> {
     let presentation: ProjectPresentation = {};
     let info: import('../../shared/types/event').EventInfo = {};
     try {
@@ -669,6 +695,38 @@ export class PlaybackEngine {
     };
   }
 
+  /**
+   * After a graphic goes off air: dispose it once its out animation has run, and forget it.
+   * Until then a Show of the same item resumes its step (undo). Every way off air must call
+   * this, or the graphic stays loaded and a later Show resumes a stale step with stale data.
+   */
+  private scheduleRemoval(graphicId: string): void {
+    const pending = this.removalTimeouts.get(graphicId);
+    if (pending) clearTimeout(pending);
+    const timeoutId = setTimeout(async () => {
+      // Only this removal's own handle: a newer one may have been scheduled since
+      if (this.removalTimeouts.get(graphicId) === timeoutId) this.removalTimeouts.delete(graphicId);
+      // Shown again meanwhile (e.g. a Show raced the clash that cleared it): keep it on air
+      if (this.activeGraphics.get(graphicId)?.isPlaying) {
+        logger.debug('Graphic back on air, removal skipped', { graphicId });
+        return;
+      }
+      try {
+        await this.sendCommand('dispose', { id: graphicId });
+        logger.debug('Graphic disposed after stop animation', { graphicId });
+      } catch (error) {
+        logger.warn('Failed to dispose graphic', {
+          graphicId,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+      // The renderers no longer have it: forget it, so the next Show loads it afresh
+      this.activeGraphics.delete(graphicId);
+      logger.info('Graphic removed from active graphics', { graphicId });
+    }, 1500); // Wait for stop animation + dispose
+    this.removalTimeouts.set(graphicId, timeoutId);
+  }
+
   /** Take graphics off air whose screen zone clashes with the one about to play */
   private async clearClashing(graphicId: string, zone: GraphicZone | undefined): Promise<void> {
     if (!zone) return;
@@ -679,6 +737,9 @@ export class PlaybackEngine {
       try {
         await this.sendCommand('stop', { id: g.id, skipAnimation: false });
         g.isPlaying = false;
+        this.cancelAutoPage(g.id);
+        // External OGraf controllers keep their instances loaded and may play them again
+        if (g.source !== 'api') this.scheduleRemoval(g.id);
         if (g.source !== 'api') {
           const r = await rundownManager.loadRundown(g.projectId, g.rundownId);
           const it = r.items.find(i => i.id === g.itemId);
@@ -791,7 +852,7 @@ export class PlaybackEngine {
         }
       }
 
-      graphicData = await this.decorateData(projectId, rundown, graphicData);
+      graphicData = await this.decorateData(projectId, rundown, graphicData, template.manifest);
 
       // Check playback mode - if solo, stop all currently playing graphics
       // Priority: rundown item > template manifest > default to stackable
@@ -813,6 +874,8 @@ export class PlaybackEngine {
               skipAnimation: false
             });
             graphic.isPlaying = false;
+            this.cancelAutoPage(graphic.id);
+            if (graphic.source !== 'api') this.scheduleRemoval(graphic.id);
 
             // Update rundown item state
             const graphicRundown = await rundownManager.loadRundown(graphic.projectId, graphic.rundownId);
@@ -900,18 +963,14 @@ export class PlaybackEngine {
         });
       } else {
         logger.info('Graphic already loaded', { graphicId });
-        // Graphic already loaded - update with fresh data if LiveResults is configured
-        if (template.dataSourceConfig && item.liveResultsData?.dataSourceValues) {
-          logger.info('Updating already-loaded graphic with fresh LiveResults data', {
-            graphicId,
-            dataKeys: Object.keys(graphicData)
-          });
-
-          await this.sendCommand('update', {
-            id: graphicId,
-            data: graphicData
-          });
-        }
+        // Graphic already loaded (shown again within the undo window): send it the new data,
+        // and keep it, so renderers that connect later load what is on air
+        await this.sendCommand('update', {
+          id: graphicId,
+          data: graphicData
+        });
+        const loaded = this.activeGraphics.get(graphicId);
+        if (loaded) loaded.data = graphicData;
       }
 
       // Determine which step to play
@@ -931,7 +990,7 @@ export class PlaybackEngine {
           id: graphicId,
           options: {
             skipAnimation: false,
-            goto: preservedStep // Resume from preserved step
+            goto: gotoForPage(preservedStep) // Resume from preserved page
           }
         });
       } else {
@@ -1026,27 +1085,7 @@ export class PlaybackEngine {
         currentStep: undefined // Clear from UI, but preserved in activeGraphic for quick replay
       });
 
-      // Schedule removal from active graphics after animation completes
-      // Store the timeout ID so it can be cancelled if the graphic is played again
-      const timeoutId = setTimeout(async () => {
-        // Dispose the graphic to free memory
-        try {
-          await this.sendCommand('dispose', { id: graphicId });
-          logger.debug('Graphic disposed after stop animation', { graphicId });
-        } catch (error) {
-          logger.warn('Failed to dispose graphic', {
-            graphicId,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-        }
-
-        // Remove from tracking
-        this.activeGraphics.delete(graphicId);
-        this.removalTimeouts.delete(graphicId);
-        logger.info('Graphic removed from active graphics', { graphicId });
-      }, 1500); // Wait for stop animation + dispose
-
-      this.removalTimeouts.set(graphicId, timeoutId);
+      this.scheduleRemoval(graphicId);
 
       // Stop live polling that nothing on air needs any more
       await this.syncPolling();
@@ -1083,7 +1122,7 @@ export class PlaybackEngine {
 
       // Keep the presentation/event context the graphic was loaded with
       const rundown = await getRundownManager().loadRundown(projectId, rundownId);
-      const decorated = await this.decorateData(projectId, rundown, data ?? {});
+      const decorated = await this.decorateData(projectId, rundown, data ?? {}, this.activeGraphics.get(graphicId)?.manifest);
       await this.sendCommand('update', {
         id: graphicId,
         data: decorated
@@ -1336,7 +1375,14 @@ export class PlaybackEngine {
     const result: any = await this.sendCommand('play', { id: graphicInstanceId, options: params });
     g.isPlaying = true;
     g.currentStep = stepFromPlayResult(result);
-    return { graphicInstanceId, statusCode: result?.result?.statusCode ?? 200, statusMessage: result?.result?.message, currentStep: g.currentStep };
+    // An OGraf controller gets the graphic's own (zero-based) step; none once it has ended
+    const step = rawStep(result);
+    return {
+      graphicInstanceId,
+      statusCode: result?.result?.statusCode ?? 200,
+      statusMessage: result?.result?.statusMessage ?? result?.result?.message,
+      currentStep: Number.isInteger(step) ? (step as number) : undefined,
+    };
   }
 
   async apiStop(graphicInstanceId: string, params: { skipAnimation?: boolean } = {}) {
@@ -1348,8 +1394,9 @@ export class PlaybackEngine {
 
   async apiUpdate(graphicInstanceId: string, params: { data: unknown; skipAnimation?: boolean }) {
     const g = this.requireApiInstance(graphicInstanceId);
-    await this.sendCommand('update', { id: graphicInstanceId, data: params.data, skipAnimation: params.skipAnimation });
-    g.data = params.data;
+    // OGraf: a (potentially partial) update, merged into the graphic's data
+    await this.sendCommand('update', { id: graphicInstanceId, data: params.data, skipAnimation: params.skipAnimation, partial: true });
+    g.data = g.data && typeof g.data === 'object' && params.data && typeof params.data === 'object' ? { ...g.data, ...params.data } : params.data;
     return { graphicInstanceId, statusCode: 200 };
   }
 

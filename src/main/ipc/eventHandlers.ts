@@ -1,3 +1,5 @@
+import { guardWindow } from "../windows/guards";
+import { registerOperatorWindow } from "../security/callers";
 import { timingControls } from '../data/timingScope';
 import { resolveDeskDeclaration } from '../../shared/deskDeclaration';
 /**
@@ -595,6 +597,8 @@ export function registerEventHandlers(): void {
         w.webContents.send("fromMain", { type: "monitorClosed", kind }),
       );
     });
+    guardWindow(win);
+    registerOperatorWindow(win);
     monitors.set(kind, win);
     try {
       if (!app.isPackaged)

@@ -3,6 +3,9 @@
  * Socket.io server for real-time communication
  */
 
+import { recordBlocked } from '../security/blocked';
+import { socketAccessGuard, socketStillAllowed } from '../security/accessGuard';
+import { localContext, remoteAccessSettings } from '../security/remoteAccess';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer, Server as HTTPServer } from 'http';
 import { getLogger } from '../utils/logger';
@@ -55,6 +58,10 @@ export class WebSocketServer {
       }
     });
 
+    // Other computers need the access key (Settings → Remote access)
+    this.io.use(socketAccessGuard(remoteAccessSettings, localContext));
+    this.io.of('/control').use(socketAccessGuard(remoteAccessSettings, localContext));
+
     this.setupHandlers();
     // Dedicated feedback namespace: no graphic acknowledgements or program-room membership.
     this.io.of('/control').on('connection', socket => {
@@ -100,6 +107,21 @@ export class WebSocketServer {
    */
   setNewClientCallback(callback: (socketId: string, room: SocketRoom) => void): void {
     this.newClientCallback = callback;
+  }
+
+  /** After the key or the switch changed: disconnect other computers that no longer qualify */
+  dropUnauthorised(): number {
+    const current = remoteAccessSettings();
+    let dropped = 0;
+    for (const namespace of [this.io.of('/'), this.io.of('/control')]) {
+      for (const socket of namespace.sockets.values()) {
+        if (socketStillAllowed(socket as never, current)) continue;
+        socket.disconnect(true);
+        dropped++;
+      }
+    }
+    if (dropped) logger.info('Disconnected remote connections after an access key change', { dropped });
+    return dropped;
   }
 
   private setupHandlers(): void {
@@ -220,6 +242,11 @@ export class WebSocketServer {
         logger[level](`TemplateLog [${ref}] --> ${data.message}`);
         break;
       }
+
+      case 'graphics:blocked':
+        // An output page reports what the content rules blocked (Settings → Internet access)
+        recordBlocked(data);
+        break;
 
       case 'graphics:response':
         // Graphics renderer response to a command

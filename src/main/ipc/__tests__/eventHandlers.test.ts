@@ -38,7 +38,7 @@ vi.mock("electron", () => ({
     destroyed = false;
     callbacks = new Map();
     focus = vi.fn();
-    webContents = { send: vi.fn() };
+    webContents = { send: vi.fn(), setWindowOpenHandler: vi.fn(), on: vi.fn(), getURL: () => "" };
     constructor(options: any) {
       this.options = options;
       mock.windows.push(this);

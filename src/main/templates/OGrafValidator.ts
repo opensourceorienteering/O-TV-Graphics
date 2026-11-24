@@ -3,189 +3,25 @@
  * Validates OGRAF v1 manifest files using JSON Schema
  */
 
-import Ajv, { ValidateFunction, ErrorObject } from 'ajv';
+import Ajv2020 from 'ajv/dist/2020';
+import type { ValidateFunction, ErrorObject } from 'ajv';
 import { OGrafManifest } from '../../shared/types/ograf';
 import { logger } from '../utils/logger';
 
 /**
- * JSON Schema for OGRAF v1 Manifest
- * Based on https://ograf.ebu.io/v1/specification/
+ * The official OGraf v1 schemas (EBU, MIT), bundled so validation works offline and matches the
+ * specification exactly: see ./ograf-schema/README.md
  */
-const OGRAF_MANIFEST_SCHEMA = {
-  $schema: 'http://json-schema.org/draft-07/schema#',
-  type: 'object',
-  // Matches the official v1 schema (https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json)
-  required: ['$schema', 'id', 'name', 'main', 'supportsRealTime', 'supportsNonRealTime'],
-  properties: {
-    $schema: {
-      type: 'string',
-      const: 'https://ograf.ebu.io/v1/specification/json-schemas/graphics/schema.json',
-      description: 'OGRAF v1 graphics schema reference (required as of 2025-07-13)'
-    },
-    id: {
-      type: 'string',
-      minLength: 1,
-      description: 'Unique identifier for the graphic'
-    },
-    version: {
-      type: 'string',
-      description: 'Graphic version; any alphabetically sortable string (e.g. "1.0.0", "2", "2024-07-01_final")'
-    },
-    name: {
-      type: 'string',
-      minLength: 1,
-      description: 'Human-readable name'
-    },
-    description: {
-      type: 'string',
-      description: 'Description of the graphic'
-    },
-    author: {
-      type: 'object',
-      required: ['name'],
-      properties: {
-        name: { type: 'string', minLength: 1 },
-        email: { type: 'string', format: 'email' },
-        url: { type: 'string', format: 'uri' }
-      }
-    },
-    main: {
-      type: 'string',
-      pattern: '\\.(js|mjs)$',
-      description: 'Main JavaScript file (Web Component)'
-    },
-    schema: {
-      type: 'object',
-      required: ['type', 'properties'],
-      properties: {
-        type: { const: 'object' },
-        properties: { type: 'object' },
-        required: { type: 'array', items: { type: 'string' } }
-      },
-      description: 'JSON Schema for data validation'
-    },
-    supportsRealTime: {
-      type: 'boolean',
-      description: 'Supports real-time rendering'
-    },
-    supportsNonRealTime: {
-      type: 'boolean',
-      description: 'Supports non-real-time rendering'
-    },
-    stepCount: {
-      type: 'number',
-      minimum: -1,
-      description: 'Number of steps (default 1; -1 = dynamic/unknown number of steps)'
-    },
-    thumbnails: {
-      type: 'array',
-      description: 'Thumbnail images (PNG, JPG, GIF, webp) relative to the manifest (added 2026-04)',
-      items: {
-        type: 'object',
-        required: ['file'],
-        properties: {
-          file: { type: 'string', minLength: 1 },
-          resolution: {
-            type: 'object',
-            properties: {
-              width: { type: 'integer', minimum: 1 },
-              height: { type: 'integer', minimum: 1 }
-            }
-          }
-        }
-      }
-    },
-    actionDurations: {
-      type: 'array',
-      description: 'Static animation durations per action in ms, -1 = dynamic (added 2026-06)',
-      items: {
-        type: 'object',
-        required: ['type'],
-        properties: {
-          type: { type: 'string' },
-          duration: { type: 'integer', minimum: -1 }
-        }
-      }
-    },
-    customActions: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'name'],
-        properties: {
-          id: { type: 'string', minLength: 1 },
-          name: { type: 'string', minLength: 1 },
-          description: { type: 'string' },
-          // null when the action takes no parameters (lib/action.json)
-          schema: { type: ['object', 'null'] }
-        }
-      }
-    },
-    renderRequirements: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          resolution: {
-            type: 'object',
-            properties: {
-              width: {
-                type: 'object',
-                properties: {
-                  exact: { type: 'integer', minimum: 1 },
-                  min: { type: 'integer', minimum: 1 },
-                  max: { type: 'integer', minimum: 1 },
-                  ideal: { type: 'integer', minimum: 1 }
-                }
-              },
-              height: {
-                type: 'object',
-                properties: {
-                  exact: { type: 'integer', minimum: 1 },
-                  min: { type: 'integer', minimum: 1 },
-                  max: { type: 'integer', minimum: 1 },
-                  ideal: { type: 'integer', minimum: 1 }
-                }
-              }
-            }
-          },
-          frameRate: {
-            type: 'object',
-            properties: {
-              exact: { type: 'number', minimum: 1 },
-              min: { type: 'number', minimum: 1 },
-              max: { type: 'number', minimum: 1 },
-              ideal: { type: 'number', minimum: 1 }
-            }
-          },
-          accessToPublicInternet: {
-            type: 'object',
-            required: ['exact'],
-            properties: {
-              exact: { type: 'boolean' }
-            }
-          },
-          engine: {
-            type: 'array',
-            description: 'Minimum rendering engine versions, e.g. { type: "CEF", version: { min: 139 } } (added 2026-04)',
-            items: {
-              type: 'object',
-              properties: {
-                type: { type: 'string' },
-                version: { type: 'object' }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  // Allow vendor-specific fields starting with v_
-  patternProperties: {
-    '^v_[a-zA-Z0-9_]+$': {}
-  },
-  additionalProperties: false
-};
+import graphicsSchema from './ograf-schema/graphics/schema.json';
+import gddObject from './ograf-schema/gdd/object.json';
+import gddBasicTypes from './ograf-schema/gdd/basic-types.json';
+import gddTypes from './ograf-schema/gdd/gdd-types.json';
+import actionSchema from './ograf-schema/lib/action.json';
+import booleanConstraint from './ograf-schema/lib/constraints/boolean.json';
+import numberConstraint from './ograf-schema/lib/constraints/number.json';
+import stringConstraint from './ograf-schema/lib/constraints/string.json';
+
+const REFERENCED_SCHEMAS = [gddObject, gddBasicTypes, gddTypes, actionSchema, booleanConstraint, numberConstraint, stringConstraint];
 
 /**
  * Validation result
@@ -208,21 +44,21 @@ export interface ValidationError {
  * OGRAF Validator class
  */
 export class OGrafValidator {
-  private ajv: Ajv;
+  private ajv: Ajv2020;
   private validateManifest: ValidateFunction;
 
   constructor() {
-    // Initialize Ajv with strict mode
-    this.ajv = new Ajv({
+    // JSON Schema 2020-12, as the official schemas are written. Formats (email, uri) are not
+    // checked: the official schema leaves them to the controller.
+    this.ajv = new Ajv2020({
       allErrors: true,
       verbose: true,
-      strict: true,
-      strictSchema: false, // Allow additional schema keywords
-      logger: false // Suppress format warnings (email, uri) - these are cosmetic only
+      strict: false,
+      validateFormats: false,
+      logger: false
     });
-
-    // Compile the manifest schema
-    this.validateManifest = this.ajv.compile(OGRAF_MANIFEST_SCHEMA);
+    for (const schema of REFERENCED_SCHEMAS) this.ajv.addSchema(schema as object);
+    this.validateManifest = this.ajv.compile(graphicsSchema as object);
   }
 
   /**

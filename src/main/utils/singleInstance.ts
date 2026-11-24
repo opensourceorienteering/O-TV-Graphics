@@ -15,8 +15,8 @@ import { app } from "electron";
 
 interface Options {
   dev: boolean;
-  /** Bring the running app to the front (another copy was opened) */
-  focus: () => void;
+  /** Bring the running app to the front (another copy was opened, maybe with a file to open) */
+  focus: (argv: string[]) => void;
   log: (message: string) => void;
 }
 
@@ -24,13 +24,13 @@ const LOCK_DATA = { dev: true };
 
 /** True when this process may run; false when another Split Control keeps running instead */
 export function claimSingleInstance({ dev, focus, log }: Options): boolean {
-  app.on("second-instance", (_event, _argv, _cwd, data) => {
+  app.on("second-instance", (_event, argv, _cwd, data) => {
     if (dev && (data as typeof LOCK_DATA | undefined)?.dev) {
       log("A newer development instance started; quitting this one");
       app.quit();
       return;
     }
-    focus();
+    focus(argv);
   });
   if (!app.requestSingleInstanceLock(dev ? LOCK_DATA : undefined)) {
     log(dev
