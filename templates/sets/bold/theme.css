@@ -53,25 +53,33 @@
 
 /* --- header ----------------------------------------------------------------------------- */
 .hdr, .ftr { padding: 0 26px 0 34px; gap: 16px; }
-.hdr { min-height: 88px; border-bottom: 1px solid var(--rule); overflow: hidden; }
+.hdr { min-height: 88px; overflow: hidden; }
 .hdr-mark, .ftr-mark { display: none; }
 .hdr-title { font: 400 52px/1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
 .hdr-sub { margin-left: auto; font: 500 22px var(--font); letter-spacing: .22em; text-transform: uppercase; color: var(--hot); }
 .hdr-logo, .ftr-logo { height: 52px; width: 104px; padding: 6px 10px; background: var(--paper); align-self: center; }
-.ftr { min-height: 50px; border-top: 1px solid var(--rule); overflow: hidden; color: var(--muted); font: 500 20px var(--font); letter-spacing: .18em; text-transform: uppercase; }
+.ftr { min-height: 50px; overflow: hidden; color: var(--muted); font: 500 20px var(--font); letter-spacing: .18em; text-transform: uppercase; }
 .ftr-class { color: var(--paper); }
 .ftr-ctrl { color: var(--hot); }
 .ftr-sep { margin: 0 .4em; }
 .ftr-page { margin-left: auto; color: var(--hot); font-weight: 700; letter-spacing: .08em; }
 .panel--table .ftr:not(:has(.ftr-page)) { display: none; }
 .panel--table .ftr .ftr-label { display: none; }
-.panel--table .ftr { justify-content: flex-end; border-top: 0; }
+.panel--table .ftr { justify-content: flex-end; }
+.panel--table .ftr::after { display: none; }
 
 /* --- rows: every row is a mask, its cells rise out of it ---------------------------- */
 .rows { padding: 4px 0 8px; }
 /* a little clip margin: accents (Å, Ø) rise above the row; rising text shows only 6 px early */
 .row { min-height: 58px; overflow: clip; overflow-clip-margin: 6px; }
-.row + .row { box-shadow: inset 0 1px 0 var(--rule); }
+/* The rules between header, rows and footer are painted on ::after (not borders) so they
+   wipe open with the band instead of showing before it. */
+.gfx :where(.hdr, .ftr, .row + .row)::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 1px; background: var(--rule);
+  transform-origin: 0 50%; pointer-events: none;
+}
+.gfx :where(.hdr)::after { bottom: 0; }
+.gfx :where(.ftr, .row + .row)::after { top: 0; }
 .c-place {
   width: 82px; padding-left: 24px; justify-content: flex-start !important;
   font: 400 38px/1 var(--display); color: transparent; -webkit-text-stroke: 1.5px var(--paper);
@@ -143,7 +151,8 @@
 
 /* --- podium ---------------------------------------------------------------------------- */
 .panel--podium::before { display: none; }
-.panel--podium > .hdr { background: var(--band); border: 0; margin-bottom: 10px; box-shadow: inset 10px 0 0 var(--hot); }
+.panel--podium > .hdr::after { display: none; }
+.panel--podium > .hdr { background: var(--band); margin-bottom: 10px; box-shadow: inset 10px 0 0 var(--hot); }
 .panel--podium .podium { gap: 10px; }
 .panel--podium .pod { background: var(--band); }
 .panel--podium .pod > .c-place { font: 400 72px/1 var(--display); color: transparent; -webkit-text-stroke: 2px var(--paper); background: transparent; padding-left: 20px; }
@@ -196,6 +205,8 @@
 
 .gfx[data-state="in"] .panel::before { animation: bt-band 620ms var(--bt-ease) both; }
 .gfx[data-state="in"] .panel::after { animation: bt-stripe 520ms var(--bt-ease) 120ms both; }
+.gfx[data-state="in"] :is(.hdr, .ftr)::after { animation: bt-band 620ms var(--bt-ease) 60ms both; }
+.gfx[data-state="in"] .row + .row::after { animation: bt-band 620ms var(--bt-ease) calc(80ms + min(var(--i, 0), 10) * 30ms) both; }
 .gfx[data-state="in"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod > .c-place, .pod-names) {
   animation: bt-up 680ms var(--bt-ease) calc(260ms + min(var(--i, 0), 10) * 50ms) both;
 }
@@ -213,7 +224,7 @@
 
 .gfx[data-state="leave"] :is(.hdr > *, .ftr > *, .row > *, .title-main, .title-sub, .title-logo, .clk-label, .clk-time, .clk-logo, .pod, .chart) { animation: bt-down 220ms var(--bt-out) both; }
 .gfx[data-state="leave"] .panel::before { animation: bt-band-out 300ms var(--bt-out) 80ms both; }
-.gfx[data-state="leave"] .panel::after { animation: fade-out 160ms linear both; }
+.gfx[data-state="leave"] :is(.panel, .hdr, .ftr, .row + .row)::after { animation: fade-out 160ms linear both; }
 .gfx[data-state="step-out"] .row > * { animation: bt-down 200ms var(--bt-out) both; }
 .gfx[data-state="step"] .row > * { animation: bt-up 560ms var(--bt-ease) calc(min(var(--i, 0), 10) * 35ms) both; }
 .panel--podium .pod--1 .nm-given { color: var(--on-hot); opacity: .75; }
